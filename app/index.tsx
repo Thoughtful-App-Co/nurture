@@ -4,15 +4,18 @@
  * Handles app initialization and routing based on user state
  */
 
-import { Text, View, ActivityIndicator } from "react-native";
+import { Text, View, ActivityIndicator, AppState } from "react-native";
 import { useAccount } from "jazz-tools/expo";
 import { useDemoAuth } from "jazz-tools/expo";
 import { OnboardingFlow } from "@/components/auth/onboarding-flow";
-import { useState, useEffect } from "react";
+import { BiometricLock } from "@/components/auth/BiometricLock";
+import { useState, useEffect, useRef } from "react";
 
 export default function Index() {
   const { me } = useAccount();
   const [isOnboarding, setIsOnboarding] = useState(false);
+  const [isLocked, setIsLocked] = useState(false);
+  const appState = useRef(AppState.currentState);
   const auth = useDemoAuth();
 
   // Check if user needs onboarding (no displayName set)
@@ -21,8 +24,34 @@ export default function Index() {
       const root = me.root as any;
       const needsOnboarding = !root?.displayName;
       setIsOnboarding(needsOnboarding);
+      
+      // If user has completed onboarding, lock the app initially
+      if (!needsOnboarding) {
+        setIsLocked(true);
+      }
     }
   }, [me]);
+
+  // Handle app state changes for biometric lock
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", nextAppState => {
+      if (
+        appState.current.match(/inactive|background/) &&
+        nextAppState === "active"
+      ) {
+        // App came to foreground - lock if user has completed onboarding
+        if (me && !isOnboarding) {
+          console.log("App came to foreground - locking");
+          setIsLocked(true);
+        }
+      }
+      appState.current = nextAppState;
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [me, isOnboarding]);
 
   // Loading state
   if (me === undefined) {
@@ -70,6 +99,19 @@ export default function Index() {
           // TODO: Enable biometric lock here
           console.log("TODO: Enable biometric lock");
         }}
+      />
+    );
+  }
+
+  // Show biometric lock if needed
+  if (isLocked) {
+    return (
+      <BiometricLock
+        onUnlock={() => {
+          console.log("App unlocked!");
+          setIsLocked(false);
+        }}
+        fallbackPIN="1234" // TODO: Allow user to set their own PIN
       />
     );
   }
