@@ -13,13 +13,41 @@ import { co, z } from "jazz-tools";
 
 /**
  * Represents a person in the user's social circle
+ * Matches PRD Contact model
  */
 export const Contact = co.map({
+  sourceId: z.string().optional(), // Original device contact ID
+  
+  // Basic Info
   name: z.string(),
-  notes: z.string().optional(),
-  tags: z.array(z.string()).optional(),
-  createdAt: z.string(), // ISO date
+  phoneNumber: z.string().optional(),
+  email: z.string().optional(),
+  photoUrl: z.string().optional(),
+  
+  // Behavioral Metrics (calculated from interaction data)
+  dunbarLayer: z.number().optional(), // 0-6
+  interactionScore: z.number().optional(),
   lastInteraction: z.string().optional(), // ISO date
+  interactionFrequency: z.number().optional(),
+  reciprocityScore: z.number().optional(), // 0-1
+  contactInitiationRatio: z.number().optional(), // 0-1
+  averageResponseTime: z.number().optional(), // seconds
+  
+  // Family Structure
+  isFamily: z.boolean().optional(),
+  familyTier: z.enum(["NUCLEAR", "SECONDARY", "TERTIARY"]).optional(),
+  familyRole: z.string().optional(), // "mother", "brother", "cousin", etc.
+  
+  // User Intent
+  targetLayer: z.number().optional(), // desired layer
+  cultivationGoal: z.enum(["MAINTAIN", "STRENGTHEN", "RECONNECT", "DEPRIORITIZE"]).optional(),
+  notes: z.string().optional(),
+  
+  // Classification
+  vertical: z.enum(["FRIENDS", "BUSINESS"]).optional(),
+  tags: z.array(z.string()).optional(),
+  
+  createdAt: z.string(), // ISO date
 });
 
 /**
@@ -60,7 +88,7 @@ export const RelationshipGoal = co.map({
   createdAt: z.string(), // ISO date
   targetDate: z.string().optional(), // ISO date
   relatedContacts: z.array(z.string()).optional(), // contact IDs
-  progress: z.number().min(0).max(100).default(0),
+  progress: z.number().min(0).max(100), // Default 0 will be set in code
 });
 
 /**
@@ -76,11 +104,22 @@ export const GoalList = co.list(RelationshipGoal);
  * User preferences and settings
  */
 export const UserSettings = co.map({
-  notificationsEnabled: z.boolean().default(true),
-  darkMode: z.boolean().default(true),
-  checkInReminders: z.boolean().default(true),
-  weeklyReviewDay: z.enum(["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]).default("sunday"),
-  privacyLevel: z.enum(["full", "partial", "minimal"]).default("full"),
+  notificationsEnabled: z.boolean(), // Default true will be set in code
+  darkMode: z.boolean(), // Default true will be set in code
+  checkInReminders: z.boolean(), // Default true will be set in code
+  weeklyReviewDay: z.enum(["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]), // Default "sunday" will be set in code
+  privacyLevel: z.enum(["full", "partial", "minimal"]), // Default "full" will be set in code
+});
+
+/**
+ * Family names for smart contact matching
+ * Used to identify potential family members
+ */
+export const FamilyNames = co.map({
+  birthLastName: z.string().optional(),
+  currentLastName: z.string().optional(),
+  spouseLastName: z.string().optional(),
+  otherFamilyNames: z.array(z.string()).optional(),
 });
 
 /**
@@ -88,11 +127,13 @@ export const UserSettings = co.map({
  */
 export const UserProfile = co.map({
   displayName: z.string(),
-  email: z.string().email().optional(),
+  email: z.string().optional(),
+  phone: z.string().optional(),
   contacts: ContactList,
   interactions: InteractionList,
   goals: GoalList,
   settings: UserSettings,
+  familyNames: FamilyNames.optional(),
   createdAt: z.string(), // ISO date
   lastActive: z.string(), // ISO date
 });

@@ -1,0 +1,469 @@
+/**
+ * Data Mining Service
+ * 
+ * Aggregates contact data, call logs, and SMS history to build
+ * behavioral interaction profiles for Dunbar layer calculation
+ * 
+ * STORY-001: Contact Data Ingestion
+ * STORY-002: Call & SMS Log Mining
+ */
+
+import * as Contacts from 'expo-contacts';
+import { PermissionsAndroid, Platform } from 'react-native';
+
+// Types matching PRD data model
+export interface RawContact {
+  id: string;
+  name: string;
+  phoneNumbers?: string[];
+  emails?: string[];
+}
+
+export interface CallLogEntry {
+  phoneNumber: string;
+  duration: number; // seconds
+  timestamp: number; // unix timestamp
+  type: 'INCOMING' | 'OUTGOING' | 'MISSED';
+}
+
+export interface SMSEntry {
+  phoneNumber: string;
+  timestamp: number;
+  type: 'INCOMING' | 'OUTGOING';
+  body: string;
+}
+
+export interface InteractionMetrics {
+  // Call metrics
+  callFrequency: number; // calls per month
+  totalCallDuration: number; // total seconds
+  lastCall: number | null; // timestamp
+  callInitiationRatio: number; // 0-1, % calls initiated by user
+  
+  // SMS metrics
+  smsFrequency: number; // messages per month
+  smsReciprocity: number; // 0-1, balance of sent/received
+  smsInitiationRatio: number; // 0-1, % conversations initiated by user
+  averageResponseTime: number; // seconds
+  lastSMS: number | null; // timestamp
+  
+  // Combined
+  lastInteraction: number | null;
+  interactionScore: number; // computed score for Dunbar calculation
+}
+
+export interface ContactWithMetrics extends RawContact {
+  metrics: InteractionMetrics;
+  potentialFamily?: {
+    matchedLastName: string;
+    confidence: 'high' | 'medium' | 'low';
+  };
+}
+
+export interface FamilyNames {
+  birthLastName?: string;
+  currentLastName?: string;
+  spouseLastName?: string;
+  otherFamilyNames?: string[];
+}
+
+/**
+ * Request all necessary permissions for data mining
+ */
+export async function requestDataMiningPermissions(): Promise<{
+  contacts: boolean;
+  callLog: boolean;
+  sms: boolean;
+}> {
+  const results = {
+    contacts: false,
+    callLog: false,
+    sms: false,
+  };
+
+  try {
+    // Contacts permission (cross-platform)
+    const contactsPermission = await Contacts.requestPermissionsAsync();
+    results.contacts = contactsPermission.status === 'granted';
+
+    // Android-specific permissions
+    if (Platform.OS === 'android') {
+      // Call log permission
+      const callLogGranted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.READ_CALL_LOG,
+        {
+          title: 'Call Log Access',
+          message: 'Nurture needs access to your call history to understand your communication patterns.',
+          buttonNeutral: 'Ask Me Later',
+          buttonNegative: 'Cancel',
+          buttonPositive: 'OK',
+        }
+      );
+      results.callLog = callLogGranted === PermissionsAndroid.RESULTS.GRANTED;
+
+      // SMS permission
+      const smsGranted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.READ_SMS,
+        {
+          title: 'SMS Access',
+          message: 'Nurture needs access to your messages to analyze communication patterns.',
+          buttonNeutral: 'Ask Me Later',
+          buttonNegative: 'Cancel',
+          buttonPositive: 'OK',
+        }
+      );
+      results.sms = smsGranted === PermissionsAndroid.RESULTS.GRANTED;
+    }
+  } catch (error) {
+    console.error('Permission request failed:', error);
+  }
+
+  return results;
+}
+
+/**
+ * Fetch all contacts from device
+ * STORY-001
+ */
+export async function fetchDeviceContacts(): Promise<RawContact[]> {
+  try {
+    const { data } = await Contacts.getContactsAsync({
+      fields: [
+        Contacts.Fields.Name,
+        Contacts.Fields.PhoneNumbers,
+        Contacts.Fields.Emails,
+      ],
+    });
+
+    return data.map(contact => ({
+      id: contact.id,
+      name: contact.name || 'Unknown',
+      phoneNumbers: contact.phoneNumbers?.map(p => p.number).filter((n): n is string => !!n) || [],
+      emails: contact.emails?.map(e => e.email).filter((e): e is string => !!e) || [],
+    }));
+  } catch (error) {
+    console.error('Failed to fetch contacts:', error);
+    return [];
+  }
+}
+
+/**
+ * Fetch call logs (Android only - requires native module)
+ * STORY-002
+ * 
+ * NOTE: This requires a native module like react-native-call-log
+ * Placeholder implementation - will be implemented with native bridge
+ */
+export async function fetchCallLogs(): Promise<CallLogEntry[]> {
+  if (Platform.OS !== 'android') {
+    console.warn('Call log access only available on Android');
+    return [];
+  }
+
+  // TODO: Implement with react-native-call-log or custom native module
+  // For now, return empty array
+  console.log('Call log fetching not yet implemented - requires native module');
+  return [];
+}
+
+/**
+ * Fetch SMS history (Android only - requires native module)
+ * STORY-002
+ * 
+ * NOTE: This requires a native module or custom implementation
+ * Placeholder implementation
+ */
+export async function fetchSMSHistory(): Promise<SMSEntry[]> {
+  if (Platform.OS !== 'android') {
+    console.warn('SMS access only available on Android');
+    return [];
+  }
+
+  // TODO: Implement with native module
+  console.log('SMS fetching not yet implemented - requires native module');
+  return [];
+}
+
+/**
+ * Calculate interaction metrics for a contact
+ * STORY-002
+ */
+export function calculateInteractionMetrics(
+  phoneNumbers: string[],
+  callLogs: CallLogEntry[],
+  smsHistory: SMSEntry[]
+): InteractionMetrics {
+  const now = Date.now();
+  const thirtyDaysAgo = now - (30 * 24 * 60 * 60 * 1000);
+
+  // Filter logs for this contact's phone numbers
+  const contactCalls = callLogs.filter(call =>
+    phoneNumbers.some(num => normalizePhoneNumber(num) === normalizePhoneNumber(call.phoneNumber))
+  );
+  
+  const contactSMS = smsHistory.filter(sms =>
+    phoneNumbers.some(num => normalizePhoneNumber(num) === normalizePhoneNumber(sms.phoneNumber))
+  );
+
+  // Call metrics
+  const recentCalls = contactCalls.filter(c => c.timestamp > thirtyDaysAgo);
+  const outgoingCalls = recentCalls.filter(c => c.type === 'OUTGOING');
+  const callFrequency = recentCalls.length;
+  const totalCallDuration = recentCalls.reduce((sum, c) => sum + c.duration, 0);
+  const callInitiationRatio = callFrequency > 0 ? outgoingCalls.length / callFrequency : 0;
+  const lastCall = contactCalls.length > 0 
+    ? Math.max(...contactCalls.map(c => c.timestamp))
+    : null;
+
+  // SMS metrics
+  const recentSMS = contactSMS.filter(s => s.timestamp > thirtyDaysAgo);
+  const outgoingSMS = recentSMS.filter(s => s.type === 'OUTGOING');
+  const incomingSMS = recentSMS.filter(s => s.type === 'INCOMING');
+  const smsFrequency = recentSMS.length;
+  const smsReciprocity = smsFrequency > 0
+    ? Math.min(outgoingSMS.length, incomingSMS.length) / Math.max(outgoingSMS.length, incomingSMS.length, 1)
+    : 0;
+  const smsInitiationRatio = calculateSMSInitiationRatio(contactSMS);
+  const averageResponseTime = calculateAverageResponseTime(contactSMS);
+  const lastSMS = contactSMS.length > 0
+    ? Math.max(...contactSMS.map(s => s.timestamp))
+    : null;
+
+  // Combined metrics
+  const lastInteraction = Math.max(lastCall || 0, lastSMS || 0) || null;
+  
+  // Interaction score (will be used for Dunbar layer calculation)
+  const interactionScore = calculateInteractionScore({
+    callFrequency,
+    totalCallDuration,
+    smsFrequency,
+    smsReciprocity,
+    lastInteraction,
+  });
+
+  return {
+    callFrequency,
+    totalCallDuration,
+    lastCall,
+    callInitiationRatio,
+    smsFrequency,
+    smsReciprocity,
+    smsInitiationRatio,
+    averageResponseTime,
+    lastSMS,
+    lastInteraction,
+    interactionScore,
+  };
+}
+
+/**
+ * Calculate SMS initiation ratio
+ * Looks at conversation threads to determine who starts conversations
+ */
+function calculateSMSInitiationRatio(smsHistory: SMSEntry[]): number {
+  if (smsHistory.length === 0) return 0;
+
+  // Sort by timestamp
+  const sorted = [...smsHistory].sort((a, b) => a.timestamp - b.timestamp);
+  
+  // Identify conversation starts (gaps > 6 hours between messages)
+  const SIX_HOURS = 6 * 60 * 60 * 1000;
+  let conversationsStartedByUser = 0;
+  let totalConversations = 1;
+
+  for (let i = 1; i < sorted.length; i++) {
+    const gap = sorted[i].timestamp - sorted[i - 1].timestamp;
+    if (gap > SIX_HOURS) {
+      totalConversations++;
+      if (sorted[i].type === 'OUTGOING') {
+        conversationsStartedByUser++;
+      }
+    }
+  }
+
+  // Check first message
+  if (sorted[0].type === 'OUTGOING') {
+    conversationsStartedByUser++;
+  }
+
+  return conversationsStartedByUser / totalConversations;
+}
+
+/**
+ * Calculate average response time for SMS
+ */
+function calculateAverageResponseTime(smsHistory: SMSEntry[]): number {
+  if (smsHistory.length < 2) return 0;
+
+  const sorted = [...smsHistory].sort((a, b) => a.timestamp - b.timestamp);
+  const responseTimes: number[] = [];
+
+  for (let i = 1; i < sorted.length; i++) {
+    // Look for incoming -> outgoing pattern (user responding)
+    if (sorted[i - 1].type === 'INCOMING' && sorted[i].type === 'OUTGOING') {
+      const responseTime = sorted[i].timestamp - sorted[i - 1].timestamp;
+      // Only count responses within 24 hours
+      if (responseTime < 24 * 60 * 60 * 1000) {
+        responseTimes.push(responseTime);
+      }
+    }
+  }
+
+  if (responseTimes.length === 0) return 0;
+
+  const avgMilliseconds = responseTimes.reduce((sum, time) => sum + time, 0) / responseTimes.length;
+  return Math.floor(avgMilliseconds / 1000); // return seconds
+}
+
+/**
+ * Calculate composite interaction score
+ * Higher score = closer relationship
+ * 
+ * PRIORITY WEIGHTING (as per requirements):
+ * 1. Voice calls (highest) - real conversations
+ * 2. Meetings/calendar events - scheduled time together
+ * 3. SMS - lower priority communication
+ */
+function calculateInteractionScore(metrics: {
+  callFrequency: number;
+  totalCallDuration: number;
+  smsFrequency: number;
+  smsReciprocity: number;
+  lastInteraction: number | null;
+}): number {
+  const now = Date.now();
+  
+  // Recency weight (exponential decay)
+  const daysSinceInteraction = metrics.lastInteraction
+    ? (now - metrics.lastInteraction) / (24 * 60 * 60 * 1000)
+    : 365;
+  const recencyWeight = Math.exp(-daysSinceInteraction / 30); // decay over 30 days
+
+  // WEIGHTED frequency score - calls are 5x more valuable than SMS
+  const frequencyScore = (metrics.callFrequency * 5) + metrics.smsFrequency;
+
+  // Duration score - longer calls = MUCH deeper connection (exponential weight)
+  const durationScore = Math.log(metrics.totalCallDuration + 1) / 5;
+
+  // Reciprocity bonus (only applies to SMS)
+  const reciprocityBonus = metrics.smsReciprocity * 0.3;
+
+  // Call quality bonus - having ANY calls is a huge signal
+  const callPresenceBonus = metrics.callFrequency > 0 ? 2 : 0;
+
+  // Combined score
+  const score = (frequencyScore + durationScore + reciprocityBonus + callPresenceBonus) * recencyWeight;
+
+  return Math.round(score * 100) / 100;
+}
+
+/**
+ * Normalize phone number for comparison
+ * Strips country codes, formatting, etc.
+ */
+function normalizePhoneNumber(phoneNumber: string): string {
+  // Remove all non-digit characters
+  const digits = phoneNumber.replace(/\D/g, '');
+  
+  // Take last 10 digits (US format)
+  // This could be enhanced for international numbers
+  return digits.slice(-10);
+}
+
+/**
+ * Smart family name matching
+ * STORY-008: Identifies potential family members based on last names
+ */
+export function identifyPotentialFamily(
+  contacts: ContactWithMetrics[],
+  familyNames: FamilyNames
+): ContactWithMetrics[] {
+  const allFamilyNames = [
+    familyNames.birthLastName,
+    familyNames.currentLastName,
+    familyNames.spouseLastName,
+    ...(familyNames.otherFamilyNames || []),
+  ].filter((name): name is string => !!name);
+
+  if (allFamilyNames.length === 0) {
+    return contacts;
+  }
+
+  return contacts.map(contact => {
+    // Extract last name from contact name
+    const nameParts = contact.name.trim().split(' ');
+    if (nameParts.length < 2) {
+      return contact; // No last name to match
+    }
+
+    const contactLastName = nameParts[nameParts.length - 1].toLowerCase();
+
+    // Check for family name matches
+    for (const familyName of allFamilyNames) {
+      const normalizedFamilyName = familyName.toLowerCase();
+      
+      if (contactLastName === normalizedFamilyName) {
+        // Exact match - high confidence
+        return {
+          ...contact,
+          potentialFamily: {
+            matchedLastName: familyName,
+            confidence: 'high',
+          },
+        };
+      }
+      
+      // Partial match (for hyphenated names, etc.)
+      if (contactLastName.includes(normalizedFamilyName) || normalizedFamilyName.includes(contactLastName)) {
+        return {
+          ...contact,
+          potentialFamily: {
+            matchedLastName: familyName,
+            confidence: 'medium',
+          },
+        };
+      }
+    }
+
+    return contact;
+  });
+}
+
+/**
+ * Main aggregation function
+ * Combines contacts with their interaction metrics
+ */
+export async function aggregateContactsWithMetrics(familyNames?: FamilyNames): Promise<ContactWithMetrics[]> {
+  console.log('Starting contact aggregation...');
+  
+  const [contacts, callLogs, smsHistory] = await Promise.all([
+    fetchDeviceContacts(),
+    fetchCallLogs(),
+    fetchSMSHistory(),
+  ]);
+
+  console.log(`Fetched ${contacts.length} contacts, ${callLogs.length} calls, ${smsHistory.length} SMS`);
+
+  const contactsWithMetrics = contacts.map(contact => {
+    const metrics = calculateInteractionMetrics(
+      contact.phoneNumbers || [],
+      callLogs,
+      smsHistory
+    );
+
+    return {
+      ...contact,
+      metrics,
+    };
+  });
+
+  // Sort by interaction score (highest first)
+  contactsWithMetrics.sort((a, b) => b.metrics.interactionScore - a.metrics.interactionScore);
+
+  // Apply family name matching if provided
+  if (familyNames) {
+    return identifyPotentialFamily(contactsWithMetrics, familyNames);
+  }
+
+  return contactsWithMetrics;
+}

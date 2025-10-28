@@ -1,15 +1,28 @@
 /**
  * Main Entry Point
  * 
- * Shows auth screen if not authenticated, otherwise shows welcome home
+ * Handles app initialization and routing based on user state
  */
 
 import { Text, View, ActivityIndicator } from "react-native";
 import { useAccount } from "jazz-tools/expo";
-import { AuthScreen } from "@/components/auth/auth-screen";
+import { useDemoAuth } from "jazz-tools/expo";
+import { OnboardingFlow } from "@/components/auth/onboarding-flow";
+import { useState, useEffect } from "react";
 
 export default function Index() {
   const { me } = useAccount();
+  const [isOnboarding, setIsOnboarding] = useState(false);
+  const auth = useDemoAuth();
+
+  // Check if user needs onboarding (no displayName set)
+  useEffect(() => {
+    if (me) {
+      const root = me.root as any;
+      const needsOnboarding = !root?.displayName;
+      setIsOnboarding(needsOnboarding);
+    }
+  }, [me]);
 
   // Loading state
   if (me === undefined) {
@@ -20,23 +33,61 @@ export default function Index() {
     );
   }
 
-  // Not authenticated - show auth screen
+  // No Jazz account - create anonymous account first
   if (!me) {
-    return <AuthScreen />;
+    // This will trigger Jazz to create an anonymous account
+    // Then the useEffect above will detect it needs onboarding
+    return (
+      <View className="flex-1 bg-black justify-center items-center">
+        <ActivityIndicator size="large" color="#22c55e" />
+        <Text className="text-secondary mt-4">Initializing...</Text>
+      </View>
+    );
   }
 
-  // Authenticated - show welcome home
-  // Access displayName from root with type assertion
+  // User needs onboarding - collect their data
+  if (isOnboarding) {
+    return (
+      <OnboardingFlow
+        onComplete={async (data) => {
+          console.log("Onboarding complete, saving user data to Jazz...");
+          const root = me.root as any;
+          
+          // Update the user profile with onboarding data
+          root.displayName = `${data.firstName} ${data.lastName}`;
+          root.email = data.email;
+          root.phone = data.phone;
+          
+          console.log("User data saved:", {
+            displayName: root.displayName,
+            email: root.email,
+            phone: root.phone,
+          });
+          
+          // Exit onboarding mode
+          setIsOnboarding(false);
+          
+          // TODO: Enable biometric lock here
+          console.log("TODO: Enable biometric lock");
+        }}
+      />
+    );
+  }
+
+  // User has completed onboarding - show home screen
   const root = me.root as any;
   const displayName = root?.displayName || "Friend";
+  const email = root?.email;
+  const phone = root?.phone;
+  
   const nameParts = displayName.split(" ");
-  const firstName = nameParts[0] || "Friend";
+  const firstName = nameParts[0];
   const lastName = nameParts.slice(1).join(" ");
 
   return (
     <View className="flex-1 bg-black justify-center px-8">
       <View className="mb-12">
-        <Text className="text-5xl font-bold text-primary mb-6">
+        <Text className="text-5xl text-primary mb-6" style={{ fontFamily: 'Montserrat_600SemiBold' }}>
           Welcome
         </Text>
         <Text className="text-4xl font-light text-white mb-2">
@@ -56,8 +107,17 @@ export default function Index() {
         </Text>
       </View>
 
+      {/* User Info (for debugging) */}
+      <View className="mt-8 p-4 border border-zinc-800 bg-zinc-900">
+        <Text className="text-xs text-secondary font-medium mb-2">
+          YOUR INFO
+        </Text>
+        <Text className="text-white text-sm">Email: {email || "Not set"}</Text>
+        <Text className="text-white text-sm">Phone: {phone || "Not set"}</Text>
+      </View>
+
       {/* Placeholder for next steps */}
-      <View className="mt-12 p-6 border border-zinc-800 bg-zinc-900">
+      <View className="mt-8 p-6 border border-zinc-800 bg-zinc-900">
         <Text className="text-sm text-secondary font-medium mb-2">
           NEXT STEPS
         </Text>

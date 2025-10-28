@@ -21,6 +21,11 @@ module.exports = {
           orange: '#f97316',
         },
       },
+      fontFamily: {
+        'montserrat': ['Montserrat_400Regular'],
+        'montserrat-semibold': ['Montserrat_600SemiBold'],
+        'montserrat-bold': ['Montserrat_700Bold'],
+      },
     },
   },
   plugins: [],

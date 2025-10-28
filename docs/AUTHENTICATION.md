@@ -2,73 +2,75 @@
 
 ## Overview
 
-Nurture uses Jazz's built-in authentication system with **DemoAuth** as the MVP authentication method. This provides a frictionless user experience for our local-first app, allowing users to start immediately without signup friction.
+Nurture uses Jazz's **PassphraseAuth** for local-first, device-encrypted authentication. This provides maximum privacy and security while maintaining a simple user experience.
 
-### Why DemoAuth for MVP?
+### Why PassphraseAuth?
 
-1. **Zero Friction**: Users can start using the app immediately
-2. **Local-First**: Creates a real persistent account that syncs across Jazz
-3. **Production Ready**: Despite the name, DemoAuth creates real accounts with proper encryption
-4. **Simple**: No backend server, no third-party services, no complexity
-5. **Upgradeable**: Can be upgraded to Better Auth or Clerk later when multi-device sync is critical
+1. **True Local-First**: All data encrypted on-device with your passphrase
+2. **Zero Third-Party Dependencies**: No Clerk, no Better Auth, no external services
+3. **Maximum Privacy**: Your passphrase never leaves your device
+4. **Multi-Device Support**: Use the same passphrase to access your account on other devices
+5. **Production Ready**: Jazz handles all the cryptography securely
 
-### Future Authentication Options
+## Authentication Flow
 
-For multi-device support and social login, we'll upgrade to:
-- **Better Auth**: Self-hosted, requires backend server + database
-- **Clerk**: Third-party service with OAuth and social logins
+### New User Signup
 
-**Note**: PasskeyAuth (biometric) is only available for web browsers, not React Native/Expo.
+1. **Welcome Screen** → User sees brand introduction
+2. **Name Collection** → First and last name
+3. **Contacts Permission** → Optional request for contact access
+4. **Passphrase Generation** → Jazz automatically generates a secure passphrase
+5. **Account Creation** → User saves passphrase and account is created
 
-## Current Implementation
+### Returning User Login
 
-### Flow
+Users can log in on other devices by entering their passphrase.
 
-1. **App Launch** → Check if user is authenticated
-2. **Not Authenticated** → Show `AuthScreen` with name input
-3. **User Signs Up** → Creates Jazz account with name
-4. **Authenticated** → Show Welcome Home screen with user's name
+## Implementation
 
 ### Components
 
-#### AuthScreen (`components/auth/auth-screen.tsx`)
+#### OnboardingFlow (`components/auth/onboarding-flow.tsx`)
 
-Handles user signup with first and last name:
-- Simple two-field form (First Name, Last Name)
-- Stark, lo-fi design matching Nurture aesthetic
-- Uses `useDemoAuth()` hook from Jazz
-- Calls `signUp(fullName)` on submit
+Handles the complete signup flow:
+- Uses `usePassphraseAuth({ wordlist })` hook from Jazz
+- Calls `auth.signUp(fullName)` to create account
+- Returns auto-generated passphrase to user
+- User must save the passphrase for multi-device access
 
-#### Welcome Home (`app/index.tsx`)
+#### Main App (`app/index.tsx`)
 
-Main entry point that:
-- Checks authentication status with `useAccount()`
-- Shows loading spinner while checking
-- Renders `AuthScreen` if not authenticated
-- Renders welcome message with user's name if authenticated
+Entry point that:
+- Uses `useAccount()` to check authentication status
+- Shows `OnboardingFlow` if not authenticated
+- Shows home screen if authenticated
 
 ### Jazz Provider (`jazz/provider.tsx`)
 
 Configured with:
+- `JazzExpoProvider` for React Native
 - `NurtureAccount` schema (root + profile)
-- Jazz Cloud sync
-- Migration to initialize user data on first login
+- Jazz Cloud sync for multi-device support
+- No auth provider needed (handled by hooks in components)
 
 ## Data Flow
 
 ```
-User enters name → DemoAuth.signUp(name)
+User enters name → auth.signUp(name)
                  ↓
-          Jazz creates account
+          Jazz generates passphrase
                  ↓
-         Migration runs
+        Passphrase shown to user
                  ↓
-    Initializes root with:
-      - displayName
-      - empty contacts/interactions/goals
-      - default settings
+       User must save passphrase
                  ↓
-      User sees welcome screen
+     Jazz creates encrypted account
+                 ↓
+          Migration runs
+                 ↓
+   Initializes root with user data
+                 ↓
+     User sees welcome screen
 ```
 
 ## Account Schema
@@ -80,12 +82,11 @@ NurtureAccount = co.account({
 })
 ```
 
-### Root (Private)
+### Root (Private, Encrypted)
 
 ```typescript
 {
   displayName: string,
-  email?: string,
   contacts: ContactList,
   interactions: InteractionList,
   goals: GoalList,
@@ -99,26 +100,48 @@ NurtureAccount = co.account({
 
 ```typescript
 {
-  name: string,
-  inbox?: string,
-  inboxInvite?: string
+  name: string
 }
 ```
 
-## Migration Logic
+## Security Model
 
-On account creation:
+### Passphrase
 
-1. **Initialize Root**
-   - Set displayName from signup
-   - Create empty lists for contacts, interactions, goals
-   - Set default settings (dark mode, notifications, etc.)
-   - Record timestamps
+- **Auto-generated** by Jazz using BIP39 wordlist
+- **Never transmitted** over the network
+- **Used to encrypt** all local data
+- **Required for multi-device access**
 
-2. **Initialize Profile**
-   - Create public Group
-   - Set profile name
-   - Make group publicly readable
+### Encryption
+
+- All data encrypted on-device before sync
+- Only devices with the passphrase can decrypt
+- Jazz uses industry-standard cryptography
+- No plaintext data ever leaves the device
+
+### Storage
+
+- **Local-first**: All data stored on device
+- **Encrypted at rest**: Using passphrase-derived keys
+- **Secure sync**: Only encrypted data syncs via Jazz Cloud
+- **No server access**: Jazz Cloud cannot decrypt your data
+
+## Multi-Device Workflow
+
+### Setup on First Device
+
+1. Complete onboarding → Get passphrase
+2. **IMPORTANT**: Save passphrase somewhere secure
+3. Account created and syncing to Jazz Cloud (encrypted)
+
+### Setup on Second Device
+
+1. Open app → See login screen (future implementation)
+2. Enter saved passphrase
+3. Jazz downloads encrypted data from Jazz Cloud
+4. Data decrypted locally with passphrase
+5. Full account access on new device
 
 ## Authentication States
 
@@ -131,7 +154,7 @@ The app handles three states:
 
 ### 2. Not Authenticated (`!me`)
 ```tsx
-<AuthScreen />
+<OnboardingFlow />
 ```
 
 ### 3. Authenticated (`me`)
@@ -154,42 +177,30 @@ const firstName = nameParts[0];
 const lastName = nameParts.slice(1).join(" ");
 ```
 
-## Production Upgrade Path
+## Why Not Clerk / Better Auth / DemoAuth?
 
-### Option 1: Better Auth (Self-Hosted)
+### ❌ Clerk
+- **Third-party dependency** - Violates local-first principle
+- **Data passes through their servers** - Privacy concern
+- **Costs at scale** - Unnecessary expense
+- **Overcomplicated** - Too many features we don't need
 
-When you need multi-device sync and more auth options:
+### ❌ Better Auth
+- **Requires backend server** - Defeats local-first architecture
+- **Database dependency** - More infrastructure to maintain
+- **Overcomplicated** - We don't need traditional auth flows
 
-1. **Set up backend server** with Better Auth
-2. **Install dependencies**: `npm install better-auth jazz-tools`
-3. **Configure database** (PostgreSQL, MySQL, etc.)
-4. **Add Jazz plugin** to Better Auth server
-5. **Update client** to use Better Auth React Native client
+### ❌ DemoAuth
+- **Development only** - Not secure for production
+- **No real encryption** - Anyone can access any account
+- **Username-based** - No multi-device support
 
-**Pros**: Full control, self-hosted, supports many auth methods
-**Cons**: Requires backend infrastructure
-
-### Option 2: Clerk (Third-Party Service)
-
-For fastest production auth with social logins:
-
-1. **Sign up for Clerk** at clerk.com
-2. **Install**: `npm install @clerk/clerk-expo`
-3. **Configure Jazz** to use Clerk auth
-4. **Add social providers** (Google, Apple, etc.)
-
-**Pros**: Fastest to implement, managed service, great UX
-**Cons**: Third-party dependency, costs at scale
-
-### When to Upgrade
-
-Stay with DemoAuth until you need:
-- ✅ Multi-device account sync (same user, multiple phones)
-- ✅ Social login (Sign in with Google/Apple)
-- ✅ Password recovery flows
-- ✅ Enterprise SSO integration
-
-**Note**: For single-device MVP, DemoAuth is perfect!
+### ✅ PassphraseAuth
+- **Perfect for local-first** - Data stays on device
+- **No infrastructure** - Just Jazz Cloud for sync
+- **Maximum privacy** - Zero third-party access
+- **Production ready** - Secure cryptography
+- **Simple UX** - One passphrase, done
 
 ## Design Principles
 
@@ -197,57 +208,39 @@ Stay with DemoAuth until you need:
 - Dark mode by default
 - Green primary (#22c55e)
 - Steel secondary (#64748b)
-- Stark, paper-like, pixelated aesthetic
+- Stark, paper-like aesthetic
 - No rounded corners (`rounded-none`)
 
 ### Copy Tone
-- Transparent and calm
+- Transparent about encryption
+- Clear warnings about saving passphrase
 - Garden/growth metaphors
 - "Cultivate" over "manage"
-- "Nurture" over "optimize"
 
 ### Privacy
-- Data encrypted on device
-- Clear explanation of what's analyzed
-- No data sharing without explicit opt-in
+- Passphrase generation explained
+- Clear warnings about passphrase loss
+- No recovery option (by design)
+- Explicit about what stays local
 
 ## Testing the Authentication Flow
 
-### MVP Test Flow (Login → Home)
+### First Time User
 
-1. **Launch app** (first time, no account)
-   - ✅ See loading spinner briefly
-   - ✅ Auth screen appears
+1. **Launch app** → See welcome screen
+2. **Tap "BEGIN YOUR JOURNEY"** → Enter name
+3. **Grant contacts permission** (optional)
+4. **Tap "COMPLETE SETUP"** → Jazz creates account
+5. **Alert shows passphrase** → User MUST save it
+6. **Logged in** → See welcome screen
 
-2. **Sign up**
-   - Enter first name: "Jane"
-   - Enter last name: "Doe"
-   - Tap "BEGIN CULTIVATING"
-   - ✅ See "SETTING UP..." state
+### Multi-Device (Future)
 
-3. **Account created**
-   - ✅ Jazz migration runs
-   - ✅ Welcome screen shows "Welcome Jane Doe"
-   - ✅ See next steps placeholder
+1. **Open app on new device** → See login screen
+2. **Enter passphrase** → Jazz syncs encrypted data
+3. **Logged in** → All data available
 
-4. **Persistence test**
-   - Close and reopen app
-   - ✅ Still logged in
-   - ✅ Name persists
-
-### Running the Test
-
-```bash
-# Start the development server
-npm start
-
-# Then press:
-# - 'i' for iOS simulator
-# - 'a' for Android emulator
-# - Scan QR code for physical device
-```
-
-### Reset Account for Testing
+## Reset Account for Testing
 
 ```bash
 # iOS Simulator
@@ -260,99 +253,80 @@ adb shell pm clear com.thoughtfulappco.nurture
 # Uninstall and reinstall the app
 ```
 
-### Expected Behavior
+## Expected Behavior
 
-✅ **First Launch**: Auth screen → Enter name → Home screen
-✅ **Subsequent Launches**: Direct to home screen (persisted login)
+✅ **First Launch**: Welcome → Name → Passphrase → Home
+✅ **Subsequent Launches**: Direct to home (passphrase stored securely)
 ✅ **Offline**: Works completely offline after first setup
-✅ **Data Sync**: Syncs to Jazz Cloud when online
-
-## Next Steps
-
-1. **Data Mining Onboarding** (STORY-006)
-   - Request permissions after signup
-   - Import contacts, call logs, SMS
-   - Show progress during mining
-
-2. **Layer Discovery** (STORY-007)
-   - Calculate Dunbar layers from data
-   - Present results to user
-   - Show behavioral insights
-
-3. **Family Registration** (STORY-008)
-   - Opt-in family structure definition
-   - Swipe interface for categorization
-   - Show behavioral reality vs family structure
+✅ **Data Sync**: Encrypted data syncs via Jazz Cloud when online
+✅ **Multi-Device**: Same passphrase works on all devices
 
 ## Security Considerations
 
-### Current (DemoAuth)
-- ⚠️ Development only
-- Not secure for production
-- Easy account switching for testing
+### Passphrase Storage
 
-### Production (PasskeyAuth)
-- ✅ Secure key storage
-- ✅ Biometric authentication
-- ✅ No password vulnerabilities
-- ✅ Device-specific keys
-- ✅ Phishing resistant
+- **On first device**: Stored securely in device keychain
+- **On other devices**: User must enter manually
+- **Never transmitted**: Stays on your devices only
+- **Cannot be recovered**: If lost, account is lost (by design)
+
+### Data Protection
+
+- ✅ End-to-end encryption
+- ✅ Local-first storage
+- ✅ No plaintext transmission
+- ✅ Device keychain protection
+- ✅ Zero knowledge architecture
+
+### Threat Model
+
+**Protected Against:**
+- Network eavesdropping
+- Server compromise
+- Third-party access
+- Unauthorized device access
+
+**Not Protected Against:**
+- Device compromise with root access
+- User sharing passphrase
+- Physical device theft (if unlocked)
+
+## Future Enhancements
+
+### Login Screen (Not Yet Implemented)
+
+For users who want to log in on a new device:
+
+```tsx
+const auth = usePassphraseAuth({ wordlist });
+await auth.logIn(userEnteredPassphrase);
+```
+
+### Biometric Unlock (Future)
+
+Could add biometric authentication for convenience:
+- Passphrase still used for encryption
+- Biometrics just unlock access to passphrase
+- No reduction in security
 
 ## Troubleshooting
 
 **Issue**: "Cannot read property 'displayName'"  
-**Solution**: Check that migration ran. Verify root is initialized with CoValues.
+**Solution**: Check that migration ran. Verify root is initialized.
 
-**Issue**: Auth screen doesn't show  
-**Solution**: Check `me` state. Ensure JazzProvider wraps app in `_layout.tsx`.
+**Issue**: Passphrase not working on second device  
+**Solution**: Ensure exact passphrase (case-sensitive, exact spacing).
 
-**Issue**: Name not showing on welcome screen  
-**Solution**: Verify displayName is set in root during migration. Check Jazz migration logic.
+**Issue**: Account lost passphrase  
+**Solution**: No recovery possible (by design). Create new account.
 
-**Issue**: App stuck on loading spinner  
-**Solution**: Check network connection. Verify Jazz Cloud is accessible at wss://cloud.jazz.tools
+**Issue**: App stuck on loading  
+**Solution**: Check Jazz Cloud connection at wss://cloud.jazz.tools
 
-**Issue**: "Cannot create X" error during migration  
-**Solution**: Ensure all CoValue types (ContactList, InteractionList, etc.) are properly imported in provider.tsx
+## Next Steps
 
-**Issue**: Account not persisting between sessions  
-**Solution**: Check Expo SecureStore permissions. Verify polyfills are loaded first in `_layout.tsx`.
-
-## Testing Backend (Jazz Cloud)
-
-Even though Nurture is local-first, Jazz provides sync infrastructure:
-
-### 1. Check Sync Status
-
-Visit the [Jazz Dashboard](https://dashboard.jazz.tools) to:
-- View active users
-- Monitor sync status
-- Check storage usage
-- See API key limits
-
-### 2. Test Multi-Device Sync (Future)
-
-Once you have multiple devices:
-1. Create account on Device A → enters name "Jane Doe"
-2. Log in on Device B → uses same username
-3. Data syncs automatically via Jazz Cloud
-4. Both devices stay in sync in real-time
-
-### 3. Test Offline Mode
-
-1. Enable airplane mode on device
-2. App continues to work with local data
-3. Make changes (add contacts, log interactions)
-4. Disable airplane mode
-5. Changes sync automatically to Jazz Cloud
-
-### Current MVP Reality
-
-For our MVP with DemoAuth:
-- ✅ Single device works perfectly
-- ✅ Data persists locally
-- ✅ Syncs to Jazz Cloud
-- ⚠️ Multiple devices need same username (not ideal)
-- ⚠️ No password = anyone with username can access
-
-**This is fine for MVP!** We'll upgrade to Better Auth when we need proper multi-device support.
+1. ✅ Authentication implemented with PassphraseAuth
+2. **Implement login screen** for existing users
+3. **Data mining** (STORY-006) - Import contacts after signup
+4. **Layer discovery** (STORY-007) - Calculate Dunbar layers
+5. **Family registration** (STORY-008) - Define family structure

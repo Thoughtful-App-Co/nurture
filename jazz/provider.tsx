@@ -2,6 +2,7 @@
  * Jazz Provider Configuration
  * 
  * Sets up Jazz with Expo-specific storage and sync configuration
+ * Uses PasskeyAuth or PassphraseAuth for local-first, device-encrypted authentication
  * Aligns with Nurture's core tenet of privacy by design with local-first sync
  */
 
@@ -63,6 +64,7 @@ export const NurtureAccount = co.account({
   }
 });
 
+// Main provider - authentication happens via usePasskeyAuth or usePassphraseAuth in components
 export function JazzProvider({ children }: { children: React.ReactNode }) {
   return (
     <JazzExpoProvider

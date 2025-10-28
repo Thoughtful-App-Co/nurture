@@ -10,7 +10,10 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.thoughtfulappco.nurture"
+      "bundleIdentifier": "com.thoughtfulappco.nurture",
+      "infoPlist": {
+        "NSContactsUsageDescription": "Nurture needs access to your contacts to help you cultivate meaningful relationships. Your contact data is encrypted and stays on your device."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -21,7 +24,10 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.thoughtfulappco.nurture"
+      "package": "com.thoughtfulappco.nurture",
+      "permissions": [
+        "READ_CONTACTS"
+      ]
     },
     "web": {
       "output": "static",
@@ -42,7 +48,13 @@
         }
       ],
       "expo-secure-store",
-      "expo-sqlite"
+      "expo-sqlite",
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "Nurture needs access to your contacts to help you cultivate meaningful relationships. Your contact data is encrypted and stays on your device."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
