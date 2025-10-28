@@ -1,50 +1,214 @@
-# Welcome to your Expo app 👋
+# Nurture
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+> Reclaim the depth and authenticity of human connection in an age of digital superficiality.
 
-## Get started
+Nurture is a relationship cultivation platform that helps you nurture meaningful connections through intentional care. We analyze your actual behavior to show you who you really interact with, then empower you to cultivate the relationships that matter most.
 
-1. Install dependencies
+## Philosophy
 
-   ```bash
-   npm install
-   ```
+We are the anti-social media platform. Where others optimize for engagement and screen time, we optimize for real-world connections and face-to-face interactions.
 
-2. Start the app
+**Core Principle**: Show behavioral reality, enable intentional cultivation.
 
-   ```bash
-   npx expo start
-   ```
+Learn more in [docs/CORE_TENETS.md](docs/CORE_TENETS.md)
 
-In the output, you'll find options to open the app in a
+## Quick Start
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+### Prerequisites
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+- Node.js v20+
+- iOS: Xcode (for iOS development)
+- Android: Android Studio (for Android development)
 
-## Get a fresh project
-
-When you're ready, run:
+### Installation
 
 ```bash
-npm run reset-project
+# Install dependencies
+npm install
+
+# Generate native code (required for Jazz)
+npx expo prebuild
+
+# Run on iOS
+npx expo run:ios
+
+# Run on Android
+npx expo run:android
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+**Note**: Nurture requires a development build and will not work with Expo Go due to native dependencies.
 
-## Learn more
+## Tech Stack
 
-To learn more about developing your project with Expo, look at the following resources:
+- **Framework**: React Native (Expo)
+- **Backend**: Jazz (local-first sync database)
+- **Authentication**: Jazz DemoAuth (upgrading to PasskeyAuth)
+- **Styling**: NativeWind (Tailwind CSS)
+- **Language**: TypeScript
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## Project Structure
 
-## Join the community
+```
+nurture/
+├── app/                    # Expo Router pages
+│   ├── index.tsx          # Auth flow & welcome home
+│   └── _layout.tsx        # Root layout with providers
+├── components/            # Reusable components
+│   └── auth/             # Authentication screens
+├── jazz/                  # Backend integration
+│   ├── schema.ts         # Data models (Contacts, Interactions, Goals)
+│   └── provider.tsx      # Jazz configuration
+├── docs/                  # Documentation
+│   ├── CORE_TENETS.md    # Philosophy and principles
+│   ├── PRD.md            # Product requirements
+│   ├── AUTHENTICATION.md # Auth implementation
+│   ├── JAZZ_INTEGRATION.md # Backend docs
+│   └── GETTING_STARTED.md  # Developer guide
+└── polyfills.js          # React Native polyfills
+```
 
-Join our community of developers creating universal apps.
+## Documentation
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- **[Core Tenets](docs/CORE_TENETS.md)** - Philosophy and design principles
+- **[PRD](docs/PRD.md)** - Complete product requirements document
+- **[Authentication](docs/AUTHENTICATION.md)** - Auth implementation guide
+- **[Jazz Integration](docs/JAZZ_INTEGRATION.md)** - Backend architecture
+- **[Getting Started](docs/GETTING_STARTED.md)** - Developer onboarding
+
+## Features
+
+### Current (MVP)
+
+- ✅ User authentication with name signup
+- ✅ Welcome screen with personalized greeting
+- ✅ Jazz backend integration
+- ✅ Local-first data sync
+- ✅ Privacy-first architecture
+- ✅ Dark mode UI with green/steel theme
+
+### In Development
+
+- 🔨 Contact data ingestion
+- 🔨 Call & SMS log mining
+- 🔨 Dunbar layer calculation
+- 🔨 Layer discovery visualization
+- 🔨 Family structure registration
+
+### Planned
+
+- 📋 Goal setting & tracking
+- 📋 Cultivation nudges & reminders
+- 📋 Relationship analytics
+- 📋 Pruning recommendations
+
+See [docs/PRD.md](docs/PRD.md) for full roadmap.
+
+## Development
+
+### Running the App
+
+```bash
+# Start development server
+npm start
+
+# Run on specific platform
+npx expo run:ios
+npx expo run:android
+```
+
+### Key Commands
+
+```bash
+# Install dependencies
+npm install
+
+# Type check
+npx tsc --noEmit
+
+# Lint
+npm run lint
+
+# Build for production
+eas build --platform ios --profile production
+eas build --platform android --profile production
+```
+
+### Architecture
+
+Nurture uses **Jazz**, a local-first sync database:
+
+- Data stored on device first
+- Automatic sync across devices
+- Works fully offline
+- End-to-end encrypted
+- No traditional backend needed
+
+```
+User Device ←→ Jazz Cloud ←→ Other Devices
+     ↓
+  Local SQLite
+  (Encrypted)
+```
+
+## Design System
+
+### Colors
+
+- **Primary**: Green (#22c55e) - Growth, cultivation
+- **Secondary**: Steel (#64748b) - Stability
+- **Accents**: Purple (#a855f7), Orange (#f97316)
+
+### Style
+
+- Stark, paper-like aesthetic
+- Pixelated, lo-fi feel
+- Dark mode by default
+- No rounded corners
+- High information density with breathing room
+
+### Voice
+
+- Calm and transparent
+- Garden/growth metaphors
+- "Cultivate" over "manage"
+- "Nurture" over "optimize"
+- Non-judgmental about pruning
+
+## Success Metrics
+
+Unlike traditional apps, we measure:
+
+- **Weekly active offline interactions** (not app usage)
+- Relationship satisfaction scores
+- Face-to-face interaction time
+- Quality of connections
+
+**Anti-metric**: Daily app open duration (target: <5 min/day)
+
+## Privacy
+
+- All data encrypted on device
+- Servers cannot read your data
+- No data sharing without explicit opt-in
+- Subscription model (not ad-supported)
+- User controls data deletion
+
+See our [Privacy Philosophy](docs/CORE_TENETS.md#privacy-and-value-exchange)
+
+## Contributing
+
+This is currently a private project. Documentation and code structure are designed for clarity and maintainability.
+
+## Resources
+
+- [Expo Docs](https://docs.expo.dev/)
+- [Jazz Docs](https://jazz.tools/docs/react-native-expo)
+- [NativeWind Docs](https://www.nativewind.dev/)
+
+## License
+
+Proprietary - Thoughtful App Co.
+
+---
+
+*Build thoughtfully. Cultivate intentionally. 🌱*
