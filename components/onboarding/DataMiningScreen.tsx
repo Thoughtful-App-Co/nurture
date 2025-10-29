@@ -10,7 +10,7 @@
  */
 
 import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, Pressable, ScrollView, ActivityIndicator, Platform } from 'react-native';
 import { Phone, CalendarBlank, ChatCircle, Lock, SealCheck, ShieldCheck } from 'phosphor-react-native';
 import { 
   requestDataMiningPermissions,
@@ -38,7 +38,13 @@ export function DataMiningScreen({ onComplete }: Props) {
     
     if (!permissions.contacts) {
       alert('Contacts permission is required to analyze your relationships.');
+      setStep('intro');
       return;
+    }
+
+    // Show iOS limitation warning if applicable
+    if (Platform.OS === 'ios' && (!permissions.callLog && !permissions.sms)) {
+      console.log('iOS: Limited to contacts only - call/SMS data not available');
     }
 
     // Start analysis
@@ -46,16 +52,18 @@ export function DataMiningScreen({ onComplete }: Props) {
     setProgress(0);
 
     try {
-      // Simulate progress updates
+      // Simulate progress updates (more realistic timing)
       const progressInterval = setInterval(() => {
-        setProgress(prev => Math.min(prev + 10, 90));
-      }, 500);
+        setProgress(prev => Math.min(prev + 5, 90));
+      }, 300);
 
       // Run the actual analysis
       const contacts = await aggregateContactsWithMetrics(familyNames);
 
       clearInterval(progressInterval);
       setProgress(100);
+
+      console.log(`Analysis complete: ${contacts.length} contacts processed`);
 
       // Small delay to show 100%
       setTimeout(() => {
@@ -128,6 +136,14 @@ export function DataMiningScreen({ onComplete }: Props) {
             🔒 All data stays encrypted on your device.{'\n'}
             We never see or store your personal information.
           </Text>
+          
+          {Platform.OS === 'ios' && (
+            <View className="mt-4 p-3 border border-orange-900 bg-orange-950/20">
+              <Text className="text-xs text-orange-400 text-center leading-relaxed">
+                ⚠️ iOS Limitation: Call and message history are not accessible due to Apple's privacy restrictions. Analysis will be based on contact data only.
+              </Text>
+            </View>
+          )}
         </View>
       </View>
     );

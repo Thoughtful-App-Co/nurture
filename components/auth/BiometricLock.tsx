@@ -3,11 +3,20 @@
  * 
  * Provides biometric authentication (Face ID/Fingerprint) or PIN fallback
  * when app comes to foreground or after timeout
+ * 
+ * NOTE: Requires development build - native module not available in Expo Go
  */
 
 import React, { useState, useEffect } from "react";
 import { View, Text, Pressable, TextInput, KeyboardAvoidingView, Platform } from "react-native";
-import * as LocalAuthentication from "expo-local-authentication";
+
+// Dynamically import LocalAuthentication to handle when it's not available
+let LocalAuthentication: any = null;
+try {
+  LocalAuthentication = require("expo-local-authentication");
+} catch (error) {
+  console.warn("expo-local-authentication not available - requires development build");
+}
 
 interface BiometricLockProps {
   onUnlock: () => void;
@@ -28,6 +37,13 @@ export function BiometricLock({ onUnlock, fallbackPIN }: BiometricLockProps) {
   }, []);
 
   const checkBiometricAvailability = async () => {
+    // If LocalAuthentication module not available, fall back to PIN
+    if (!LocalAuthentication) {
+      console.log("Biometric authentication not available - showing PIN fallback");
+      setShowPINInput(true);
+      return;
+    }
+
     try {
       const compatible = await LocalAuthentication.hasHardwareAsync();
       if (!compatible) {
@@ -58,6 +74,12 @@ export function BiometricLock({ onUnlock, fallbackPIN }: BiometricLockProps) {
 
   const authenticateBiometric = async () => {
     if (isAuthenticating) return;
+    
+    // If LocalAuthentication not available, show PIN
+    if (!LocalAuthentication) {
+      setShowPINInput(true);
+      return;
+    }
     
     setIsAuthenticating(true);
     setPinError(false);
@@ -124,6 +146,16 @@ export function BiometricLock({ onUnlock, fallbackPIN }: BiometricLockProps) {
 
   return (
     <View className="flex-1 bg-black justify-center items-center px-8">
+      {/* Development Build Warning */}
+      {!LocalAuthentication && (
+        <View className="absolute top-12 left-4 right-4 p-4 border border-orange-900 bg-orange-950/30">
+          <Text className="text-orange-400 text-xs text-center leading-relaxed">
+            ⚠️ Running without development build.{'\n'}
+            Biometric lock disabled. Run: npx expo run:android
+          </Text>
+        </View>
+      )}
+
       {/* App Logo/Title */}
       <View className="mb-12 items-center">
         <Text className="text-5xl text-primary mb-4" style={{ fontFamily: 'Montserrat_600SemiBold' }}>
