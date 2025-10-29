@@ -90,11 +90,12 @@ export default function Dashboard() {
       
       const contacts = root.contacts || [];
       
-      console.log("Analyzing relationships:", {
+      console.log("📊 Analyzing relationships:", {
         hasContacts: !!root.contacts,
         contactsLength: contacts.length,
         contactsType: typeof contacts,
         isArray: Array.isArray(contacts),
+        rootKeys: Object.keys(root),
       });
       
       // Check if we have any contacts at all
@@ -284,7 +285,15 @@ export default function Dashboard() {
     const newContacts = ContactList.create(newContactsList, me);
     root.$jazz.set('contacts', newContacts);
     
-    console.log(`Saved ${newContactsList.length} contacts to Jazz`);
+    console.log(`✅ Saved ${newContactsList.length} contacts to Jazz`);
+    console.log('First 3 contacts:', newContactsList.slice(0, 3).map(c => ({ name: c.name, layer: c.dunbarLayer })));
+    
+    // Wait a moment for Jazz to process the save
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Verify the save
+    const savedContacts = root.contacts || [];
+    console.log(`🔍 Verification: ${savedContacts.length} contacts in Jazz storage after save`);
     
     // Hide data mining screen and refresh dashboard
     setShowDataMining(false);

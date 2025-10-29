@@ -17,27 +17,9 @@ export default function TabLayout() {
       <Tabs.Screen
         name="dashboard"
         options={{
-          title: "Layers",
+          title: "Garden",
           tabBarIcon: ({ color }) => (
             <Text style={{ fontSize: 24 }}>🌱</Text>
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="contacts"
-        options={{
-          title: "People",
-          tabBarIcon: ({ color }) => (
-            <Text style={{ fontSize: 24 }}>👥</Text>
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: "Profile",
-          tabBarIcon: ({ color }) => (
-            <Text style={{ fontSize: 24 }}>👤</Text>
           ),
         }}
       />
