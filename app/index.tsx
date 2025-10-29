@@ -2,20 +2,27 @@
  * Main Entry Point
  * 
  * Handles app initialization and routing based on user state
+ * Flow: Onboarding → Data Mining → Biometric Lock → Dashboard
  */
 
-import { Text, View, ActivityIndicator, AppState } from "react-native";
+import { Text, View, ActivityIndicator, AppState as RNAppState } from "react-native";
 import { useAccount } from "jazz-tools/expo";
 import { useDemoAuth } from "jazz-tools/expo";
 import { OnboardingFlow } from "@/components/auth/onboarding-flow";
 import { BiometricLock } from "@/components/auth/BiometricLock";
+import { DataMiningScreen } from "@/components/onboarding/DataMiningScreen";
 import { useState, useEffect, useRef } from "react";
+import { calculateDunbarLayers } from "@/services/dunbarCalculator";
+import type { ContactWithMetrics } from "@/services/dataMining";
+import { Redirect } from "expo-router";
+
+type AppFlow = 'loading' | 'onboarding' | 'data-mining' | 'locked' | 'ready';
 
 export default function Index() {
   const { me } = useAccount();
-  const [isOnboarding, setIsOnboarding] = useState(false);
-  const [isLocked, setIsLocked] = useState(false);
-  const appState = useRef(AppState.currentState);
+  const [flow, setFlow] = useState<AppFlow>('loading');
+  const [onboardingData, setOnboardingData] = useState<any>(null);
+  const appState = useRef(RNAppState.currentState);
   const auth = useDemoAuth();
 
   // Check if user needs onboarding (no displayName set)
@@ -23,27 +30,30 @@ export default function Index() {
     if (me) {
       const root = me.root as any;
       const needsOnboarding = !root?.displayName;
-      setIsOnboarding(needsOnboarding);
       
-      // If user has completed onboarding, lock the app initially
-      if (!needsOnboarding) {
-        setIsLocked(true);
+      if (needsOnboarding) {
+        setFlow('onboarding');
+      } else {
+        // User has completed onboarding - go straight to ready
+        // TODO: Re-enable biometric lock after MVP
+        setFlow('ready');
       }
     }
   }, [me]);
 
   // Handle app state changes for biometric lock
   useEffect(() => {
-    const subscription = AppState.addEventListener("change", nextAppState => {
+    const subscription = RNAppState.addEventListener("change", nextAppState => {
       if (
         appState.current.match(/inactive|background/) &&
         nextAppState === "active"
       ) {
         // App came to foreground - lock if user has completed onboarding
-        if (me && !isOnboarding) {
-          console.log("App came to foreground - locking");
-          setIsLocked(true);
-        }
+        // TODO: Re-enable after MVP testing
+        // if (me && flow !== 'onboarding' && flow !== 'data-mining') {
+        //   console.log("App came to foreground - locking");
+        //   setFlow('locked');
+        // }
       }
       appState.current = nextAppState;
     });
@@ -51,10 +61,10 @@ export default function Index() {
     return () => {
       subscription.remove();
     };
-  }, [me, isOnboarding]);
+  }, [me, flow]);
 
   // Loading state
-  if (me === undefined) {
+  if (me === undefined || flow === 'loading') {
     return (
       <View className="flex-1 bg-black justify-center items-center">
         <ActivityIndicator size="large" color="#22c55e" />
@@ -64,8 +74,6 @@ export default function Index() {
 
   // No Jazz account - create anonymous account first
   if (!me) {
-    // This will trigger Jazz to create an anonymous account
-    // Then the useEffect above will detect it needs onboarding
     return (
       <View className="flex-1 bg-black justify-center items-center">
         <ActivityIndicator size="large" color="#22c55e" />
@@ -75,7 +83,7 @@ export default function Index() {
   }
 
   // User needs onboarding - collect their data
-  if (isOnboarding) {
+  if (flow === 'onboarding') {
     return (
       <OnboardingFlow
         onComplete={async (data) => {
@@ -93,83 +101,101 @@ export default function Index() {
             phone: root.phone,
           });
           
-          // Exit onboarding mode
-          setIsOnboarding(false);
+          // Save onboarding data for data mining screen
+          setOnboardingData(data);
           
-          // TODO: Enable biometric lock here
-          console.log("TODO: Enable biometric lock");
+          // If contacts permission granted, go to data mining
+          if (data.hasContactsPermission) {
+            setFlow('data-mining');
+          } else {
+            // Skip data mining, go straight to ready
+            setFlow('ready');
+          }
+        }}
+      />
+    );
+  }
+
+  // Data mining flow
+  if (flow === 'data-mining') {
+    return (
+      <DataMiningScreen
+        onComplete={async (contacts: ContactWithMetrics[]) => {
+          console.log(`Data mining complete! Imported ${contacts.length} contacts`);
+          
+          const root = me.root as any;
+          
+          // Convert ContactWithMetrics to Contact format for Dunbar calculator
+          const contactsForCalculation = contacts.map(c => ({
+            id: c.id,
+            name: c.name,
+            phoneNumber: c.phoneNumbers?.[0],
+            email: c.emails?.[0],
+            isFamily: !!c.potentialFamily,
+            familyTier: c.potentialFamily ? 'NUCLEAR' as const : undefined,
+            callCount: c.metrics.callFrequency,
+            smsCount: c.metrics.smsFrequency,
+            totalDuration: c.metrics.totalCallDuration,
+            lastInteraction: c.metrics.lastInteraction ? new Date(c.metrics.lastInteraction).toISOString() : undefined,
+          }));
+          
+          // Calculate Dunbar layers
+          const contactsWithLayers = await calculateDunbarLayers(contactsForCalculation);
+          
+          console.log('Dunbar layers calculated');
+          
+          // Save contacts to Jazz
+          // Initialize contacts array if it doesn't exist
+          if (!root.contacts) {
+            root.contacts = [];
+          }
+          
+          // Map calculated contacts to Jazz Contact schema
+          for (const contact of contactsWithLayers) {
+            root.contacts.push({
+              sourceId: contact.id,
+              name: contact.name,
+              phoneNumber: contact.phoneNumber,
+              email: contact.email,
+              dunbarLayer: contact.dunbarLayer,
+              interactionScore: contact.interactionScore,
+              lastInteraction: contact.lastInteraction,
+              interactionFrequency: (contact.callCount || 0) + (contact.smsCount || 0),
+              reciprocityScore: contact.reciprocityScore,
+              contactInitiationRatio: contact.contactInitiationRatio,
+              averageResponseTime: contact.averageResponseTime,
+              isFamily: contact.isFamily,
+              familyTier: contact.familyTier,
+              createdAt: new Date().toISOString(),
+            });
+          }
+          
+          console.log(`Saved ${root.contacts.length} contacts to Jazz`);
+          
+          // Go to ready state (will redirect to dashboard)
+          setFlow('ready');
         }}
       />
     );
   }
 
   // Show biometric lock if needed
-  if (isLocked) {
+  if (flow === 'locked') {
     return (
       <BiometricLock
         onUnlock={() => {
           console.log("App unlocked!");
-          setIsLocked(false);
+          setFlow('ready');
         }}
         fallbackPIN="1234" // TODO: Allow user to set their own PIN
       />
     );
   }
 
-  // User has completed onboarding - show home screen
-  const root = me.root as any;
-  const displayName = root?.displayName || "Friend";
-  const email = root?.email;
-  const phone = root?.phone;
-  
-  const nameParts = displayName.split(" ");
-  const firstName = nameParts[0];
-  const lastName = nameParts.slice(1).join(" ");
+  // User is ready - redirect to dashboard
+  if (flow === 'ready') {
+    return <Redirect href="/(tabs)/dashboard" />;
+  }
 
-  return (
-    <View className="flex-1 bg-black justify-center px-8">
-      <View className="mb-12">
-        <Text className="text-5xl text-primary mb-6" style={{ fontFamily: 'Montserrat_600SemiBold' }}>
-          Welcome
-        </Text>
-        <Text className="text-4xl font-light text-white mb-2">
-          {firstName}
-        </Text>
-        {lastName && (
-          <Text className="text-4xl font-light text-white">
-            {lastName}
-          </Text>
-        )}
-      </View>
-
-      <View className="mt-8">
-        <Text className="text-lg text-secondary leading-relaxed">
-          Your garden awaits.{"\n"}
-          Let&apos;s cultivate meaningful connections.
-        </Text>
-      </View>
-
-      {/* User Info (for debugging) */}
-      <View className="mt-8 p-4 border border-zinc-800 bg-zinc-900">
-        <Text className="text-xs text-secondary font-medium mb-2">
-          YOUR INFO
-        </Text>
-        <Text className="text-white text-sm">Email: {email || "Not set"}</Text>
-        <Text className="text-white text-sm">Phone: {phone || "Not set"}</Text>
-      </View>
-
-      {/* Placeholder for next steps */}
-      <View className="mt-8 p-6 border border-zinc-800 bg-zinc-900">
-        <Text className="text-sm text-secondary font-medium mb-2">
-          NEXT STEPS
-        </Text>
-        <Text className="text-white text-base leading-relaxed">
-          • Import your contacts{"\n"}
-          • Discover your relationship layers{"\n"}
-          • Set cultivation goals{"\n"}
-          • Start nurturing connections
-        </Text>
-      </View>
-    </View>
-  );
+  return null;
 }

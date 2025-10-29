@@ -127,11 +127,12 @@ export default function Dashboard() {
             <Pressable
               key={layer.id}
               onPress={() => {
-                // Navigate to contacts filtered by layer
-                router.push({
-                  pathname: "/(tabs)/contacts",
-                  params: { layer: layer.id },
-                });
+                // TODO: Navigate to contacts filtered by layer
+                // router.push({
+                //   pathname: "/(tabs)/contacts",
+                //   params: { layer: layer.id },
+                // });
+                console.log(`View layer ${layer.id}: ${layer.name}`);
               }}
               className="mb-4"
             >
