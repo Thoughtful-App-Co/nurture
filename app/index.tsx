@@ -11,6 +11,7 @@ import { useDemoAuth } from "jazz-tools/expo";
 import { OnboardingFlow } from "@/components/auth/onboarding-flow";
 import { BiometricLock } from "@/components/auth/BiometricLock";
 import { DataMiningScreen } from "@/components/onboarding/DataMiningScreen";
+import { Contact, ContactList } from "@/jazz/schema";
 import { useState, useEffect, useRef } from "react";
 import { calculateDunbarLayers } from "@/services/dunbarCalculator";
 import type { ContactWithMetrics } from "@/services/dataMining";
@@ -118,12 +119,37 @@ export default function Index() {
 
   // Data mining flow
   if (flow === 'data-mining') {
+    const root = me.root as any;
+    const savedFamilyNames = root?.familyNames ? {
+      birthLastName: root.familyNames.birthLastName,
+      currentLastName: root.familyNames.currentLastName,
+      spouseLastName: root.familyNames.spouseLastName,
+      otherFamilyNames: root.familyNames.otherFamilyNames,
+    } : undefined;
+    
     return (
       <DataMiningScreen
-        onComplete={async (contacts: ContactWithMetrics[]) => {
+        savedFamilyNames={savedFamilyNames}
+        onComplete={async (contacts: ContactWithMetrics[], familyNames?: any) => {
           console.log(`Data mining complete! Imported ${contacts.length} contacts`);
           
           const root = me.root as any;
+          
+          // Save family names if provided
+          if (familyNames && (familyNames.birthLastName || familyNames.currentLastName || familyNames.spouseLastName)) {
+            console.log('Saving family names to Jazz:', familyNames);
+            
+            // Always create a new FamilyNames CoMap (can't update existing one directly)
+            const { FamilyNames: FamilyNamesSchema } = await import('@/jazz/schema');
+            const newFamilyNames = FamilyNamesSchema.create({
+              birthLastName: familyNames.birthLastName,
+              currentLastName: familyNames.currentLastName,
+              spouseLastName: familyNames.spouseLastName,
+              otherFamilyNames: familyNames.otherFamilyNames,
+            }, me);
+            
+            root.$jazz.set('familyNames', newFamilyNames);
+          }
           
           // Convert ContactWithMetrics to Contact format for Dunbar calculator
           const contactsForCalculation = contacts.map(c => ({
@@ -132,7 +158,7 @@ export default function Index() {
             phoneNumber: c.phoneNumbers?.[0],
             email: c.emails?.[0],
             isFamily: !!c.potentialFamily,
-            familyTier: c.potentialFamily ? 'NUCLEAR' as const : undefined,
+            familyTier: c.potentialFamily?.tier || undefined,
             callCount: c.metrics.callFrequency,
             smsCount: c.metrics.smsFrequency,
             totalDuration: c.metrics.totalCallDuration,
@@ -145,14 +171,14 @@ export default function Index() {
           console.log('Dunbar layers calculated');
           
           // Save contacts to Jazz
-          // Initialize contacts array if it doesn't exist
-          if (!root.contacts) {
-            root.contacts = [];
-          }
+          // Create new ContactList with all contacts
+          const newContactsList: any[] = [];
           
-          // Map calculated contacts to Jazz Contact schema
           for (const contact of contactsWithLayers) {
-            root.contacts.push({
+            // Find the original contact to get family role
+            const originalContact = contacts.find(c => c.id === contact.id);
+            
+            const contactData = Contact.create({
               sourceId: contact.id,
               name: contact.name,
               phoneNumber: contact.phoneNumber,
@@ -166,11 +192,18 @@ export default function Index() {
               averageResponseTime: contact.averageResponseTime,
               isFamily: contact.isFamily,
               familyTier: contact.familyTier,
+              familyRole: originalContact?.potentialFamily?.role,
               createdAt: new Date().toISOString(),
-            });
+            }, me);
+            
+            newContactsList.push(contactData);
           }
           
-          console.log(`Saved ${root.contacts.length} contacts to Jazz`);
+          // Replace the entire contacts list using $jazz.set
+          const newContacts = ContactList.create(newContactsList, me);
+          root.$jazz.set('contacts', newContacts);
+          
+          console.log(`Saved ${newContactsList.length} contacts to Jazz`);
           
           // Go to ready state (will redirect to dashboard)
           setFlow('ready');
