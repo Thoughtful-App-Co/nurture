@@ -69,6 +69,16 @@ export interface FamilyNames {
 
 /**
  * Request all necessary permissions for data mining
+ * 
+ * IMPORTANT iOS LIMITATIONS:
+ * - iOS does NOT allow apps to access call logs or SMS history for privacy reasons
+ * - Only contacts are available on iOS via Contacts framework
+ * - Call and SMS data can only be accessed through CallKit integration (outgoing calls only)
+ * - This means iOS users will have less accurate relationship analysis
+ * 
+ * ANDROID CAPABILITIES:
+ * - Full access to contacts, call logs, and SMS history
+ * - Provides the most accurate behavioral analysis
  */
 export async function requestDataMiningPermissions(): Promise<{
   contacts: boolean;
@@ -82,21 +92,21 @@ export async function requestDataMiningPermissions(): Promise<{
   };
 
   try {
-    // Contacts permission (cross-platform)
+    // Contacts permission (cross-platform - works on both iOS and Android)
     const contactsPermission = await Contacts.requestPermissionsAsync();
     results.contacts = contactsPermission.status === 'granted';
 
-    // Android-specific permissions
+    // Android-specific permissions for call logs and SMS
     if (Platform.OS === 'android') {
       // Call log permission
       const callLogGranted = await PermissionsAndroid.request(
         PermissionsAndroid.PERMISSIONS.READ_CALL_LOG,
         {
-          title: 'Call Log Access',
-          message: 'Nurture needs access to your call history to understand your communication patterns.',
+          title: 'Call History Access',
+          message: 'Nurture analyzes your call patterns to identify your closest relationships. Phone calls are weighted 5x more than texts because they represent deeper connections. Your data stays encrypted on your device.',
           buttonNeutral: 'Ask Me Later',
-          buttonNegative: 'Cancel',
-          buttonPositive: 'OK',
+          buttonNegative: 'Deny',
+          buttonPositive: 'Allow',
         }
       );
       results.callLog = callLogGranted === PermissionsAndroid.RESULTS.GRANTED;
@@ -105,14 +115,19 @@ export async function requestDataMiningPermissions(): Promise<{
       const smsGranted = await PermissionsAndroid.request(
         PermissionsAndroid.PERMISSIONS.READ_SMS,
         {
-          title: 'SMS Access',
-          message: 'Nurture needs access to your messages to analyze communication patterns.',
+          title: 'Message History Access',
+          message: 'Nurture analyzes message frequency and reciprocity to understand your communication patterns. Your messages are processed locally and never leave your device.',
           buttonNeutral: 'Ask Me Later',
-          buttonNegative: 'Cancel',
-          buttonPositive: 'OK',
+          buttonNegative: 'Deny',
+          buttonPositive: 'Allow',
         }
       );
       results.sms = smsGranted === PermissionsAndroid.RESULTS.GRANTED;
+    } else {
+      // iOS - Call logs and SMS are not accessible
+      // Log this limitation for user awareness
+      console.log('iOS Platform: Call logs and SMS are not accessible due to platform restrictions');
+      console.log('Relationship analysis will be based on contact data only');
     }
   } catch (error) {
     console.error('Permission request failed:', error);
@@ -150,9 +165,6 @@ export async function fetchDeviceContacts(): Promise<RawContact[]> {
 /**
  * Fetch call logs (Android only - requires native module)
  * STORY-002
- * 
- * NOTE: This requires a native module like react-native-call-log
- * Placeholder implementation - will be implemented with native bridge
  */
 export async function fetchCallLogs(): Promise<CallLogEntry[]> {
   if (Platform.OS !== 'android') {
@@ -160,18 +172,49 @@ export async function fetchCallLogs(): Promise<CallLogEntry[]> {
     return [];
   }
 
-  // TODO: Implement with react-native-call-log or custom native module
-  // For now, return empty array
-  console.log('Call log fetching not yet implemented - requires native module');
-  return [];
+  try {
+    // Dynamically import to avoid errors when not available
+    const CallLogs = require('react-native-call-log').default;
+    
+    // Fetch last 3 months of call logs
+    const threeMonthsAgo = Date.now() - (90 * 24 * 60 * 60 * 1000);
+    
+    const calls = await CallLogs.load(-1, { // -1 = all calls
+      minTimestamp: threeMonthsAgo,
+    });
+    
+    console.log(`Fetched ${calls.length} call log entries from last 3 months`);
+    
+    // Map to our CallLogEntry format
+    return calls.map((call: any) => ({
+      phoneNumber: call.phoneNumber || call.number || '',
+      duration: call.duration || 0,
+      timestamp: call.timestamp || call.dateTime || Date.now(),
+      type: mapCallType(call.type),
+    }));
+  } catch (error) {
+    console.error('Failed to fetch call logs:', error);
+    return [];
+  }
+}
+
+/**
+ * Map native call types to our format
+ */
+function mapCallType(nativeType: string | number): 'INCOMING' | 'OUTGOING' | 'MISSED' {
+  // react-native-call-log uses: INCOMING = '1', OUTGOING = '2', MISSED = '3'
+  const typeStr = String(nativeType);
+  
+  if (typeStr === '1' || typeStr.toLowerCase().includes('incoming')) return 'INCOMING';
+  if (typeStr === '2' || typeStr.toLowerCase().includes('outgoing')) return 'OUTGOING';
+  if (typeStr === '3' || typeStr.toLowerCase().includes('missed')) return 'MISSED';
+  
+  return 'INCOMING'; // Default fallback
 }
 
 /**
  * Fetch SMS history (Android only - requires native module)
  * STORY-002
- * 
- * NOTE: This requires a native module or custom implementation
- * Placeholder implementation
  */
 export async function fetchSMSHistory(): Promise<SMSEntry[]> {
   if (Platform.OS !== 'android') {
@@ -179,9 +222,51 @@ export async function fetchSMSHistory(): Promise<SMSEntry[]> {
     return [];
   }
 
-  // TODO: Implement with native module
-  console.log('SMS fetching not yet implemented - requires native module');
-  return [];
+  try {
+    // Dynamically import to avoid errors when not available
+    const SmsAndroid = require('react-native-get-sms-android');
+    
+    // Fetch last 3 months of SMS
+    const threeMonthsAgo = Date.now() - (90 * 24 * 60 * 60 * 1000);
+    
+    const filter = {
+      box: '', // '' means all boxes (inbox + sent)
+      minDate: threeMonthsAgo,
+      maxCount: 10000, // Limit to prevent memory issues
+    };
+    
+    return new Promise((resolve, reject) => {
+      SmsAndroid.list(
+        JSON.stringify(filter),
+        (fail: string) => {
+          console.error('Failed to fetch SMS:', fail);
+          resolve([]); // Resolve with empty array instead of rejecting
+        },
+        (count: number, smsList: string) => {
+          try {
+            const messages = JSON.parse(smsList);
+            console.log(`Fetched ${messages.length} SMS entries from last 3 months`);
+            
+            // Map to our SMSEntry format
+            const smsEntries: SMSEntry[] = messages.map((sms: any) => ({
+              phoneNumber: sms.address || '',
+              timestamp: parseInt(sms.date) || Date.now(),
+              type: sms.type === 1 ? 'INCOMING' : 'OUTGOING', // 1 = received, 2 = sent
+              body: sms.body || '',
+            }));
+            
+            resolve(smsEntries);
+          } catch (error) {
+            console.error('Error parsing SMS data:', error);
+            resolve([]);
+          }
+        }
+      );
+    });
+  } catch (error) {
+    console.error('Failed to fetch SMS history:', error);
+    return [];
+  }
 }
 
 /**

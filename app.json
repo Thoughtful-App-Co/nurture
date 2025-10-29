@@ -12,7 +12,12 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.thoughtfulappco.nurture",
       "infoPlist": {
-        "NSContactsUsageDescription": "Nurture needs access to your contacts to help you cultivate meaningful relationships. Your contact data is encrypted and stays on your device."
+        "NSContactsUsageDescription": "Nurture needs access to your contacts to help you cultivate meaningful relationships. Your contact data is encrypted and stays on your device.",
+        "NSFaceIDUsageDescription": "Nurture uses Face ID to securely lock your relationship data and keep it private.",
+        "NSUserActivityTypes": [
+          "INStartCallIntent"
+        ],
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -26,7 +31,11 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.thoughtfulappco.nurture",
       "permissions": [
-        "READ_CONTACTS"
+        "READ_CONTACTS",
+        "READ_CALL_LOG",
+        "READ_SMS",
+        "android.permission.READ_CONTACTS",
+        "android.permission.WRITE_CONTACTS"
       ]
     },
     "web": {
@@ -53,6 +62,12 @@
         "expo-contacts",
         {
           "contactsPermission": "Nurture needs access to your contacts to help you cultivate meaningful relationships. Your contact data is encrypted and stays on your device."
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Nurture uses Face ID / Touch ID to securely lock your relationship data."
         }
       ]
     ],
