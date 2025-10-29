@@ -57,6 +57,8 @@ export interface ContactWithMetrics extends RawContact {
   potentialFamily?: {
     matchedLastName: string;
     confidence: 'high' | 'medium' | 'low';
+    tier?: 'NUCLEAR' | 'SECONDARY' | 'TERTIARY';
+    role?: string;
   };
 }
 
@@ -174,7 +176,15 @@ export async function fetchCallLogs(): Promise<CallLogEntry[]> {
 
   try {
     // Dynamically import to avoid errors when not available
-    const CallLogs = require('react-native-call-log').default;
+    const CallLogsModule = require('react-native-call-log');
+    
+    if (!CallLogsModule || !CallLogsModule.default) {
+      console.warn('react-native-call-log module not available - skipping call log fetch');
+      console.warn('To enable call logs, install: npm install react-native-call-log');
+      return [];
+    }
+    
+    const CallLogs = CallLogsModule.default;
     
     // Fetch last 3 months of call logs
     const threeMonthsAgo = Date.now() - (90 * 24 * 60 * 60 * 1000);
@@ -193,7 +203,8 @@ export async function fetchCallLogs(): Promise<CallLogEntry[]> {
       type: mapCallType(call.type),
     }));
   } catch (error) {
-    console.error('Failed to fetch call logs:', error);
+    console.warn('Failed to fetch call logs (native module not available):', error);
+    console.warn('Call log analysis will be skipped. To enable, run: npx expo run:android');
     return [];
   }
 }
@@ -224,7 +235,15 @@ export async function fetchSMSHistory(): Promise<SMSEntry[]> {
 
   try {
     // Dynamically import to avoid errors when not available
-    const SmsAndroid = require('react-native-get-sms-android');
+    const SmsAndroidModule = require('react-native-get-sms-android');
+    
+    if (!SmsAndroidModule || !SmsAndroidModule.default) {
+      console.warn('react-native-get-sms-android module not available - skipping SMS fetch');
+      console.warn('To enable SMS history, install: npm install react-native-get-sms-android');
+      return [];
+    }
+    
+    const SmsAndroid = SmsAndroidModule.default;
     
     // Fetch last 3 months of SMS
     const threeMonthsAgo = Date.now() - (90 * 24 * 60 * 60 * 1000);
@@ -239,7 +258,7 @@ export async function fetchSMSHistory(): Promise<SMSEntry[]> {
       SmsAndroid.list(
         JSON.stringify(filter),
         (fail: string) => {
-          console.error('Failed to fetch SMS:', fail);
+          console.warn('Failed to fetch SMS:', fail);
           resolve([]); // Resolve with empty array instead of rejecting
         },
         (count: number, smsList: string) => {
@@ -257,14 +276,15 @@ export async function fetchSMSHistory(): Promise<SMSEntry[]> {
             
             resolve(smsEntries);
           } catch (error) {
-            console.error('Error parsing SMS data:', error);
+            console.warn('Error parsing SMS data:', error);
             resolve([]);
           }
         }
       );
     });
   } catch (error) {
-    console.error('Failed to fetch SMS history:', error);
+    console.warn('Failed to fetch SMS history (native module not available):', error);
+    console.warn('SMS analysis will be skipped. To enable, run: npx expo run:android');
     return [];
   }
 }
@@ -456,8 +476,91 @@ function normalizePhoneNumber(phoneNumber: string): string {
 }
 
 /**
+ * Detect family relationship pet names
+ * Identifies contacts saved as "Mom", "Dad", "Wife", etc.
+ */
+function detectFamilyPetName(name: string): { isFamily: boolean; tier: 'NUCLEAR' | 'SECONDARY' | 'TERTIARY'; role?: string } | null {
+  const normalizedName = name.toLowerCase().trim();
+  
+  // Nuclear family (immediate)
+  const nuclearPatterns = [
+    { pattern: /^mom($|[^a-z])/i, role: 'mother' },
+    { pattern: /^mother($|[^a-z])/i, role: 'mother' },
+    { pattern: /^mama($|[^a-z])/i, role: 'mother' },
+    { pattern: /^mommy($|[^a-z])/i, role: 'mother' },
+    { pattern: /^dad($|[^a-z])/i, role: 'father' },
+    { pattern: /^father($|[^a-z])/i, role: 'father' },
+    { pattern: /^papa($|[^a-z])/i, role: 'father' },
+    { pattern: /^daddy($|[^a-z])/i, role: 'father' },
+    { pattern: /^wife($|[^a-z])/i, role: 'spouse' },
+    { pattern: /^husband($|[^a-z])/i, role: 'spouse' },
+    { pattern: /^spouse($|[^a-z])/i, role: 'spouse' },
+    { pattern: /^partner($|[^a-z])/i, role: 'spouse' },
+    { pattern: /^son($|[^a-z])/i, role: 'child' },
+    { pattern: /^daughter($|[^a-z])/i, role: 'child' },
+    { pattern: /^kid($|[^a-z])/i, role: 'child' },
+  ];
+  
+  // Secondary family (siblings, in-laws)
+  const secondaryPatterns = [
+    { pattern: /^brother($|[^a-z])/i, role: 'sibling' },
+    { pattern: /^sister($|[^a-z])/i, role: 'sibling' },
+    { pattern: /^bro($|[^a-z])/i, role: 'sibling' },
+    { pattern: /^sis($|[^a-z])/i, role: 'sibling' },
+    { pattern: /^sibling($|[^a-z])/i, role: 'sibling' },
+    { pattern: /^mother[- ]in[- ]law/i, role: 'in-law' },
+    { pattern: /^father[- ]in[- ]law/i, role: 'in-law' },
+    { pattern: /^brother[- ]in[- ]law/i, role: 'in-law' },
+    { pattern: /^sister[- ]in[- ]law/i, role: 'in-law' },
+    { pattern: /^stepmother($|[^a-z])/i, role: 'step-parent' },
+    { pattern: /^stepfather($|[^a-z])/i, role: 'step-parent' },
+    { pattern: /^stepmom($|[^a-z])/i, role: 'step-parent' },
+    { pattern: /^stepdad($|[^a-z])/i, role: 'step-parent' },
+  ];
+  
+  // Tertiary family (extended)
+  const tertiaryPatterns = [
+    { pattern: /^aunt($|[^a-z])/i, role: 'extended' },
+    { pattern: /^uncle($|[^a-z])/i, role: 'extended' },
+    { pattern: /^cousin($|[^a-z])/i, role: 'extended' },
+    { pattern: /^niece($|[^a-z])/i, role: 'extended' },
+    { pattern: /^nephew($|[^a-z])/i, role: 'extended' },
+    { pattern: /^grandma($|[^a-z])/i, role: 'grandparent' },
+    { pattern: /^grandpa($|[^a-z])/i, role: 'grandparent' },
+    { pattern: /^grandmother($|[^a-z])/i, role: 'grandparent' },
+    { pattern: /^grandfather($|[^a-z])/i, role: 'grandparent' },
+    { pattern: /^granny($|[^a-z])/i, role: 'grandparent' },
+    { pattern: /^nana($|[^a-z])/i, role: 'grandparent' },
+    { pattern: /^grammy($|[^a-z])/i, role: 'grandparent' },
+  ];
+  
+  // Check nuclear family first
+  for (const { pattern, role } of nuclearPatterns) {
+    if (pattern.test(name)) {
+      return { isFamily: true, tier: 'NUCLEAR', role };
+    }
+  }
+  
+  // Check secondary family
+  for (const { pattern, role } of secondaryPatterns) {
+    if (pattern.test(name)) {
+      return { isFamily: true, tier: 'SECONDARY', role };
+    }
+  }
+  
+  // Check tertiary family
+  for (const { pattern, role } of tertiaryPatterns) {
+    if (pattern.test(name)) {
+      return { isFamily: true, tier: 'TERTIARY', role };
+    }
+  }
+  
+  return null;
+}
+
+/**
  * Smart family name matching
- * STORY-008: Identifies potential family members based on last names
+ * STORY-008: Identifies potential family members based on last names AND pet names
  */
 export function identifyPotentialFamily(
   contacts: ContactWithMetrics[],
@@ -470,11 +573,28 @@ export function identifyPotentialFamily(
     ...(familyNames.otherFamilyNames || []),
   ].filter((name): name is string => !!name);
 
-  if (allFamilyNames.length === 0) {
-    return contacts;
-  }
+  console.log('Identifying family with names:', allFamilyNames);
 
   return contacts.map(contact => {
+    // First check for family pet names (Mom, Dad, etc.)
+    const petNameMatch = detectFamilyPetName(contact.name);
+    if (petNameMatch) {
+      return {
+        ...contact,
+        potentialFamily: {
+          matchedLastName: `Pet name: ${petNameMatch.role}`,
+          confidence: 'high' as const,
+          tier: petNameMatch.tier,
+          role: petNameMatch.role,
+        },
+      };
+    }
+    
+    // If no family names provided, skip last name matching
+    if (allFamilyNames.length === 0) {
+      return contact;
+    }
+
     // Extract last name from contact name
     const nameParts = contact.name.trim().split(' ');
     if (nameParts.length < 2) {
@@ -489,11 +609,13 @@ export function identifyPotentialFamily(
       
       if (contactLastName === normalizedFamilyName) {
         // Exact match - high confidence
+        console.log(`✅ Family match: ${contact.name} (${contactLastName} === ${normalizedFamilyName})`);
         return {
           ...contact,
           potentialFamily: {
             matchedLastName: familyName,
-            confidence: 'high',
+            confidence: 'high' as const,
+            tier: 'SECONDARY' as const, // Assume extended family unless pet name detected
           },
         };
       }
@@ -504,7 +626,8 @@ export function identifyPotentialFamily(
           ...contact,
           potentialFamily: {
             matchedLastName: familyName,
-            confidence: 'medium',
+            confidence: 'medium' as const,
+            tier: 'TERTIARY' as const,
           },
         };
       }
@@ -512,6 +635,50 @@ export function identifyPotentialFamily(
 
     return contact;
   });
+}
+
+/**
+ * Merge duplicate contacts (same phone number, different names like "Mom" vs "Mother")
+ */
+function mergeDuplicateContacts(contacts: ContactWithMetrics[]): ContactWithMetrics[] {
+  const phoneMap = new Map<string, ContactWithMetrics>();
+  
+  contacts.forEach(contact => {
+    const primaryPhone = contact.phoneNumbers?.[0];
+    if (!primaryPhone) {
+      // No phone number - keep as separate contact
+      phoneMap.set(`no-phone-${contact.id}`, contact);
+      return;
+    }
+    
+    const normalizedPhone = normalizePhoneNumber(primaryPhone);
+    const existing = phoneMap.get(normalizedPhone);
+    
+    if (existing) {
+      // Merge: keep the one with higher interaction score
+      console.log(`🔀 Merging duplicates: "${existing.name}" + "${contact.name}" (${normalizedPhone})`);
+      
+      if ((contact.metrics.interactionScore || 0) > (existing.metrics.interactionScore || 0)) {
+        // New contact has higher score - use it but preserve family info from both
+        phoneMap.set(normalizedPhone, {
+          ...contact,
+          potentialFamily: contact.potentialFamily || existing.potentialFamily,
+        });
+      } else {
+        // Existing has higher score - keep it but update family info if new one has it
+        if (contact.potentialFamily && !existing.potentialFamily) {
+          phoneMap.set(normalizedPhone, {
+            ...existing,
+            potentialFamily: contact.potentialFamily,
+          });
+        }
+      }
+    } else {
+      phoneMap.set(normalizedPhone, contact);
+    }
+  });
+  
+  return Array.from(phoneMap.values());
 }
 
 /**
@@ -528,6 +695,13 @@ export async function aggregateContactsWithMetrics(familyNames?: FamilyNames): P
   ]);
 
   console.log(`Fetched ${contacts.length} contacts, ${callLogs.length} calls, ${smsHistory.length} SMS`);
+  
+  // Warn if no interaction data available
+  if (callLogs.length === 0 && smsHistory.length === 0) {
+    console.warn('⚠️  No call or SMS data available');
+    console.warn('Analysis will be based on contact data only');
+    console.warn('For full analysis, build a development client: npx expo run:android');
+  }
 
   const contactsWithMetrics = contacts.map(contact => {
     const metrics = calculateInteractionMetrics(
@@ -542,13 +716,19 @@ export async function aggregateContactsWithMetrics(familyNames?: FamilyNames): P
     };
   });
 
-  // Sort by interaction score (highest first)
-  contactsWithMetrics.sort((a, b) => b.metrics.interactionScore - a.metrics.interactionScore);
-
-  // Apply family name matching if provided
+  // Apply family name matching if provided (before merging, so both variants get tagged)
+  let processedContacts = contactsWithMetrics;
   if (familyNames) {
-    return identifyPotentialFamily(contactsWithMetrics, familyNames);
+    processedContacts = identifyPotentialFamily(contactsWithMetrics, familyNames);
   }
 
-  return contactsWithMetrics;
+  // Merge duplicates (same phone number, different names)
+  processedContacts = mergeDuplicateContacts(processedContacts);
+  
+  console.log(`After merging: ${processedContacts.length} unique contacts`);
+
+  // Sort by interaction score (highest first)
+  processedContacts.sort((a, b) => b.metrics.interactionScore - a.metrics.interactionScore);
+
+  return processedContacts;
 }
