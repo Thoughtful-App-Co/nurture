@@ -22,13 +22,21 @@ import {
 type Step = 'intro' | 'family-names' | 'permissions' | 'analyzing' | 'complete';
 
 interface Props {
-  onComplete: (contacts: ContactWithMetrics[]) => void;
+  onComplete: (contacts: ContactWithMetrics[], familyNames?: FamilyNames) => void;
+  savedFamilyNames?: FamilyNames; // Pass in existing family names if they exist
 }
 
-export function DataMiningScreen({ onComplete }: Props) {
+export function DataMiningScreen({ onComplete, savedFamilyNames }: Props) {
   const [step, setStep] = useState<Step>('intro');
-  const [familyNames, setFamilyNames] = useState<FamilyNames>({});
+  const [familyNames, setFamilyNames] = useState<FamilyNames>(savedFamilyNames || {});
   const [progress, setProgress] = useState(0);
+  
+  // Check if we have saved family names - if so, we can skip the questionnaire
+  const hasSavedFamilyNames = savedFamilyNames && (
+    savedFamilyNames.birthLastName || 
+    savedFamilyNames.currentLastName || 
+    savedFamilyNames.spouseLastName
+  );
 
   const handleStartAnalysis = async () => {
     setStep('permissions');
@@ -58,17 +66,29 @@ export function DataMiningScreen({ onComplete }: Props) {
       }, 300);
 
       // Run the actual analysis
+      console.log('Running analysis with family names:', familyNames);
       const contacts = await aggregateContactsWithMetrics(familyNames);
 
       clearInterval(progressInterval);
       setProgress(100);
 
       console.log(`Analysis complete: ${contacts.length} contacts processed`);
+      
+      // Check if we have any interaction data
+      const hasInteractionData = contacts.some(c => 
+        (c.metrics.callFrequency > 0 || c.metrics.smsFrequency > 0)
+      );
+      
+      if (!hasInteractionData && Platform.OS === 'android') {
+        console.warn('⚠️  No interaction data found');
+        console.warn('This usually means native modules are not installed');
+        console.warn('Run: npx expo run:android to build with native modules');
+      }
 
       // Small delay to show 100%
       setTimeout(() => {
         setStep('complete');
-        onComplete(contacts);
+        onComplete(contacts, familyNames); // Pass family names back to save
       }, 500);
 
     } catch (error) {
@@ -82,48 +102,53 @@ export function DataMiningScreen({ onComplete }: Props) {
   if (step === 'intro') {
     return (
       <View className="flex-1 bg-black justify-center px-8">
-        <View className="mb-12">
-          <Text className="text-4xl text-primary mb-6" style={{ fontFamily: 'Montserrat_600SemiBold' }}>
+        <View className="mb-8">
+          <Text className="text-4xl text-primary mb-4" style={{ fontFamily: 'Montserrat_600SemiBold' }}>
             Let's Look at Your Garden
           </Text>
-          <Text className="text-lg text-white leading-relaxed mb-4">
-            We'll analyze your phone to show you who you actually talk to - not who you think you talk to.
-          </Text>
-          <Text className="text-base text-secondary leading-relaxed">
-            This is about behavioral reality, not judgment.{'\n\n'}
+          <Text className="text-base text-white leading-relaxed">
+            We'll analyze your phone to show you who you <Text className="text-primary font-medium">actually</Text> talk to - not who you think you talk to. This is about behavioral reality, not judgment.{'\n\n'}
             Your relationships form natural layers based on interaction frequency, call duration, and reciprocity.
           </Text>
         </View>
 
         {/* What we'll analyze */}
-        <View className="mb-12 p-6 border border-zinc-800 bg-zinc-900">
-          <Text className="text-sm text-secondary font-medium mb-4">
+        <View className="mb-8 p-4 border border-zinc-800 bg-zinc-900">
+          <Text className="text-xs text-secondary font-medium mb-3">
             WHAT WE'LL ANALYZE
           </Text>
-          <View className="space-y-4">
-            <View className="flex-row items-start">
-              <Text className="text-primary text-2xl mr-3">📞</Text>
-              <Text className="text-white text-base flex-1 leading-relaxed">
-                Voice calls (frequency, duration, who initiates)
+          <View className="space-y-2">
+            <View className="flex-row items-center">
+              <Text className="text-primary text-lg mr-2">📞</Text>
+              <Text className="text-white text-sm flex-1">
+                Voice calls • frequency, duration, who initiates
               </Text>
             </View>
-            <View className="flex-row items-start">
-              <Text className="text-primary text-2xl mr-3">📅</Text>
-              <Text className="text-white text-base flex-1 leading-relaxed">
-                Scheduled meetings (calendar events)
+            <View className="flex-row items-center">
+              <Text className="text-primary text-lg mr-2">📅</Text>
+              <Text className="text-white text-sm flex-1">
+                Scheduled meetings • calendar events
               </Text>
             </View>
-            <View className="flex-row items-start">
-              <Text className="text-primary text-2xl mr-3">💬</Text>
-              <Text className="text-white text-base flex-1 leading-relaxed">
-                Text messages (response time, conversation patterns)
+            <View className="flex-row items-center">
+              <Text className="text-primary text-lg mr-2">💬</Text>
+              <Text className="text-white text-sm flex-1">
+                Text messages • response time, patterns
               </Text>
             </View>
           </View>
         </View>
 
         <Pressable
-          onPress={() => setStep('family-names')}
+          onPress={() => {
+            // Skip family names collection if we already have them saved
+            if (hasSavedFamilyNames) {
+              console.log('Using saved family names:', savedFamilyNames);
+              handleStartAnalysis();
+            } else {
+              setStep('family-names');
+            }
+          }}
           className="bg-primary py-5 px-6 rounded-none border-2 border-primary"
         >
           <Text className="text-center text-lg font-bold text-black">
@@ -131,16 +156,23 @@ export function DataMiningScreen({ onComplete }: Props) {
           </Text>
         </Pressable>
 
-        <View className="mt-8">
-          <Text className="text-xs text-secondary text-center leading-relaxed">
-            🔒 All data stays encrypted on your device.{'\n'}
-            We never see or store your personal information.
+        <View className="mt-6">
+          <Text className="text-xs text-zinc-500 text-center leading-relaxed">
+            🔒 Encrypted on your device • We never see your data
           </Text>
           
           {Platform.OS === 'ios' && (
-            <View className="mt-4 p-3 border border-orange-900 bg-orange-950/20">
-              <Text className="text-xs text-orange-400 text-center leading-relaxed">
-                ⚠️ iOS Limitation: Call and message history are not accessible due to Apple's privacy restrictions. Analysis will be based on contact data only.
+            <View className="mt-3 p-2 border border-orange-900/50 bg-orange-950/20">
+              <Text className="text-xs text-orange-400 text-center">
+                ⚠️ iOS: Limited to contact data only
+              </Text>
+            </View>
+          )}
+          
+          {Platform.OS === 'android' && (
+            <View className="mt-3 p-2 border border-zinc-700 bg-zinc-900/50">
+              <Text className="text-xs text-zinc-400 text-center">
+                📱 Limited mode: Build dev client for full analysis
               </Text>
             </View>
           )}
