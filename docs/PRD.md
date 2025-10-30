@@ -61,27 +61,37 @@ Complete authentication + data mining + layer discovery for 100 beta users withi
 | 4 | Acquaintances | 150-250 people | Outer Dunbar limit | Infrequent contact, know who they are |
 | 5 | Social Nebula | 250+ | Weak ties, ambient awareness | Rare/no contact, outside active management |
 
-### Family System
+### Relationship Categorization System
 
-**Type**: Structural Family Tracking  
-**Registration**: Manual, opt-in during onboarding  
-**Independent**: Exists separately from Dunbar layers
+**Type**: User-Defined Relationship Categories  
+**Registration**: Manual, via long-press on contact cards  
+**Independent**: Exists alongside Dunbar layers
 
-#### Family Tiers
+#### Three Main Categories
 
-**NUCLEAR**
-- Spouse, children, parents, siblings
-- System suggests high priority regardless of interaction
+**FAMILY**
+- Nuclear: Spouse, children, parents, siblings
+- Secondary (Extended): Aunts, uncles, cousins, grandparents
+- Tertiary (Distant): Extended relatives, in-laws, distant connections
 
-**SECONDARY**
-- Aunts, uncles, cousins, grandparents
-- User-defined cultivation targets
+**FRIENDS**
+- Inner Circle: Closest confidants (typically Layer 0-1)
+- Close Friend: Regular contact friends (typically Layer 2)
+- Good Friend: Broader social circle (typically Layer 3)
+- Casual Friend: Occasional hangouts (typically Layer 4+)
 
-**TERTIARY**
-- Extended family
-- Optional tracking
+**BUSINESS**
+- Close Colleague: Work closely together, professional relationship
+- Acquaintance/Social Nebula: Professional network, occasional contact
+- Note: If closer than acquaintance outside work, mark as Friend instead
 
-**Philosophy**: Family structure doesn't determine importance. User sees behavioral reality, chooses intentional cultivation.
+#### Interaction Model
+
+**Activation**: Long-press (800ms) on any contact card  
+**Quick Access**: Tap existing relationship badge to change  
+**UI Flow**: Category selection → Subcategory selection → Auto-save
+
+**Philosophy**: Relationship categories complement Dunbar layers. Categories show intentional structure, layers show behavioral reality.
 
 ### Data Sources
 
