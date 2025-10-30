@@ -14,6 +14,8 @@ import { DataMiningScreen } from "@/components/onboarding/DataMiningScreen";
 import { LayerDetailScreen } from "@/components/relationships/LayerDetailScreen";
 import { Contact, ContactList, FamilyNames } from "@/jazz/schema";
 import type { ContactWithMetrics } from "@/services/dataMining";
+import { LoadingAnimation } from "@/components/LoadingAnimation";
+import { ContactSearch } from "@/components/relationships/ContactSearch";
 
 // Layer definitions from PRD
 const LAYERS = [
@@ -53,6 +55,8 @@ export default function Dashboard() {
   const [needsDataMining, setNeedsDataMining] = useState(false);
   const [showDataMining, setShowDataMining] = useState(false);
   const [selectedLayerId, setSelectedLayerId] = useState<number | null>(null);
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchSelectedContact, setSearchSelectedContact] = useState<any | null>(null);
   
   // Track if we've already analyzed to prevent loops
   const hasAnalyzed = useRef(false);
@@ -67,13 +71,21 @@ export default function Dashboard() {
     }
   }, [me]);
 
-  // Hide tab bar when showing data mining or layer details
+  // Hide tab bar when showing data mining, layer details, or search
   useEffect(() => {
-    const shouldHideTabBar = needsDataMining || showDataMining || selectedLayerId !== null;
+    const shouldHideTabBar = needsDataMining || showDataMining || selectedLayerId !== null || showSearch || searchSelectedContact !== null;
     navigation.setOptions({
-      tabBarStyle: shouldHideTabBar ? { display: 'none' } : undefined,
+      tabBarStyle: shouldHideTabBar ? { display: 'none' } : {
+        backgroundColor: "#0a1f0f",
+        borderTopWidth: 0,
+        elevation: 8,
+        shadowColor: "#22c55e",
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
     });
-  }, [needsDataMining, showDataMining, selectedLayerId, navigation]);
+  }, [needsDataMining, showDataMining, selectedLayerId, showSearch, searchSelectedContact, navigation]);
 
   const analyzeRelationships = useCallback(async () => {
     try {
@@ -220,7 +232,12 @@ export default function Dashboard() {
     
     // Save family names if provided
     if (familyNames && (familyNames.birthLastName || familyNames.currentLastName || familyNames.spouseLastName)) {
-      console.log('Saving family names to Jazz:', familyNames);
+      console.log('');
+      console.log('💾 SAVING FAMILY NAMES TO JAZZ');
+      console.log('Birth last name:', familyNames.birthLastName || '(none)');
+      console.log('Current last name:', familyNames.currentLastName || '(none)');
+      console.log('Spouse last name:', familyNames.spouseLastName || '(none)');
+      console.log('');
       
       // Always create a new FamilyNames CoMap (can't update existing one directly)
       const newFamilyNames = FamilyNames.create({
@@ -316,6 +333,16 @@ export default function Dashboard() {
       otherFamilyNames: root.familyNames.otherFamilyNames,
     } : undefined;
     
+    if (savedFamilyNames && (savedFamilyNames.birthLastName || savedFamilyNames.currentLastName || savedFamilyNames.spouseLastName)) {
+      console.log('');
+      console.log('📂 LOADED SAVED FAMILY NAMES FROM JAZZ');
+      console.log('Birth last name:', savedFamilyNames.birthLastName || '(none)');
+      console.log('Current last name:', savedFamilyNames.currentLastName || '(none)');
+      console.log('Spouse last name:', savedFamilyNames.spouseLastName || '(none)');
+      console.log('→ Will skip family name questionnaire');
+      console.log('');
+    }
+    
     return (
       <DataMiningScreen 
         onComplete={handleDataMiningComplete}
@@ -387,6 +414,26 @@ export default function Dashboard() {
     }
   };
 
+  // Show contact detail from search
+  if (searchSelectedContact) {
+    const contactLayer = LAYERS.find(l => l.id === searchSelectedContact.dunbarLayer) || LAYERS[5];
+    
+    return (
+      <LayerDetailScreen
+        layer={{
+          ...contactLayer,
+          description: getLayerDescription(contactLayer.id),
+        }}
+        contacts={[searchSelectedContact]}
+        onBack={() => setSearchSelectedContact(null)}
+        onContactUpdate={(updatedContact) => {
+          handleContactUpdate(updatedContact);
+          setSearchSelectedContact(null);
+        }}
+      />
+    );
+  }
+
   // Show layer detail screen if a layer is selected
   if (selectedLayerId !== null) {
     const selectedLayer = LAYERS.find(l => l.id === selectedLayerId);
@@ -410,16 +457,60 @@ export default function Dashboard() {
   const withinDunbar = layerStats.slice(0, 4).reduce((sum, layer) => sum + layer.count, 0);
   const dunbarHealth = withinDunbar <= 150 ? "healthy" : "overextended";
 
+  // Show loading animation while analyzing
+  if (isAnalyzing && !needsDataMining) {
+    return (
+      <View className="flex-1 bg-black justify-center items-center">
+        <LoadingAnimation 
+          message="Loading Your Garden..."
+          submessage="Organizing your relationships into layers"
+        />
+      </View>
+    );
+  }
+
   return (
     <ScrollView className="flex-1 bg-black">
       <View className="px-6 py-8">
         {/* Header */}
-        <Text className="text-4xl text-primary mb-2" style={{ fontFamily: 'Montserrat_600SemiBold' }}>
-          Your Garden
-        </Text>
-        <Text className="text-lg text-secondary mb-8">
-          {totalContacts} relationships cultivated
-        </Text>
+        <View className="flex-row justify-between items-start mb-4">
+          <View className="flex-1">
+            <Text className="text-4xl text-primary mb-2" style={{ fontFamily: 'Montserrat_600SemiBold' }}>
+              Your Garden
+            </Text>
+            <Text className="text-lg text-secondary mb-2">
+              {totalContacts} relationships cultivated
+            </Text>
+          </View>
+          
+          {/* Search Button */}
+          <Pressable
+            onPress={() => setShowSearch(true)}
+            className="bg-zinc-900 border border-zinc-700 px-4 py-3 mt-2"
+          >
+            <Text className="text-primary text-sm font-medium">
+              🔍 Search
+            </Text>
+          </Pressable>
+        </View>
+        
+        {/* Family Members Indicator */}
+        {(() => {
+          const root = me?.root as any;
+          const contacts = root?.contacts || [];
+          const familyCount = Array.from(contacts).filter((c: any) => c?.isFamily).length;
+          
+          if (familyCount > 0) {
+            return (
+              <View className="flex-row items-center mb-6">
+                <Text className="text-zinc-400 text-sm">
+                  👨‍👩‍👧‍👦 {familyCount} family member{familyCount !== 1 ? 's' : ''} detected
+                </Text>
+              </View>
+            );
+          }
+          return null;
+        })()}
 
         {/* Dunbar Health */}
         <View className={`p-4 border mb-8 ${
@@ -448,7 +539,33 @@ export default function Dashboard() {
 
         {layerStats.map((layerStat, index) => {
           const layer = LAYERS[index];
-          const percentage = totalContacts > 0 ? (layerStat.count / totalContacts) * 100 : 0;
+          
+          // Parse expected range to get min and max
+          const rangeMatch = layer.range.match(/\d+/g);
+          let minExpected = 0;
+          let maxExpected = 999;
+          
+          if (rangeMatch) {
+            if (rangeMatch.length === 2) {
+              // Range like "1-5" or "15-50"
+              minExpected = parseInt(rangeMatch[0]);
+              maxExpected = parseInt(rangeMatch[1]);
+            } else if (rangeMatch.length === 1 && layer.range.includes('+')) {
+              // Range like "250+"
+              minExpected = parseInt(rangeMatch[0]);
+              maxExpected = 999; // Social Nebula has no upper limit
+            }
+          }
+          
+          // Calculate the layer's capacity (max - min for cumulative ranges)
+          // Dunbar layers are cumulative: 0-5, 5-15, 15-50, etc.
+          const layerCapacity = maxExpected === 999 ? 250 : (maxExpected - minExpected);
+          
+          // Calculate percentage based on layer capacity
+          const percentage = (layerStat.count / layerCapacity) * 100;
+          
+          const isEmpty = layerStat.count === 0;
+          const isNotFull = layerStat.count < layerCapacity && layer.id < 4; // Only prompt for layers 0-3
 
           return (
             <Pressable
@@ -484,12 +601,34 @@ export default function Dashboard() {
                   />
                 </View>
 
-                {/* Sample Names */}
-                {layerStat.contacts.length > 0 && (
-                  <Text className="text-secondary text-xs mt-3" numberOfLines={1}>
-                    {layerStat.contacts.slice(0, 3).map(c => c.name).join(", ")}
-                    {layerStat.contacts.length > 3 && ` +${layerStat.contacts.length - 3} more`}
-                  </Text>
+                {/* Sample Names or Add Prompt */}
+                {isEmpty ? (
+                  <Pressable 
+                    onPress={() => setShowSearch(true)}
+                    className="mt-3 p-3 border border-dashed border-zinc-700 bg-zinc-950"
+                  >
+                    <Text className="text-zinc-500 text-xs text-center">
+                      + Add people to this layer
+                    </Text>
+                  </Pressable>
+                ) : (
+                  <>
+                    <Text className="text-secondary text-xs mt-3" numberOfLines={1}>
+                      {layerStat.contacts.slice(0, 3).map(c => c.name).join(", ")}
+                      {layerStat.contacts.length > 3 && ` +${layerStat.contacts.length - 3} more`}
+                    </Text>
+                    
+                    {isNotFull && (
+                      <Pressable 
+                        onPress={() => setShowSearch(true)}
+                        className="mt-2"
+                      >
+                        <Text className="text-zinc-600 text-xs">
+                          + Add more (room for {layerCapacity - layerStat.count} more)
+                        </Text>
+                      </Pressable>
+                    )}
+                  </>
                 )}
               </View>
             </Pressable>
@@ -523,6 +662,17 @@ export default function Dashboard() {
           </Pressable>
         </View>
       </View>
+
+      {/* Contact Search Modal */}
+      <ContactSearch
+        visible={showSearch}
+        contacts={layerStats.flatMap(layer => layer.contacts)}
+        onSelectContact={(contact) => {
+          setSearchSelectedContact(contact);
+          setShowSearch(false);
+        }}
+        onClose={() => setShowSearch(false)}
+      />
     </ScrollView>
   );
 }
