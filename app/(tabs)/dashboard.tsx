@@ -16,6 +16,7 @@ import { Contact, ContactList, FamilyNames } from "@/jazz/schema";
 import type { ContactWithMetrics } from "@/services/dataMining";
 import { LoadingAnimation } from "@/components/LoadingAnimation";
 import { ContactSearch } from "@/components/relationships/ContactSearch";
+import { Card, Button } from "@/components/ui";
 
 // Layer definitions from PRD
 const LAYERS = [
@@ -75,15 +76,7 @@ export default function Dashboard() {
   useEffect(() => {
     const shouldHideTabBar = needsDataMining || showDataMining || selectedLayerId !== null || showSearch || searchSelectedContact !== null;
     navigation.setOptions({
-      tabBarStyle: shouldHideTabBar ? { display: 'none' } : {
-        backgroundColor: "#0a1f0f",
-        borderTopWidth: 0,
-        elevation: 8,
-        shadowColor: "#22c55e",
-        shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-      },
+      tabBarStyle: shouldHideTabBar ? { display: 'none' } : undefined,
     });
   }, [needsDataMining, showDataMining, selectedLayerId, showSearch, searchSelectedContact, navigation]);
 
@@ -102,13 +95,16 @@ export default function Dashboard() {
       
       const contacts = root.contacts || [];
       
-      console.log("📊 Analyzing relationships:", {
-        hasContacts: !!root.contacts,
-        contactsLength: contacts.length,
-        contactsType: typeof contacts,
-        isArray: Array.isArray(contacts),
-        rootKeys: Object.keys(root),
-      });
+      console.log('');
+      console.log('=' .repeat(60));
+      console.log("📊 ANALYZING RELATIONSHIPS FROM JAZZ");
+      console.log('=' .repeat(60));
+      console.log(`Has contacts: ${!!root.contacts}`);
+      console.log(`Contacts length: ${contacts.length}`);
+      console.log(`Contacts type: ${typeof contacts}`);
+      console.log(`Is array: ${Array.isArray(contacts)}`);
+      console.log('=' .repeat(60));
+      console.log('');
       
       // Check if we have any contacts at all
       if (!contacts || contacts.length === 0) {
@@ -210,6 +206,19 @@ export default function Dashboard() {
         layerGroups[layer].count++;
       });
       
+      console.log('');
+      console.log('=' .repeat(60));
+      console.log('📋 CONTACT GROUPING BY LAYER');
+      console.log('=' .repeat(60));
+      layerGroups.forEach((group, index) => {
+        console.log(`Layer ${index}: ${group.count} contacts`);
+        if (group.count > 0) {
+          console.log(`  Sample: ${group.contacts.slice(0, 3).map(c => c.name).join(', ')}`);
+        }
+      });
+      console.log('=' .repeat(60));
+      console.log('');
+      
       setLayerStats(layerGroups);
       setTotalContacts(plainContacts.length);
     } catch (error) {
@@ -251,23 +260,65 @@ export default function Dashboard() {
     }
     
     // Convert ContactWithMetrics to Contact format for Dunbar calculator
-    const contactsForCalculation = contacts.map(c => ({
-      id: c.id,
-      name: c.name,
-      phoneNumber: c.phoneNumbers?.[0],
-      email: c.emails?.[0],
-      isFamily: !!c.potentialFamily,
-      familyTier: c.potentialFamily?.tier || undefined,
-      callCount: c.metrics.callFrequency,
-      smsCount: c.metrics.smsFrequency,
-      totalDuration: c.metrics.totalCallDuration,
-      lastInteraction: c.metrics.lastInteraction ? new Date(c.metrics.lastInteraction).toISOString() : undefined,
-    }));
+    const contactsForCalculation = contacts.map(c => {
+      // Calculate total counts from frequency (approximate last 30 days)
+      // callFrequency and smsFrequency are interactions in the last 30 days
+      const totalCalls = c.metrics.callFrequency || 0;
+      const totalSMS = c.metrics.smsFrequency || 0;
+      
+      // Calculate initiation data from ratios
+      // callInitiationRatio = outgoing / total
+      const initiatedByUserCalls = Math.round(totalCalls * (c.metrics.callInitiationRatio || 0));
+      const initiatedByUserSMS = Math.round(totalSMS * (c.metrics.smsInitiationRatio || 0));
+      const initiatedByUser = initiatedByUserCalls + initiatedByUserSMS;
+      
+      // Reciprocity from SMS (0-1 scale where 1 = perfect balance)
+      // We'll approximate contact-initiated as total - user-initiated
+      const initiatedByContact = (totalCalls + totalSMS) - initiatedByUser;
+      
+      return {
+        id: c.id,
+        name: c.name,
+        phoneNumber: c.phoneNumbers?.[0],
+        email: c.emails?.[0],
+        isFamily: !!c.potentialFamily,
+        familyTier: c.potentialFamily?.tier || undefined,
+        callCount: totalCalls,
+        smsCount: totalSMS,
+        totalDuration: c.metrics.totalCallDuration,
+        lastInteraction: c.metrics.lastInteraction ? new Date(c.metrics.lastInteraction).toISOString() : undefined,
+        initiatedByUser,
+        initiatedByContact,
+        reciprocityScore: c.metrics.smsReciprocity,
+        contactInitiationRatio: c.metrics.callInitiationRatio,
+        averageResponseTime: c.metrics.averageResponseTime,
+      };
+    });
     
     // Calculate Dunbar layers
     const contactsWithLayers = await calculateDunbarLayers(contactsForCalculation);
     
-    console.log('Dunbar layers calculated');
+    console.log('');
+    console.log('=' .repeat(60));
+    console.log('📊 DUNBAR LAYER CALCULATION COMPLETE');
+    console.log('=' .repeat(60));
+    console.log(`Total contacts: ${contactsWithLayers.length}`);
+    
+    // Count by layer
+    const layerCounts = [0, 0, 0, 0, 0, 0];
+    contactsWithLayers.forEach(c => {
+      layerCounts[c.dunbarLayer || 5]++;
+    });
+    
+    console.log('Layer distribution:');
+    console.log(`  Layer 0 (Intimate Core):    ${layerCounts[0]} contacts`);
+    console.log(`  Layer 1 (Sympathy Group):   ${layerCounts[1]} contacts`);
+    console.log(`  Layer 2 (Close Group):      ${layerCounts[2]} contacts`);
+    console.log(`  Layer 3 (Tribe):            ${layerCounts[3]} contacts`);
+    console.log(`  Layer 4 (Acquaintances):    ${layerCounts[4]} contacts`);
+    console.log(`  Layer 5 (Social Nebula):    ${layerCounts[5]} contacts`);
+    console.log('=' .repeat(60));
+    console.log('');
     
     // Save contacts to Jazz
     // Create new ContactList with all contacts
@@ -302,15 +353,50 @@ export default function Dashboard() {
     const newContacts = ContactList.create(newContactsList, me);
     root.$jazz.set('contacts', newContacts);
     
-    console.log(`✅ Saved ${newContactsList.length} contacts to Jazz`);
-    console.log('First 3 contacts:', newContactsList.slice(0, 3).map(c => ({ name: c.name, layer: c.dunbarLayer })));
+    console.log('');
+    console.log('=' .repeat(60));
+    console.log('💾 SAVING TO JAZZ DATABASE');
+    console.log('=' .repeat(60));
+    console.log(`Contacts to save: ${newContactsList.length}`);
+    console.log('Sample contacts:');
+    newContactsList.slice(0, 5).forEach((c, i) => {
+      console.log(`  ${i + 1}. ${c.name} - Layer ${c.dunbarLayer} (score: ${c.interactionScore})`);
+    });
+    console.log('=' .repeat(60));
+    console.log('');
     
     // Wait a moment for Jazz to process the save
     await new Promise(resolve => setTimeout(resolve, 500));
     
     // Verify the save
     const savedContacts = root.contacts || [];
-    console.log(`🔍 Verification: ${savedContacts.length} contacts in Jazz storage after save`);
+    console.log('');
+    console.log('=' .repeat(60));
+    console.log('🔍 JAZZ SAVE VERIFICATION');
+    console.log('=' .repeat(60));
+    console.log(`Contacts in Jazz after save: ${savedContacts.length}`);
+    
+    if (savedContacts.length !== newContactsList.length) {
+      console.error(`❌ MISMATCH: Tried to save ${newContactsList.length} but only ${savedContacts.length} found in Jazz!`);
+    } else {
+      console.log('✅ All contacts successfully saved to Jazz');
+    }
+    
+    // Verify layer distribution
+    const savedLayerCounts = [0, 0, 0, 0, 0, 0];
+    Array.from(savedContacts).forEach((c: any) => {
+      savedLayerCounts[c?.dunbarLayer || 5]++;
+    });
+    
+    console.log('Saved layer distribution:');
+    console.log(`  Layer 0: ${savedLayerCounts[0]}`);
+    console.log(`  Layer 1: ${savedLayerCounts[1]}`);
+    console.log(`  Layer 2: ${savedLayerCounts[2]}`);
+    console.log(`  Layer 3: ${savedLayerCounts[3]}`);
+    console.log(`  Layer 4: ${savedLayerCounts[4]}`);
+    console.log(`  Layer 5: ${savedLayerCounts[5]}`);
+    console.log('=' .repeat(60));
+    console.log('');
     
     // Hide data mining screen and refresh dashboard
     setShowDataMining(false);
@@ -636,30 +722,26 @@ export default function Dashboard() {
         })}
 
         {/* Cultivation Opportunities */}
-        <View className="mt-8 p-4 border border-primary bg-green-950/20">
+        <Card className="mt-8 border-primary bg-green-950/20">
           <Text className="text-sm text-primary font-medium mb-2">
             CULTIVATION OPPORTUNITIES
           </Text>
           <Text className="text-white text-base mb-3">
             3 relationships need attention
           </Text>
-          <Pressable className="bg-primary py-3 px-4">
-            <Text className="text-center text-black font-bold">
-              VIEW SUGGESTIONS
-            </Text>
-          </Pressable>
-        </View>
+          <Button variant="primary">
+            VIEW SUGGESTIONS
+          </Button>
+        </Card>
 
         {/* Re-analyze Data Button */}
         <View className="mt-4 mb-8">
-          <Pressable 
+          <Button 
+            variant="secondary"
             onPress={() => setShowDataMining(true)}
-            className="border border-zinc-700 py-3 px-4"
           >
-            <Text className="text-center text-zinc-400 text-sm">
-              Re-analyze Relationship Data
-            </Text>
-          </Pressable>
+            Re-analyze Relationship Data
+          </Button>
         </View>
       </View>
 
