@@ -5,6 +5,7 @@
 
 import React, { useState } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, Modal } from 'react-native';
+import { ManualInteractionLogger } from './ManualInteractionLogger';
 
 interface Contact {
   id?: string;
@@ -20,6 +21,8 @@ interface Contact {
   cultivationGoal?: 'MAINTAIN' | 'STRENGTHEN' | 'RECONNECT' | 'DEPRIORITIZE';
   phoneNumber?: string;
   email?: string;
+  isFavorite?: boolean;
+  qualityRating?: number;
   // Debug/transparency fields
   callCount?: number;
   smsCount?: number;
@@ -45,6 +48,7 @@ interface Props {
 export function ContactDetailModal({ contact, layer, onClose, onSave }: Props) {
   const [editedContact, setEditedContact] = useState<Contact>(contact);
   const [isEditing, setIsEditing] = useState(false);
+  const [showInteractionLogger, setShowInteractionLogger] = useState(false);
 
   const cultivationGoals: Array<{ value: Contact['cultivationGoal']; label: string; color: string }> = [
     { value: 'STRENGTHEN', label: 'Strengthen', color: 'bg-green-900 text-green-400' },
@@ -114,18 +118,46 @@ export function ContactDetailModal({ contact, layer, onClose, onSave }: Props) {
                 </Text>
               </View>
               
-              {contact.isFamily && (
-                <View className="flex-row items-center mt-2">
-                  <Text className="text-primary text-sm font-medium mr-2">
-                    👨‍👩‍👧‍👦 Family
-                  </Text>
-                  {contact.familyRole && (
-                    <Text className="text-zinc-400 text-sm">
-                      ({contact.familyRole})
+              <View className="flex-row items-center mt-2 gap-3">
+                {contact.isFamily && (
+                  <View className="flex-row items-center">
+                    <Text className="text-primary text-sm font-medium mr-2">
+                      👨‍👩‍👧‍👦 Family
                     </Text>
-                  )}
-                </View>
-              )}
+                    {contact.familyRole && (
+                      <Text className="text-zinc-400 text-sm">
+                        ({contact.familyRole})
+                      </Text>
+                    )}
+                  </View>
+                )}
+                
+                {isEditing ? (
+                  <Pressable
+                    onPress={() => setEditedContact({ 
+                      ...editedContact, 
+                      isFavorite: !editedContact.isFavorite 
+                    })}
+                    className={`flex-row items-center px-3 py-1.5 border ${
+                      editedContact.isFavorite 
+                        ? 'border-yellow-500 bg-yellow-950/30' 
+                        : 'border-zinc-700 bg-zinc-900'
+                    }`}
+                  >
+                    <Text className={`text-sm font-medium ${
+                      editedContact.isFavorite ? 'text-yellow-400' : 'text-zinc-500'
+                    }`}>
+                      ⭐ {editedContact.isFavorite ? 'Favorited' : 'Add to Favorites'}
+                    </Text>
+                  </Pressable>
+                ) : contact.isFavorite ? (
+                  <View className="flex-row items-center px-3 py-1.5 border border-yellow-500 bg-yellow-950/30">
+                    <Text className="text-yellow-400 text-sm font-medium">
+                      ⭐ Favorite
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
             </View>
 
             {/* Contact Info */}
@@ -181,6 +213,28 @@ export function ContactDetailModal({ contact, layer, onClose, onSave }: Props) {
               <Text className="text-zinc-500 text-xs mt-2">
                 Based on calls, messages, and contact frequency over the last 3 months
               </Text>
+              
+              {/* Quality Rating */}
+              {contact.qualityRating && (
+                <View className="mt-4 pt-4 border-t border-zinc-800">
+                  <Text className="text-zinc-400 text-xs mb-1">Average Interaction Quality</Text>
+                  <View className="flex-row items-center">
+                    <Text className="text-yellow-400 text-xl font-bold mr-2">
+                      {contact.qualityRating.toFixed(1)}
+                    </Text>
+                    <View className="flex-row">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Text key={i} className="text-base">
+                          {i < Math.round(contact.qualityRating || 0) ? '⭐' : '☆'}
+                        </Text>
+                      ))}
+                    </View>
+                  </View>
+                  <Text className="text-zinc-500 text-xs mt-1">
+                    From your manual interaction logs
+                  </Text>
+                </View>
+              )}
             </View>
 
             {/* Cultivation Goal */}
@@ -336,6 +390,26 @@ export function ContactDetailModal({ contact, layer, onClose, onSave }: Props) {
               </View>
             </View>
 
+            {/* Quick Actions */}
+            <View className="mb-6">
+              <Text className="text-sm text-secondary font-medium mb-3">
+                QUICK ACTIONS
+              </Text>
+              
+              <Pressable
+                onPress={() => setShowInteractionLogger(true)}
+                className="bg-primary py-4 px-6 mb-3"
+              >
+                <Text className="text-center text-base font-bold text-black">
+                  + Log Interaction
+                </Text>
+              </Pressable>
+              
+              <Text className="text-xs text-zinc-500 text-center">
+                Manually log calls, meetings, or social media chats
+              </Text>
+            </View>
+
             {/* Notes */}
             <View className="mb-6">
               <Text className="text-sm text-secondary font-medium mb-3">
@@ -369,6 +443,24 @@ export function ContactDetailModal({ contact, layer, onClose, onSave }: Props) {
             </View>
           </View>
         </ScrollView>
+
+        {/* Manual Interaction Logger Modal */}
+        <ManualInteractionLogger
+          visible={showInteractionLogger}
+          contact={{
+            id: contact.id,
+            name: contact.name,
+            phoneNumber: contact.phoneNumber,
+            email: contact.email,
+          }}
+          onSave={(interaction) => {
+            console.log('Manual interaction logged:', interaction);
+            // TODO: Save to Jazz database
+            alert(`Interaction logged with ${contact.name}!\n\nType: ${interaction.type}\nQuality: ${interaction.quality}/5`);
+            setShowInteractionLogger(false);
+          }}
+          onClose={() => setShowInteractionLogger(false)}
+        />
       </View>
     </Modal>
   );

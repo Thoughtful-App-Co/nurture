@@ -179,21 +179,43 @@ export async function fetchCallLogs(): Promise<CallLogEntry[]> {
     const CallLogsModule = require('react-native-call-log');
     
     if (!CallLogsModule || !CallLogsModule.default) {
-      console.warn('react-native-call-log module not available - skipping call log fetch');
-      console.warn('To enable call logs, install: npm install react-native-call-log');
+      console.warn('⚠️ react-native-call-log module not properly linked');
+      console.warn('📱 For EAS builds: Rebuild with "eas build --profile development --platform android"');
+      console.warn('   Config plugins registered in app.json should handle linking');
       return [];
     }
     
     const CallLogs = CallLogsModule.default;
     
-    // Fetch last 3 months of call logs
+    // Check if we have the necessary permission
+    const hasPermission = await PermissionsAndroid.check(
+      PermissionsAndroid.PERMISSIONS.READ_CALL_LOG
+    );
+    
+    if (!hasPermission) {
+      console.warn('Call log permission not granted - skipping');
+      return [];
+    }
+    
+    // Fetch last 3 months of call logs with timeout
     const threeMonthsAgo = Date.now() - (90 * 24 * 60 * 60 * 1000);
     
-    const calls = await CallLogs.load(-1, { // -1 = all calls
+    console.log('📞 Fetching call logs...');
+    
+    // Wrap in timeout
+    const CALL_LOG_TIMEOUT = 30000; // 30 seconds
+    
+    const fetchPromise = CallLogs.load(-1, { // -1 = all calls
       minTimestamp: threeMonthsAgo,
     });
     
-    console.log(`Fetched ${calls.length} call log entries from last 3 months`);
+    const timeoutPromise = new Promise<any[]>((_, reject) => 
+      setTimeout(() => reject(new Error('Call log fetch timeout after 30s')), CALL_LOG_TIMEOUT)
+    );
+    
+    const calls = await Promise.race([fetchPromise, timeoutPromise]);
+    
+    console.log(`✅ Fetched ${calls.length} call log entries from last 3 months`);
     
     // Map to our CallLogEntry format
     return calls.map((call: any) => ({
@@ -202,9 +224,25 @@ export async function fetchCallLogs(): Promise<CallLogEntry[]> {
       timestamp: call.timestamp || call.dateTime || Date.now(),
       type: mapCallType(call.type),
     }));
-  } catch (error) {
-    console.warn('Failed to fetch call logs (native module not available):', error);
-    console.warn('Call log analysis will be skipped. To enable, run: npx expo run:android');
+  } catch (error: any) {
+    if (error.message?.includes('timeout')) {
+      console.error('⏱️ Call log fetch timeout - may be too much data');
+      console.warn('   Try reducing timeframe or contact developer');
+    } else {
+      console.error('❌ Failed to fetch call logs:', error.message || error);
+      
+      // Provide specific guidance based on error
+      if (error.message?.includes('not linked')) {
+        console.warn('📱 Native module not linked.');
+        console.warn('   For EAS: Rebuild with "eas build --profile development"');
+      } else if (error.message?.includes('permission')) {
+        console.warn('⚠️ Permission denied for call logs');
+      } else {
+        console.warn('⚠️ Call log module may not be properly installed');
+        console.warn('   Check that plugins are registered in app.json');
+      }
+    }
+    
     return [];
   }
 }
@@ -238,12 +276,23 @@ export async function fetchSMSHistory(): Promise<SMSEntry[]> {
     const SmsAndroidModule = require('react-native-get-sms-android');
     
     if (!SmsAndroidModule || !SmsAndroidModule.default) {
-      console.warn('react-native-get-sms-android module not available - skipping SMS fetch');
-      console.warn('To enable SMS history, install: npm install react-native-get-sms-android');
+      console.warn('⚠️ react-native-get-sms-android module not properly linked');
+      console.warn('📱 For EAS builds: Rebuild with "eas build --profile development --platform android"');
+      console.warn('   Config plugins registered in app.json should handle linking');
       return [];
     }
     
     const SmsAndroid = SmsAndroidModule.default;
+    
+    // Check if we have the necessary permission
+    const hasPermission = await PermissionsAndroid.check(
+      PermissionsAndroid.PERMISSIONS.READ_SMS
+    );
+    
+    if (!hasPermission) {
+      console.warn('SMS permission not granted - skipping');
+      return [];
+    }
     
     // Fetch last 3 months of SMS
     const threeMonthsAgo = Date.now() - (90 * 24 * 60 * 60 * 1000);
@@ -254,17 +303,22 @@ export async function fetchSMSHistory(): Promise<SMSEntry[]> {
       maxCount: 10000, // Limit to prevent memory issues
     };
     
-    return new Promise((resolve, reject) => {
+    console.log('💬 Fetching SMS history...');
+    
+    // Wrap in timeout to prevent hanging
+    const SMS_FETCH_TIMEOUT = 30000; // 30 seconds
+    
+    const fetchPromise = new Promise<SMSEntry[]>((_resolve, _reject) => {
       SmsAndroid.list(
         JSON.stringify(filter),
         (fail: string) => {
-          console.warn('Failed to fetch SMS:', fail);
-          resolve([]); // Resolve with empty array instead of rejecting
+          console.error('❌ Failed to fetch SMS:', fail);
+          _resolve([]); // Resolve with empty array instead of rejecting
         },
-        (count: number, smsList: string) => {
+        (_count: number, smsList: string) => {
           try {
             const messages = JSON.parse(smsList);
-            console.log(`Fetched ${messages.length} SMS entries from last 3 months`);
+            console.log(`✅ Fetched ${messages.length} SMS entries from last 3 months`);
             
             // Map to our SMSEntry format
             const smsEntries: SMSEntry[] = messages.map((sms: any) => ({
@@ -274,17 +328,37 @@ export async function fetchSMSHistory(): Promise<SMSEntry[]> {
               body: sms.body || '',
             }));
             
-            resolve(smsEntries);
+            _resolve(smsEntries);
           } catch (error) {
-            console.warn('Error parsing SMS data:', error);
-            resolve([]);
+            console.error('❌ Error parsing SMS data:', error);
+            _resolve([]);
           }
         }
       );
     });
-  } catch (error) {
-    console.warn('Failed to fetch SMS history (native module not available):', error);
-    console.warn('SMS analysis will be skipped. To enable, run: npx expo run:android');
+    
+    const timeoutPromise = new Promise<SMSEntry[]>((_resolve) => 
+      setTimeout(() => {
+        console.warn('⏱️ SMS fetch timeout after 30s');
+        _resolve([]);
+      }, SMS_FETCH_TIMEOUT)
+    );
+    
+    return Promise.race([fetchPromise, timeoutPromise]);
+  } catch (error: any) {
+    console.error('❌ Failed to fetch SMS history:', error.message || error);
+    
+    // Provide specific guidance based on error
+    if (error.message?.includes('not linked')) {
+      console.warn('📱 Native module not linked.');
+      console.warn('   For EAS: Rebuild with "eas build --profile development"');
+    } else if (error.message?.includes('permission')) {
+      console.warn('⚠️ Permission denied for SMS');
+    } else {
+      console.warn('⚠️ SMS module may not be properly installed');
+      console.warn('   Check that plugins are registered in app.json');
+    }
+    
     return [];
   }
 }
@@ -694,13 +768,53 @@ export async function aggregateContactsWithMetrics(familyNames?: FamilyNames): P
     fetchSMSHistory(),
   ]);
 
-  console.log(`Fetched ${contacts.length} contacts, ${callLogs.length} calls, ${smsHistory.length} SMS`);
+  console.log('');
+  console.log('=' .repeat(60));
+  console.log('📊 DATA MINING RESULTS');
+  console.log('=' .repeat(60));
+  console.log(`Contacts: ${contacts.length}`);
+  console.log(`Call logs: ${callLogs.length}`);
+  console.log(`SMS messages: ${smsHistory.length}`);
+  console.log('=' .repeat(60));
   
   // Warn if no interaction data available
   if (callLogs.length === 0 && smsHistory.length === 0) {
-    console.warn('⚠️  No call or SMS data available');
-    console.warn('Analysis will be based on contact data only');
-    console.warn('For full analysis, build a development client: npx expo run:android');
+    console.log('');
+    console.warn('🚨 CRITICAL: ZERO INTERACTION DATA!');
+    console.warn('');
+    console.warn('You processed 0 texts and 0 calls.');
+    console.warn('This means your Dunbar layers will be INACCURATE.');
+    console.warn('');
+    
+    if (Platform.OS === 'android') {
+      console.warn('🔧 TO FIX ON ANDROID:');
+      console.warn('   1. Run: npx expo prebuild --clean');
+      console.warn('   2. Run: npx expo run:android');
+      console.warn('   3. Grant ALL permissions when prompted');
+      console.warn('   4. Re-run analysis');
+      console.warn('');
+      console.warn('Without native modules, you only get contact names.');
+      console.warn('Build natively to get REAL relationship data.');
+    } else {
+      console.warn('📱 iOS LIMITATION:');
+      console.warn('   Apple does not allow apps to access call/SMS data.');
+      console.warn('   This is a platform restriction, not a bug.');
+      console.warn('');
+      console.warn('👉 SOLUTION: Use manual logging in the app');
+      console.warn('   - Log WhatsApp/Instagram/in-person interactions');
+      console.warn('   - Rate interaction quality (1-5 stars)');
+      console.warn('   - Mark favorites to override auto-detection');
+    }
+    
+    console.log('');
+    console.warn('⚠️  "Behavioral reality, not wishful thinking"');
+    console.warn('    Right now, we have no behavioral data to show you.');
+    console.log('');
+  } else {
+    console.log('');
+    console.log('✅ SUCCESS: Got real interaction data!');
+    console.log(`   Analyzing ${contacts.length} contacts with ${callLogs.length + smsHistory.length} interactions`);
+    console.log('');
   }
 
   const contactsWithMetrics = contacts.map(contact => {
@@ -718,8 +832,32 @@ export async function aggregateContactsWithMetrics(familyNames?: FamilyNames): P
 
   // Apply family name matching if provided (before merging, so both variants get tagged)
   let processedContacts = contactsWithMetrics;
-  if (familyNames) {
+  if (familyNames && (familyNames.birthLastName || familyNames.currentLastName || familyNames.spouseLastName)) {
+    console.log('');
+    console.log('👨‍👩‍👧‍👦 FAMILY DETECTION');
+    console.log('Using names:', familyNames);
     processedContacts = identifyPotentialFamily(contactsWithMetrics, familyNames);
+    
+    // Log detected family members
+    const familyMembers = processedContacts.filter((c: ContactWithMetrics) => c.potentialFamily);
+    if (familyMembers.length > 0) {
+      console.log(`✅ Found ${familyMembers.length} potential family members:`);
+      familyMembers.slice(0, 10).forEach((member: ContactWithMetrics) => {
+        const tier = member.potentialFamily?.tier || '';
+        const role = member.potentialFamily?.role || '';
+        console.log(`   • ${member.name} (${tier}${role ? ` - ${role}` : ''})`);
+      });
+      if (familyMembers.length > 10) {
+        console.log(`   ... and ${familyMembers.length - 10} more`);
+      }
+    } else {
+      console.log('⚠️  No family members detected with provided names');
+      console.log('   Check if last names match contacts in your phone');
+    }
+    console.log('');
+  } else {
+    console.log('⚠️  No family names provided - skipping family detection');
+    console.log('   Family members can still be detected by pet names (Mom, Dad, etc.)');
   }
 
   // Merge duplicates (same phone number, different names)

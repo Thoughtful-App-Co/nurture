@@ -9,17 +9,20 @@
  * 4. Run analysis with progress indicator
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, Pressable, ScrollView, ActivityIndicator, Platform } from 'react-native';
-import { Phone, CalendarBlank, ChatCircle, Lock, SealCheck, ShieldCheck } from 'phosphor-react-native';
 import { 
   requestDataMiningPermissions,
   aggregateContactsWithMetrics,
   type FamilyNames,
   type ContactWithMetrics 
 } from '@/services/dataMining';
+import { DataLimitationsScreen } from './DataLimitationsScreen';
+import { runDiagnostics, getDataMiningStatus } from '@/scripts/diagnose-data-mining';
+import { isFeatureEnabled } from '@/config/featureFlags';
+import { LoadingAnimation } from '@/components/LoadingAnimation';
 
-type Step = 'intro' | 'family-names' | 'permissions' | 'analyzing' | 'complete';
+type Step = 'intro' | 'family-names' | 'permissions' | 'analyzing' | 'limitations' | 'complete';
 
 interface Props {
   onComplete: (contacts: ContactWithMetrics[], familyNames?: FamilyNames) => void;
@@ -30,6 +33,12 @@ export function DataMiningScreen({ onComplete, savedFamilyNames }: Props) {
   const [step, setStep] = useState<Step>('intro');
   const [familyNames, setFamilyNames] = useState<FamilyNames>(savedFamilyNames || {});
   const [progress, setProgress] = useState(0);
+  const [analysisResults, setAnalysisResults] = useState<{
+    contacts: ContactWithMetrics[];
+    hasCallData: boolean;
+    hasSMSData: boolean;
+  } | null>(null);
+  const [dataMiningStatus, setDataMiningStatus] = useState(getDataMiningStatus());
   
   // Check if we have saved family names - if so, we can skip the questionnaire
   const hasSavedFamilyNames = savedFamilyNames && (
@@ -37,6 +46,11 @@ export function DataMiningScreen({ onComplete, savedFamilyNames }: Props) {
     savedFamilyNames.currentLastName || 
     savedFamilyNames.spouseLastName
   );
+
+  // Update data mining status on mount
+  useEffect(() => {
+    setDataMiningStatus(getDataMiningStatus());
+  }, []);
 
   const handleStartAnalysis = async () => {
     setStep('permissions');
@@ -85,10 +99,16 @@ export function DataMiningScreen({ onComplete, savedFamilyNames }: Props) {
         console.warn('Run: npx expo run:android to build with native modules');
       }
 
-      // Small delay to show 100%
+      // Check if we have interaction data
+      const hasCallData = contacts.some(c => c.metrics.callFrequency > 0);
+      const hasSMSData = contacts.some(c => c.metrics.smsFrequency > 0);
+      
+      // Store results and show limitations screen
+      setAnalysisResults({ contacts, hasCallData, hasSMSData });
+      
+      // Small delay to show 100%, then show limitations
       setTimeout(() => {
-        setStep('complete');
-        onComplete(contacts, familyNames); // Pass family names back to save
+        setStep('limitations');
       }, 500);
 
     } catch (error) {
@@ -161,6 +181,29 @@ export function DataMiningScreen({ onComplete, savedFamilyNames }: Props) {
             🔒 Encrypted on your device • We never see your data
           </Text>
           
+          {/* Data Mining Status Indicator */}
+          {Platform.OS === 'android' && !dataMiningStatus.canMine && (
+            <View className="mt-3 p-3 border border-red-900/50 bg-red-950/20">
+              <Text className="text-xs text-red-400 font-semibold mb-1">
+                ⚠️ Native Data Mining Unavailable
+              </Text>
+              <Text className="text-xs text-red-300">
+                {dataMiningStatus.reason}
+              </Text>
+              <Text className="text-xs text-red-200 mt-1">
+                Solution: {dataMiningStatus.solution}
+              </Text>
+            </View>
+          )}
+          
+          {Platform.OS === 'android' && dataMiningStatus.canMine && (
+            <View className="mt-3 p-2 border border-green-900/50 bg-green-950/20">
+              <Text className="text-xs text-green-400 text-center">
+                ✅ Native data mining available
+              </Text>
+            </View>
+          )}
+          
           {Platform.OS === 'ios' && (
             <View className="mt-3 p-2 border border-orange-900/50 bg-orange-950/20">
               <Text className="text-xs text-orange-400 text-center">
@@ -168,13 +211,21 @@ export function DataMiningScreen({ onComplete, savedFamilyNames }: Props) {
               </Text>
             </View>
           )}
-          
-          {Platform.OS === 'android' && (
-            <View className="mt-3 p-2 border border-zinc-700 bg-zinc-900/50">
-              <Text className="text-xs text-zinc-400 text-center">
-                📱 Limited mode: Build dev client for full analysis
+
+          {/* Diagnostics Button (only in dev mode) */}
+          {isFeatureEnabled('SHOW_DATA_MINING_DIAGNOSTICS') && (
+            <Pressable
+              onPress={() => {
+                runDiagnostics();
+                // Refresh status after diagnostics
+                setTimeout(() => setDataMiningStatus(getDataMiningStatus()), 1000);
+              }}
+              className="mt-3 p-2 border border-blue-900/50 bg-blue-950/20"
+            >
+              <Text className="text-xs text-blue-400 text-center">
+                🔍 Run Diagnostics (Dev Only)
               </Text>
-            </View>
+            </Pressable>
           )}
         </View>
       </View>
@@ -272,47 +323,56 @@ export function DataMiningScreen({ onComplete, savedFamilyNames }: Props) {
 
   // Step 3: Analyzing (with progress)
   if (step === 'analyzing') {
+    const getAnalysisMessage = () => {
+      if (progress < 30) return "Reading your contacts...";
+      if (progress < 60) return "Analyzing call patterns...";
+      if (progress < 90) return "Calculating relationship layers...";
+      return "Almost done...";
+    };
+
+    const getSubmessage = () => {
+      if (progress < 30) return "Importing contact data from your device";
+      if (progress < 60) return "Processing call logs and SMS history for behavioral insights";
+      if (progress < 90) return "Organizing relationships into Dunbar layers";
+      return "Finalizing your garden...";
+    };
+
     return (
       <View className="flex-1 bg-black justify-center px-8">
-        <View className="mb-12">
-          <Text className="text-3xl font-bold text-white mb-6 text-center">
-            Analyzing Your Garden
-          </Text>
-          <Text className="text-base text-secondary text-center leading-relaxed mb-8">
-            Reading your contacts and interaction history...
-          </Text>
-
-          {/* Progress bar */}
-          <View className="mb-4">
-            <View className="h-2 bg-zinc-900 border border-zinc-800">
-              <View 
-                className="h-full bg-primary transition-all"
-                style={{ width: `${progress}%` }}
-              />
-            </View>
-          </View>
-
-          <Text className="text-center text-primary text-lg font-medium">
-            {progress}%
-          </Text>
-        </View>
-
-        {/* What we're doing */}
-        <View className="space-y-4">
-          <View className={`flex-row items-center ${progress >= 30 ? 'opacity-100' : 'opacity-30'}`}>
-            <ActivityIndicator size="small" color="#22c55e" className="mr-3" />
-            <Text className="text-white text-base">Reading contacts...</Text>
-          </View>
-          <View className={`flex-row items-center ${progress >= 60 ? 'opacity-100' : 'opacity-30'}`}>
-            <ActivityIndicator size="small" color="#22c55e" className="mr-3" />
-            <Text className="text-white text-base">Analyzing call patterns...</Text>
-          </View>
-          <View className={`flex-row items-center ${progress >= 90 ? 'opacity-100' : 'opacity-30'}`}>
-            <ActivityIndicator size="small" color="#22c55e" className="mr-3" />
-            <Text className="text-white text-base">Calculating relationship layers...</Text>
+        <LoadingAnimation 
+          message={getAnalysisMessage()}
+          submessage={getSubmessage()}
+        />
+        
+        {/* Progress bar */}
+        <View className="mt-12 mb-4">
+          <View className="h-1 bg-zinc-900">
+            <View 
+              className="h-full bg-primary transition-all"
+              style={{ width: `${progress}%` }}
+            />
           </View>
         </View>
+
+        <Text className="text-center text-primary text-sm font-medium">
+          {progress}%
+        </Text>
       </View>
+    );
+  }
+
+  // Step 4: Show limitations and what's missing
+  if (step === 'limitations' && analysisResults) {
+    return (
+      <DataLimitationsScreen
+        hasCallData={analysisResults.hasCallData}
+        hasSMSData={analysisResults.hasSMSData}
+        contactCount={analysisResults.contacts.length}
+        onContinue={() => {
+          setStep('complete');
+          onComplete(analysisResults.contacts, familyNames);
+        }}
+      />
     );
   }
 

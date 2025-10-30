@@ -14,29 +14,59 @@ Learn more in [docs/CORE_TENETS.md](docs/CORE_TENETS.md)
 
 ## Quick Start
 
+### 🚨 CRITICAL: You Need Real Data
+
+Nurture analyzes your **actual behavior** - call logs, SMS history, interaction patterns. Without this data, you'll just see a list of names with random layers.
+
+**"Behavioral reality, not wishful thinking"** - this requires native modules.
+
+### Getting REAL Data (Android)
+
+```bash
+# 1. Install and verify setup
+npm install
+npm run verify
+
+# 2. Build with native modules
+npx expo prebuild --clean
+
+# 3. Build and run
+npx expo run:android
+
+# 4. Grant ALL permissions when prompted
+# ✅ Contacts
+# ✅ Call logs
+# ✅ SMS history
+```
+
+**Expected output in console:**
+```
+📊 DATA MINING RESULTS
+Contacts: 234
+Call logs: 547
+SMS messages: 1,243
+✅ SUCCESS: Got real interaction data!
+```
+
+**If you see "0 calls, 0 texts"** - you're not running natively. See [QUICK_START.md](QUICK_START.md).
+
+### iOS Limitations
+
+```bash
+npm install
+npx expo prebuild --clean
+npx expo run:ios
+```
+
+**⚠️ iOS Restriction:** Apple doesn't allow third-party apps to access call logs or SMS history. You'll only get contact names.
+
+**Solution:** Use the built-in manual logging to track WhatsApp, Instagram, video calls, and in-person meetings.
+
 ### Prerequisites
 
 - Node.js v20+
-- iOS: Xcode (for iOS development)
-- Android: Android Studio (for Android development)
-
-### Installation
-
-```bash
-# Install dependencies
-npm install
-
-# Generate native code (required for Jazz)
-npx expo prebuild
-
-# Run on iOS
-npx expo run:ios
-
-# Run on Android
-npx expo run:android
-```
-
-**Note**: Nurture requires a development build and will not work with Expo Go due to native dependencies.
+- **Android**: Android Studio + physical device (emulators have no call/SMS history)
+- **iOS**: Xcode (for testing only - limited data due to Apple restrictions)
 
 ## Tech Stack
 

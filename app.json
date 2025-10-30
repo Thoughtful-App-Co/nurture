@@ -69,7 +69,10 @@
         {
           "faceIDPermission": "Nurture uses Face ID / Touch ID to securely lock your relationship data."
         }
-      ]
+      ],
+      "./plugins/withNetInfo",
+      "./plugins/withCallLog",
+      "./plugins/withSMS"
     ],
     "experiments": {
       "typedRoutes": true,

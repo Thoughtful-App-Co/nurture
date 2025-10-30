@@ -32,6 +32,11 @@ export interface Contact {
   totalDuration?: number;
   initiatedByUser?: number;
   initiatedByContact?: number;
+  
+  // Manual signals (override automatic detection)
+  isFavorite?: boolean;
+  qualityRating?: number; // 1-5 average from manual logs
+  manuallyPinned?: boolean;
 }
 
 interface LayerThreshold {
@@ -112,6 +117,19 @@ function calculateInteractionScore(contact: Contact): number {
     else if (contact.familyTier === 'TERTIARY') score += 5;
   }
   
+  // ⭐ MANUAL SIGNALS - these can override automatic detection
+  
+  // Favorite boost - strong signal of importance
+  if (contact.isFavorite) {
+    score += 20; // Significant boost to ensure favorites rank high
+  }
+  
+  // Quality rating boost - quality over quantity
+  if (contact.qualityRating) {
+    // 1-star = +0, 5-star = +15 points
+    score += (contact.qualityRating - 1) * 3.75;
+  }
+  
   // Normalize to 0-100 scale
   return Math.min(100, score);
 }
@@ -175,6 +193,17 @@ export async function calculateDunbarLayers(contacts: Contact[]): Promise<Contac
         // Secondary family should be in top 3 layers
         assignedLayer = Math.min(assignedLayer, 2);
       }
+    }
+    
+    // ⭐ Favorites get priority placement
+    if (contact.isFavorite && assignedLayer > 2) {
+      // Favorites should be at least in Close Group
+      assignedLayer = Math.min(assignedLayer, 2);
+    }
+    
+    // High quality interactions boost placement
+    if (contact.qualityRating && contact.qualityRating >= 4 && assignedLayer > 2) {
+      assignedLayer = Math.min(assignedLayer, 2);
     }
     
     return {
