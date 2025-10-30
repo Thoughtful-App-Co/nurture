@@ -33,15 +33,32 @@ export const Contact = co.map({
   contactInitiationRatio: z.number().optional(), // 0-1
   averageResponseTime: z.number().optional(), // seconds
   
-  // Family Structure
+  // Relationship Type & Family Structure
+  relationshipType: z.enum(["FAMILY", "FRIEND", "BUSINESS"]).optional(),
+  
+  // Family subcategories
   isFamily: z.boolean().optional(),
   familyTier: z.enum(["NUCLEAR", "SECONDARY", "TERTIARY"]).optional(),
   familyRole: z.string().optional(), // "mother", "brother", "cousin", etc.
   
-  // User Intent
+  // Friends subcategories (aligned with Dunbar layers)
+  friendTier: z.enum(["INNER_CIRCLE", "CLOSE_FRIEND", "GOOD_FRIEND", "CASUAL_FRIEND"]).optional(),
+  
+  // Business subcategories
+  businessTier: z.enum(["CLOSE_COLLEAGUE", "ACQUAINTANCE"]).optional(),
+  
+  // User Intent & Manual Overrides
   targetLayer: z.number().optional(), // desired layer
   cultivationGoal: z.enum(["MAINTAIN", "STRENGTHEN", "RECONNECT", "DEPRIORITIZE"]).optional(),
   notes: z.string().optional(),
+  manualLayerOverride: z.boolean().optional(), // Disable automatic strata placement
+  lockedLayer: z.number().optional(), // User-locked layer (ignores algorithm)
+  
+  // Manual Tracking & Quality Signals
+  isFavorite: z.boolean().optional(), // Manual "VIP" tag
+  qualityRating: z.number().min(1).max(5).optional(), // Average quality of recent interactions
+  manuallyPinned: z.boolean().optional(), // Force into a specific layer regardless of data
+  lastManualInteraction: z.string().optional(), // ISO date of last manual log
   
   // Classification
   vertical: z.enum(["FRIENDS", "BUSINESS"]).optional(),
@@ -52,15 +69,20 @@ export const Contact = co.map({
 
 /**
  * Represents an interaction/check-in with a contact
+ * Can be automatically detected OR manually logged
  */
 export const Interaction = co.map({
   contactId: z.string(),
+  contactName: z.string(),
   date: z.string(), // ISO date
-  type: z.enum(["face-to-face", "call", "text", "video", "email", "other"]),
+  type: z.enum(["face-to-face", "call", "text", "video", "email", "social-media", "other"]),
   duration: z.number().optional(), // in minutes
-  quality: z.number().min(1).max(5).optional(), // 1-5 rating
+  quality: z.number().min(1).max(5), // 1-5 rating (required for manual entries)
   notes: z.string().optional(),
+  platform: z.string().optional(), // e.g., "WhatsApp", "Instagram", "Zoom"
   location: z.string().optional(),
+  source: z.enum(["manual", "automatic"]), // Track how it was logged
+  createdAt: z.string(), // ISO date
 });
 
 /**

@@ -4,9 +4,10 @@
  * Allows quick viewing and editing of contact information
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { View, Text, ScrollView, Pressable } from 'react-native';
 import { ContactDetailModal } from './ContactDetailModal';
+import { RelationshipTypeSelector, type RelationshipTypeData } from './RelationshipTypeSelector';
 
 interface Contact {
   id?: string;
@@ -15,8 +16,11 @@ interface Contact {
   interactionScore?: number;
   lastInteraction?: string;
   interactionFrequency?: number;
+  relationshipType?: 'FAMILY' | 'FRIEND' | 'BUSINESS';
   isFamily?: boolean;
   familyTier?: 'NUCLEAR' | 'SECONDARY' | 'TERTIARY';
+  friendTier?: 'INNER_CIRCLE' | 'CLOSE_FRIEND' | 'GOOD_FRIEND' | 'CASUAL_FRIEND';
+  businessTier?: 'CLOSE_COLLEAGUE' | 'ACQUAINTANCE';
   familyRole?: string;
   notes?: string;
   cultivationGoal?: 'MAINTAIN' | 'STRENGTHEN' | 'RECONNECT' | 'DEPRIORITIZE';
@@ -41,6 +45,8 @@ interface Props {
 
 export function LayerDetailScreen({ layer, contacts, onBack, onContactUpdate }: Props) {
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [relationshipSelectorContact, setRelationshipSelectorContact] = useState<Contact | null>(null);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const formatLastInteraction = (date?: string) => {
     if (!date) return 'No recent contact';
@@ -63,6 +69,67 @@ export function LayerDetailScreen({ layer, contacts, onBack, onContactUpdate }: 
       case 'DEPRIORITIZE': return 'text-zinc-500';
       default: return 'text-zinc-400';
     }
+  };
+
+  const handleLongPressStart = (contact: Contact) => {
+    longPressTimer.current = setTimeout(() => {
+      setRelationshipSelectorContact(contact);
+    }, 800); // 800ms long press
+  };
+
+  const handlePressEnd = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+
+  const handleRelationshipTypeSelect = (data: RelationshipTypeData) => {
+    if (!relationshipSelectorContact) return;
+
+    const updatedContact = {
+      ...relationshipSelectorContact,
+      relationshipType: data.relationshipType,
+      isFamily: data.relationshipType === 'FAMILY',
+      familyTier: data.familyTier,
+      friendTier: data.friendTier,
+      businessTier: data.businessTier,
+    };
+
+    onContactUpdate(updatedContact);
+    setRelationshipSelectorContact(null);
+  };
+
+  const getRelationshipBadge = (contact: Contact) => {
+    if (contact.relationshipType === 'FAMILY' && contact.familyTier) {
+      const tierLabels = {
+        NUCLEAR: 'Nuclear Family',
+        SECONDARY: 'Extended Family',
+        TERTIARY: 'Distant Family',
+      };
+      return { emoji: '👨‍👩‍👧‍👦', label: tierLabels[contact.familyTier], color: 'text-red-400' };
+    }
+    if (contact.relationshipType === 'FRIEND' && contact.friendTier) {
+      const tierLabels = {
+        INNER_CIRCLE: 'Inner Circle',
+        CLOSE_FRIEND: 'Close Friend',
+        GOOD_FRIEND: 'Good Friend',
+        CASUAL_FRIEND: 'Casual Friend',
+      };
+      return { emoji: '🤝', label: tierLabels[contact.friendTier], color: 'text-green-400' };
+    }
+    if (contact.relationshipType === 'BUSINESS' && contact.businessTier) {
+      const tierLabels = {
+        CLOSE_COLLEAGUE: 'Close Colleague',
+        ACQUAINTANCE: 'Acquaintance',
+      };
+      return { emoji: '💼', label: tierLabels[contact.businessTier], color: 'text-blue-400' };
+    }
+    // Fallback for legacy isFamily field
+    if (contact.isFamily) {
+      return { emoji: '👨‍👩‍👧‍👦', label: 'Family', color: 'text-red-400' };
+    }
+    return null;
   };
 
   return (
@@ -102,10 +169,15 @@ export function LayerDetailScreen({ layer, contacts, onBack, onContactUpdate }: 
               </Text>
             </View>
           ) : (
-            contacts.map((contact, index) => (
+            contacts.map((contact, index) => {
+              const relationshipBadge = getRelationshipBadge(contact);
+              
+              return (
               <Pressable
                 key={contact.id || index}
                 onPress={() => setSelectedContact(contact)}
+                onPressIn={() => handleLongPressStart(contact)}
+                onPressOut={handlePressEnd}
                 className="mb-3 bg-zinc-900 border border-zinc-800 p-4 active:bg-zinc-800"
               >
                 {/* Contact Header */}
@@ -115,17 +187,29 @@ export function LayerDetailScreen({ layer, contacts, onBack, onContactUpdate }: 
                       {contact.name}
                     </Text>
                     
-                    {contact.isFamily && (
-                      <View className="flex-row items-center mb-1">
-                        <Text className="text-xs text-primary font-medium mr-2">
-                          👨‍👩‍👧‍👦 FAMILY
+                    {relationshipBadge && (
+                      <Pressable 
+                        onPress={() => setRelationshipSelectorContact(contact)}
+                        className="flex-row items-center mb-1 self-start"
+                      >
+                        <Text className={`text-xs font-medium mr-2 ${relationshipBadge.color}`}>
+                          {relationshipBadge.emoji} {relationshipBadge.label.toUpperCase()}
                         </Text>
-                        {contact.familyRole && (
-                          <Text className="text-xs text-zinc-400">
-                            {contact.familyRole}
-                          </Text>
-                        )}
-                      </View>
+                        <Text className="text-xs text-zinc-500">
+                          (tap to change)
+                        </Text>
+                      </Pressable>
+                    )}
+                    
+                    {!relationshipBadge && (
+                      <Pressable 
+                        onPress={() => setRelationshipSelectorContact(contact)}
+                        className="mb-1 self-start"
+                      >
+                        <Text className="text-xs text-zinc-500">
+                          Tap to set relationship type
+                        </Text>
+                      </Pressable>
                     )}
                     
                     <Text className="text-secondary text-sm">
@@ -175,11 +259,12 @@ export function LayerDetailScreen({ layer, contacts, onBack, onContactUpdate }: 
                 {/* Tap to edit indicator */}
                 <View className="mt-2">
                   <Text className="text-zinc-600 text-xs text-right">
-                    Tap to view/edit →
+                    Tap to view/edit • Hold to categorize →
                   </Text>
                 </View>
               </Pressable>
-            ))
+              );
+            })
           )}
         </View>
       </ScrollView>
@@ -194,6 +279,22 @@ export function LayerDetailScreen({ layer, contacts, onBack, onContactUpdate }: 
             onContactUpdate(updatedContact);
             setSelectedContact(null);
           }}
+        />
+      )}
+
+      {/* Relationship Type Selector Modal */}
+      {relationshipSelectorContact && (
+        <RelationshipTypeSelector
+          visible={true}
+          contactName={relationshipSelectorContact.name}
+          currentType={relationshipSelectorContact.relationshipType ? {
+            relationshipType: relationshipSelectorContact.relationshipType,
+            familyTier: relationshipSelectorContact.familyTier,
+            friendTier: relationshipSelectorContact.friendTier,
+            businessTier: relationshipSelectorContact.businessTier,
+          } : undefined}
+          onSelect={handleRelationshipTypeSelect}
+          onClose={() => setRelationshipSelectorContact(null)}
         />
       )}
     </View>
