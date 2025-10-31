@@ -104,3 +104,8 @@ Through these principles, Nurture stands as a counterpoint to the attention econ
 **Look and Feel:** stark, paper feel, pixelated, lo-fi
 
 **Favor:** dark mode
+
+## Thoughtful App Core Philosophy
+1. **Phone as Server**: Minimal screen time, meaningful drill-down only. App processes in background, surfaces insights proactively.
+2. **Push vs Pull**: Tell users what matters, don't make them hunt. Proactive nudges > reactive dashboards.
+3. **Digital Minimalism**: <20 min/day interaction target. Drive offline action, not app engagement.
