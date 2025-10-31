@@ -151,6 +151,7 @@ export const UserProfile = co.map({
   displayName: z.string(),
   email: z.string().optional(),
   phone: z.string().optional(),
+  hasCompletedContactAnalysis: z.boolean().optional(), // Track if one-time contact analysis is complete
   contacts: ContactList,
   interactions: InteractionList,
   goals: GoalList,
