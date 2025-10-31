@@ -257,49 +257,50 @@ Complete authentication + data mining + layer discovery for 100 beta users withi
 
 **STORY-001: Contact Data Ingestion** (P0)
 - Import and normalize contact data from device
-- Acceptance Criteria:
-  - Request and handle contact permissions
-  - Import all device contacts with full metadata
-  - Deduplicate contacts across multiple sources
-  - Handle missing data gracefully
-  - Store raw contact data in Jazz
-- Tech: `expo-contacts`
-- Complexity: Medium
+- **Definition of Done**:
+  - Contact permissions granted and handled gracefully
+  - All device contacts imported with metadata
+  - Deduplication algorithm removes 95%+ duplicates
+  - Raw data persisted to Jazz
+  - Background sync runs without UI
+- **Test Criteria**:
+  - Import 1000+ contacts in <10 seconds
+  - Handle permission denial gracefully
+  - Process contacts with missing fields
+  - Verify deduplication accuracy >95%
+  - Confirm Jazz persistence and retrieval
 
 **STORY-002: Call & SMS Log Mining** (P0)
 - Extract interaction patterns from call and message history
-- Acceptance Criteria:
-  - Request call log and SMS permissions
-  - Extract call frequency, duration, recency per contact
-  - Calculate SMS frequency and reciprocity per contact
-  - Identify initiation patterns
-  - Calculate response time metrics
-  - Store interaction events in Jazz
-- Tech: Platform-specific APIs, Jazz CoValues
-- Complexity: High
+- **Definition of Done**:
+  - Permissions requested progressively
+  - 6 months of history processed
+  - Interaction events stored with all metrics
+  - Background processing (phone as server)
+  - No UI required after permission grant
+- **Test Criteria**:
+  - Process 10K call logs in <30 seconds
+  - Calculate reciprocity score accurately
+  - Response time calculation ±5 minutes accuracy
+  - Background processing completes without UI
 
 **STORY-003: Dunbar Layer Calculator** (P0)
-- Algorithm to assign contacts to Dunbar layers based on interaction data
-- Acceptance Criteria:
-  - Calculate composite interaction score per contact
-  - Weight recent interactions higher than old ones
-  - Factor in reciprocity and initiation balance
-  - Assign layer 0-6 based on rank and thresholds
-  - Respect natural Dunbar boundaries
-  - Recalculate layers on schedule (daily/weekly)
-  - Handle edge cases
-- Algorithm: Weighted scoring with exponential decay
-- Performance: <2 seconds for 1000 contacts
-- Complexity: High
+- Algorithm to assign contacts to Dunbar layers
+- **Definition of Done**:
+  - Layers calculated for all contacts
+  - Algorithm runs in background daily
+  - Push notification when layers shift significantly
+  - No manual intervention required
+- **Test Criteria**:
+  - <2 seconds for 1000 contacts
+  - Layer stability (90% remain stable week-to-week)
+  - Validate against manual classification (80% accuracy)
+  - Background execution without UI
 
-**STORY-004: Calendar Integration** (P1)
-- Mine calendar for shared events and meeting patterns
-- Tech: `expo-calendar`
-- Complexity: Medium
+~~**STORY-004: Calendar Integration**~~ (REMOVED - not implementing)
 
-**STORY-005: Social Media Integration** (P2)
-- Pull interaction data from social platforms (Future enhancement)
-- Complexity: Very High
+**STORY-005: Social Media Integration** (MOONSHOT - Future)
+- Reserved for future enhancement
 
 ---
 
@@ -354,22 +355,34 @@ Complete authentication + data mining + layer discovery for 100 beta users withi
 
 #### Stories
 
-**STORY-011: Layer-Based Dashboard** (P0)
-- Primary view showing relationship health by layer
-- UX:
-  - Style: Stark, paper-like, pixelated aesthetic
-  - Colors: Green primary, steel secondary, purple/orange accents
-- Complexity: High
+**STORY-011: Proactive Dashboard** (P0)
+- Push insights, don't make users hunt
+- **Definition of Done**:
+  - Opens directly to "What matters today" card
+  - Maximum 3 actions shown
+  - Each action is one-tap executable
+  - Dashboard visit <30 seconds average
+- **Test Criteria**:
+  - Time to first action <5 seconds
+  - 90% of visits result in action taken
+  - No scrolling required for primary actions
 
 **STORY-012: Contact Detail View** (P0)
 - Deep dive into individual relationship
 - Visualization: Timeline view of interaction history
 - Complexity: High
 
-**STORY-013: Cultivation Nudges & Reminders** (P0)
-- Smart notifications that drive offline action
-- Tech: `expo-notifications`, Jazz Cloud Functions
-- Complexity: High
+**STORY-013: Smart Nudges** (P0)
+- Proactive push notifications driving offline action
+- **Definition of Done**:
+  - Nudges fire at optimal times (lunch, evening)
+  - One-tap to mark complete
+  - Actionable text ("Call Mom" not "Contact reminder")
+  - Snooze reschedules intelligently
+- **Test Criteria**:
+  - 60% nudge → action rate
+  - Average response time <2 hours
+  - Nudge text clarity (A/B test variants)
 
 **STORY-014: Interaction Logging** (P1)
 - Manual logging of interactions outside auto-detection
