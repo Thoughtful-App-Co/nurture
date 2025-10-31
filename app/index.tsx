@@ -26,16 +26,27 @@ export default function Index() {
   const appState = useRef(RNAppState.currentState);
   const auth = useDemoAuth();
 
-  // Check if user needs onboarding (no displayName set)
+  // Check if user needs onboarding (no displayName set) or contact analysis (no completion flag)
   useEffect(() => {
     if (me) {
       const root = me.root as any;
       const needsOnboarding = !root?.displayName;
+      const needsContactAnalysis = root?.displayName && !root?.hasCompletedContactAnalysis;
+      
+      console.log('Flow check:', {
+        displayName: root?.displayName,
+        hasCompletedContactAnalysis: root?.hasCompletedContactAnalysis,
+        contactCount: root?.contacts?.length || 0,
+        needsOnboarding,
+        needsContactAnalysis,
+      });
       
       if (needsOnboarding) {
         setFlow('onboarding');
+      } else if (needsContactAnalysis) {
+        setFlow('data-mining');
       } else {
-        // User has completed onboarding - go straight to ready
+        // User has completed both onboarding AND contact analysis - go to dashboard
         // TODO: Re-enable biometric lock after MVP
         setFlow('ready');
       }
@@ -105,13 +116,15 @@ export default function Index() {
           // Save onboarding data for data mining screen
           setOnboardingData(data);
           
-          // If contacts permission granted, go to data mining
-          if (data.hasContactsPermission) {
-            setFlow('data-mining');
-          } else {
-            // Skip data mining, go straight to ready
-            setFlow('ready');
-          }
+           // If contacts permission granted, go to data mining
+           if (data.hasContactsPermission) {
+             setFlow('data-mining');
+           } else {
+             // User skipped/denied contacts permission - mark as "attempted" so we don't ask again
+             console.log('User skipped contacts permission - marking as completed');
+             root.$jazz.set('hasCompletedContactAnalysis', true);
+             setFlow('ready');
+           }
         }}
       />
     );
@@ -120,6 +133,12 @@ export default function Index() {
   // Data mining flow
   if (flow === 'data-mining') {
     const root = me.root as any;
+    
+    // Debug logging
+    console.log('📊 Entering data-mining flow');
+    console.log('Has completed analysis?', root?.hasCompletedContactAnalysis);
+    console.log('Existing contacts count:', root?.contacts?.length || 0);
+    
     const savedFamilyNames = root?.familyNames ? {
       birthLastName: root.familyNames.birthLastName,
       currentLastName: root.familyNames.currentLastName,
@@ -199,14 +218,18 @@ export default function Index() {
             newContactsList.push(contactData);
           }
           
-          // Replace the entire contacts list using $jazz.set
-          const newContacts = ContactList.create(newContactsList, me);
-          root.$jazz.set('contacts', newContacts);
-          
-          console.log(`Saved ${newContactsList.length} contacts to Jazz`);
-          
-          // Go to ready state (will redirect to dashboard)
-          setFlow('ready');
+           // Replace the entire contacts list using $jazz.set
+           const newContacts = ContactList.create(newContactsList, me);
+           root.$jazz.set('contacts', newContacts);
+           
+           console.log(`Saved ${newContactsList.length} contacts to Jazz`);
+           
+           // Mark contact analysis as completed - prevents re-running on app restart
+           root.$jazz.set('hasCompletedContactAnalysis', true);
+           console.log('✅ Contact analysis marked as completed');
+           
+           // Go to ready state (will redirect to dashboard)
+           setFlow('ready');
         }}
       />
     );
