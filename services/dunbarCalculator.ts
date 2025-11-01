@@ -34,7 +34,6 @@ export interface Contact {
   initiatedByContact?: number;
   
   // Manual signals (override automatic detection)
-  isFavorite?: boolean;
   qualityRating?: number; // 1-5 average from manual logs
   manuallyPinned?: boolean;
 }
@@ -119,11 +118,6 @@ function calculateInteractionScore(contact: Contact): number {
   
   // ⭐ MANUAL SIGNALS - these can override automatic detection
   
-  // Favorite boost - strong signal of importance
-  if (contact.isFavorite) {
-    score += 20; // Significant boost to ensure favorites rank high
-  }
-  
   // Quality rating boost - quality over quantity
   if (contact.qualityRating) {
     // 1-star = +0, 5-star = +15 points
@@ -136,7 +130,7 @@ function calculateInteractionScore(contact: Contact): number {
 
 /**
  * Assign Dunbar layers to contacts based on interaction scores
- * Uses PERCENTILE-BASED distribution to avoid overcrowding Social Nebula
+ * WITH BUMP ALGORITHMS to fill layers top-to-bottom when data is sparse
  */
 export async function calculateDunbarLayers(contacts: Contact[]): Promise<Contact[]> {
   // Step 1: Calculate interaction scores for all contacts
@@ -158,77 +152,154 @@ export async function calculateDunbarLayers(contacts: Contact[]): Promise<Contac
   
   console.log(`👨‍👩‍👧‍👦 Prioritizing ${nuclearFamily.length} nuclear family members for intimate layers`);
   
-  // Step 5: Filter out zero-interaction contacts (they go to Social Nebula)
-  const activeContacts = sortedContacts.filter(c => (c.interactionScore || 0) > 0);
-  const zeroInteractionContacts = sortedContacts.filter(c => (c.interactionScore || 0) === 0);
+  // Step 5: Apply BUMP ALGORITHMS for contacts with zero interaction but strong signals
+  // These should NOT automatically go to Social Nebula
+  const contactsWithBumps = sortedContacts.map(contact => {
+    let bumpedScore = contact.interactionScore || 0;
+    const bumps: string[] = [];
+    
+    // BUMP #1: Family members with zero data get minimum layer 2 (Clan) score
+    if (contact.isFamily && bumpedScore === 0) {
+      if (contact.familyTier === 'NUCLEAR') {
+        bumpedScore = 85; // Layer 0/1 range
+        bumps.push('Nuclear family (no data) -> Layer 0-1');
+      } else if (contact.familyTier === 'SECONDARY') {
+        bumpedScore = 60; // Layer 2 range
+        bumps.push('Secondary family (no data) -> Layer 2');
+      } else {
+        bumpedScore = 40; // Layer 3 range
+        bumps.push('Extended family (no data) -> Layer 3');
+      }
+    }
+    
+    // BUMP #2: High manual quality ratings bump up
+    if (contact.qualityRating && contact.qualityRating >= 4 && bumpedScore < 50) {
+      bumpedScore = Math.max(bumpedScore, 50); // Layer 2 minimum
+      bumps.push(`Quality ${contact.qualityRating}⭐ -> Layer 2 minimum`);
+    }
+    
+    // BUMP #3: Contacts in phone but no data should still be distributed across layers 2-4
+    // This prevents EVERYONE going to layer 5 when there's no conversation data
+    if (bumpedScore === 0 && !contact.isFamily) {
+      // Give them a small baseline score so they can be distributed
+      // This will be refined by the "fill top-to-bottom" algorithm below
+      bumpedScore = 5; // Just above zero, will place in layer 4 by default
+      bumps.push('Contact with no data -> Layer 4 baseline');
+    }
+    
+    if (bumps.length > 0) {
+      console.log(`🚀 BUMP: ${contact.name} - ${bumps.join(', ')}`);
+    }
+    
+    return {
+      ...contact,
+      interactionScore: bumpedScore,
+    };
+  });
   
-  console.log(`📊 Distribution: ${activeContacts.length} active, ${zeroInteractionContacts.length} zero-interaction`);
+  // Re-sort after bumps
+  contactsWithBumps.sort((a, b) => (b.interactionScore || 0) - (a.interactionScore || 0));
   
   const layerCounts = [0, 0, 0, 0, 0, 0];
   
   // Step 6: Assign layers based on SCORE THRESHOLDS with capacity limits
-  // This ensures relative distribution based on actual relationship strength, not arbitrary percentiles
-  const layeredActiveContacts = sortedContacts
-    .filter(c => (c.interactionScore || 0) > 0)
-    .map(contact => {
-      const score = contact.interactionScore || 0;
-      let assignedLayer = 4; // Default to Acquaintances (not Social Nebula!)
-      
-      // Find the appropriate layer based on score thresholds
-      for (const threshold of LAYER_THRESHOLDS) {
-        if (score >= threshold.minScore) {
-          // Check if this layer is at capacity
-          if (layerCounts[threshold.layer] < threshold.maxCount) {
-            assignedLayer = threshold.layer;
-            break;
-          }
+  const layeredContacts = contactsWithBumps.map(contact => {
+    const score = contact.interactionScore || 0;
+    let assignedLayer = 5; // Default to Social Nebula
+    
+    // Find the appropriate layer based on score thresholds
+    for (const threshold of LAYER_THRESHOLDS) {
+      if (score >= threshold.minScore) {
+        // Check if this layer is at capacity
+        if (layerCounts[threshold.layer] < threshold.maxCount) {
+          assignedLayer = threshold.layer;
+          break;
         }
       }
-      
-      // Family members get special treatment
-      if (contact.isFamily) {
-        if (contact.familyTier === 'NUCLEAR') {
-          // Nuclear family should be in top 2 layers (0 or 1)
-          assignedLayer = Math.min(assignedLayer, 1);
-          // If layer 0 is full, put in layer 1
-          if (assignedLayer === 0 && layerCounts[0] >= LAYER_THRESHOLDS[0].maxCount) {
-            assignedLayer = 1;
-          }
-        } else if (contact.familyTier === 'SECONDARY') {
-          // Secondary family should be in top 3 layers (0-2)
-          assignedLayer = Math.min(assignedLayer, 2);
+    }
+    
+    // Family members get special treatment
+    if (contact.isFamily) {
+      if (contact.familyTier === 'NUCLEAR') {
+        // Nuclear family should be in top 2 layers (0 or 1)
+        assignedLayer = Math.min(assignedLayer, 1);
+        // If layer 0 is full, put in layer 1
+        if (assignedLayer === 0 && layerCounts[0] >= LAYER_THRESHOLDS[0].maxCount) {
+          assignedLayer = 1;
         }
-      }
-      
-      // ⭐ Favorites get priority placement
-      if (contact.isFavorite && assignedLayer > 2) {
+      } else if (contact.familyTier === 'SECONDARY') {
+        // Secondary family should be in top 3 layers (0-2)
         assignedLayer = Math.min(assignedLayer, 2);
       }
+    }
+    
+    // High quality interactions boost placement
+    if (contact.qualityRating && contact.qualityRating >= 4 && assignedLayer > 2) {
+      assignedLayer = Math.min(assignedLayer, 2);
+    }
+    
+    layerCounts[assignedLayer]++;
+    
+    return {
+      ...contact,
+      dunbarLayer: assignedLayer,
+    };
+  });
+  
+  // Step 7: SMART REDISTRIBUTION - Fill layers top-to-bottom if layer 5 is overcrowded
+  // This handles the case where most contacts have no conversation data
+  const layer5Count = layerCounts[5];
+  const totalContacts = contacts.length;
+  const layer5Percentage = (layer5Count / totalContacts) * 100;
+  
+  console.log(`📊 Layer 5 (Social Nebula): ${layer5Count} contacts (${layer5Percentage.toFixed(1)}%)`);
+  
+  // If more than 50% of contacts are in layer 5, redistribute them
+  if (layer5Percentage > 50) {
+    console.log(`🚨 WARNING: ${layer5Percentage.toFixed(1)}% of contacts in Layer 5 (Social Nebula)`);
+    console.log(`🔄 REDISTRIBUTION: Filling layers top-to-bottom to prevent overcrowding`);
+    
+    // Get all layer 5 contacts sorted by any available signal
+    const layer5Contacts = layeredContacts.filter(c => c.dunbarLayer === 5);
+    
+    // Re-sort layer 5 by priority signals (family > manual quality > alphabetical)
+    layer5Contacts.sort((a, b) => {
+      // Family first
+      if (a.isFamily && !b.isFamily) return -1;
+      if (!a.isFamily && b.isFamily) return 1;
       
-      // High quality interactions boost placement
-      if (contact.qualityRating && contact.qualityRating >= 4 && assignedLayer > 2) {
-        assignedLayer = Math.min(assignedLayer, 2);
-      }
+      // Then quality rating
+      const aQuality = a.qualityRating || 0;
+      const bQuality = b.qualityRating || 0;
+      if (aQuality !== bQuality) return bQuality - aQuality;
       
-      layerCounts[assignedLayer]++;
-      
-      return {
-        ...contact,
-        dunbarLayer: assignedLayer,
-      };
+      // Then alphabetical
+      return a.name.localeCompare(b.name);
     });
+    
+    // Redistribute into higher layers (fill 4 -> 3 -> 2)
+    const layersToFill = [4, 3, 2]; // Acquaintances, Tribe, Clan
+    let redistributed = 0;
+    
+    for (const contact of layer5Contacts) {
+      // Try to place in the next available layer
+      for (const targetLayer of layersToFill) {
+        const threshold = LAYER_THRESHOLDS[targetLayer];
+        if (layerCounts[targetLayer] < threshold.maxCount) {
+          contact.dunbarLayer = targetLayer;
+          layerCounts[5]--;
+          layerCounts[targetLayer]++;
+          redistributed++;
+          break;
+        }
+      }
+    }
+    
+    console.log(`✅ Redistributed ${redistributed} contacts from Layer 5 to Layers 2-4`);
+  }
   
-  // Step 7: Assign ONLY zero-interaction contacts to Social Nebula
-  const layeredZeroContacts = zeroInteractionContacts.map(contact => ({
-    ...contact,
-    dunbarLayer: 5, // Social Nebula - only for zero interaction
-  }));
-  
-  layerCounts[5] = zeroInteractionContacts.length;
-  
-  // Step 8: Combine and sort by layer
-  const allLayeredContacts = [...layeredActiveContacts, ...layeredZeroContacts];
-  allLayeredContacts.sort((a, b) => {
+  // Step 8: Sort by layer, then by score within each layer
+  layeredContacts.sort((a, b) => {
     if (a.dunbarLayer !== b.dunbarLayer) {
       return a.dunbarLayer! - b.dunbarLayer!;
     }
@@ -236,19 +307,17 @@ export async function calculateDunbarLayers(contacts: Contact[]): Promise<Contac
   });
   
   // Log layer distribution for debugging
-  console.log("Dunbar Layer Distribution (Score-Based):", {
+  console.log("Dunbar Layer Distribution (Bump Algorithm):", {
     layer0_loved: `${layerCounts[0]} (${((layerCounts[0] / contacts.length) * 100).toFixed(1)}%)`,
     layer1_close: `${layerCounts[1]} (${((layerCounts[1] / contacts.length) * 100).toFixed(1)}%)`,
     layer2_clan: `${layerCounts[2]} (${((layerCounts[2] / contacts.length) * 100).toFixed(1)}%)`,
     layer3_tribe: `${layerCounts[3]} (${((layerCounts[3] / contacts.length) * 100).toFixed(1)}%)`,
     layer4_acquaintances: `${layerCounts[4]} (${((layerCounts[4] / contacts.length) * 100).toFixed(1)}%)`,
-    layer5_nebula: `${layerCounts[5]} (${((layerCounts[5] / contacts.length) * 100).toFixed(1)}%) - ZERO INTERACTION ONLY`,
+    layer5_nebula: `${layerCounts[5]} (${((layerCounts[5] / contacts.length) * 100).toFixed(1)}%)`,
     total: contacts.length,
-    active_contacts: activeContacts.length,
-    zero_interaction: zeroInteractionContacts.length,
   });
   
-  return allLayeredContacts;
+  return layeredContacts;
 }
 
 /**
