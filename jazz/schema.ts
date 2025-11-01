@@ -64,6 +64,10 @@ export const Contact = co.map({
   vertical: z.enum(["FRIENDS", "BUSINESS"]).optional(),
   tags: z.array(z.string()).optional(),
   
+  // Quick Sort Utility (prevents double-sorting)
+  quickSortStatus: z.enum(["not_sorted", "sorted", "hidden"]).optional(), // Tracks if contact has been sorted
+  quickSortedAt: z.string().optional(), // ISO date of when contact was quick-sorted
+  
   createdAt: z.string(), // ISO date
 });
 
