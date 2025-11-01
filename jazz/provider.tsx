@@ -29,9 +29,12 @@ export const NurtureAccount = co.account({
     const now = new Date().toISOString();
     
     // Create the root UserProfile with properly initialized CoValues
+    // NOTE: displayName is intentionally empty - will be set during onboarding
+    // hasCompletedOnboarding flag ensures user goes through proper data collection
     const root = UserProfile.create(
       {
-        displayName: creationProps?.name || "New User",
+        displayName: "", // Will be set during onboarding
+        hasCompletedOnboarding: false, // User must complete onboarding
         contacts: ContactList.create([], account),
         interactions: InteractionList.create([], account),
         goals: GoalList.create([], account),
