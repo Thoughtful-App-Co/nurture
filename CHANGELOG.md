@@ -5,6 +5,43 @@ All notable changes to the Nurture app will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.4] - 2025-11-01
+
+### Fixed
+
+#### Dunbar Layer Distribution Algorithm
+- **Critical**: Fixed layer distribution using score-based thresholds instead of percentiles
+  - Previous percentile-based approach put 51% of contacts in Social Nebula (incorrect)
+  - Now uses relative scoring based on actual relationship strength
+  - Only contacts with ZERO interaction go to Social Nebula
+  - All active contacts (score > 0) distributed across layers 0-4
+  - Distribution now reflects true relationship quality, not arbitrary percentages
+
+#### Family Detection & Prioritization
+- **Enhanced family surname matching**:
+  - Current/spouse surname matches → NUCLEAR tier (top 2 layers)
+  - Birth surname matches → SECONDARY tier (top 3 layers)
+  - Nuclear family members automatically prioritized to layers 0-1
+  - Prevents family from being relegated to outer layers due to low interaction frequency
+
+### Changed
+
+#### Layer Naming Refinements
+- **Layer 1**: "Good Friends" → **"Close Friends"** (better accommodates immediate family)
+- **Layer 2**: "Friends (Clan)" → **"Clan"** (cleaner, family mentioned in description)
+- **Layer 3**: "Meaningful Contacts (Tribe)" → **"Tribe"** (simpler naming)
+- Updated all layer descriptions to mention both friends and family throughout
+- Social Nebula description now emphasizes "minimal or zero interaction"
+
+#### User Experience
+- **Removed "Add people to this layer" UI components**
+  - Quick Sort is now the default/only way to manually categorize contacts
+  - Cleaner garden view without redundant action prompts
+  - Empty layers now show nothing instead of "add people" button
+  - Encourages use of Quick Sort feature for intentional curation
+
+---
+
 ## [0.2.3] - 2025-11-01
 
 ### Changed
@@ -33,16 +70,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - More intuitive and informative for users at a glance
   - Updated prompt text from "room for X more" to "X remaining"
   - Visual progress bars now accurately reflect percentage of layer capacity
-
-#### Calculator Logic
-- Updated layer capacity thresholds in dunbarCalculator.ts to match new definitions
-- Adjusted percentile distribution for proper scaling across all 1500 recognizable people
-  - Layer 0: 0.3% (top 5 people)
-  - Layer 1: 0.7% (5-15 people)
-  - Layer 2: 2.3% (15-50 people)
-  - Layer 3: 6.7% (50-150 people)
-  - Layer 4: 23.3% (150-500 people)
-  - Layer 5: 66.7% (500-1500 people)
 
 ---
 
@@ -257,6 +284,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History
 
+- **0.2.4** - Fixed layer distribution algorithm, improved family detection, refined naming
 - **0.2.3** - Improved Dunbar layer naming, better descriptions, garden view display format
 - **0.2.2** - Glassmorphic tab bar, smooth transitions, tab consistency fixes
 - **0.2.1** - Interaction metrics persistence, nuclear family prioritization, UX fixes
