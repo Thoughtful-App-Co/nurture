@@ -11,13 +11,13 @@ import { View, Text, Pressable, Modal } from 'react-native';
 
 export type RelationshipType = 'FAMILY' | 'FRIEND' | 'BUSINESS';
 export type FamilyTier = 'NUCLEAR' | 'SECONDARY' | 'TERTIARY';
-export type FriendTier = 'INNER_CIRCLE' | 'CLOSE_FRIEND' | 'GOOD_FRIEND' | 'CASUAL_FRIEND';
+export type ConnectionOrigin = 'FAMILY_FRIEND' | 'NEIGHBOR' | 'SCHOOL' | 'HOBBY_SPORTS' | 'WORK' | 'OTHER';
 export type BusinessTier = 'CLOSE_COLLEAGUE' | 'ACQUAINTANCE';
 
 export interface RelationshipTypeData {
   relationshipType: RelationshipType;
   familyTier?: FamilyTier;
-  friendTier?: FriendTier;
+  connectionOrigin?: ConnectionOrigin;
   businessTier?: BusinessTier;
   familyRole?: string;
 }
@@ -58,7 +58,7 @@ export function RelationshipTypeSelector({
     if (selectedType === 'FAMILY') {
       data.familyTier = subcategory as FamilyTier;
     } else if (selectedType === 'FRIEND') {
-      data.friendTier = subcategory as FriendTier;
+      data.connectionOrigin = subcategory as ConnectionOrigin;
     } else if (selectedType === 'BUSINESS') {
       data.businessTier = subcategory as BusinessTier;
     }
@@ -194,54 +194,78 @@ export function RelationshipTypeSelector({
         Friend
       </Text>
       <Text className="text-secondary text-base mb-6">
-        How would you describe this friendship?
+        How did you meet {contactName}?
       </Text>
 
       <Pressable
-        onPress={() => handleSubcategorySelect('INNER_CIRCLE')}
+        onPress={() => handleSubcategorySelect('FAMILY_FRIEND')}
         className="mb-3 p-5 bg-green-950/30 border-2 border-green-900 active:bg-green-950/50"
       >
         <Text className="text-green-400 text-lg font-semibold mb-1">
-          Inner Circle
+          Family Friend
         </Text>
         <Text className="text-green-300 text-sm">
-          Your closest confidants (Layer 0-1)
+          Through family connections
         </Text>
       </Pressable>
 
       <Pressable
-        onPress={() => handleSubcategorySelect('CLOSE_FRIEND')}
-        className="mb-3 p-5 bg-green-950/20 border-2 border-green-800 active:bg-green-950/40"
+        onPress={() => handleSubcategorySelect('NEIGHBOR')}
+        className="mb-3 p-5 bg-green-950/30 border-2 border-green-900 active:bg-green-950/50"
       >
         <Text className="text-green-400 text-lg font-semibold mb-1">
-          Close Friend
+          Neighbor
         </Text>
         <Text className="text-green-300 text-sm">
-          Friends you see regularly (Layer 2)
+          Lives nearby, local community
         </Text>
       </Pressable>
 
       <Pressable
-        onPress={() => handleSubcategorySelect('GOOD_FRIEND')}
-        className="mb-3 p-5 bg-green-950/15 border-2 border-green-700 active:bg-green-950/35"
+        onPress={() => handleSubcategorySelect('SCHOOL')}
+        className="mb-3 p-5 bg-green-950/30 border-2 border-green-900 active:bg-green-950/50"
       >
         <Text className="text-green-400 text-lg font-semibold mb-1">
-          Good Friend
+          School
         </Text>
         <Text className="text-green-300 text-sm">
-          Part of your broader social circle (Layer 3)
+          Classmate, college friend, study buddy
         </Text>
       </Pressable>
 
       <Pressable
-        onPress={() => handleSubcategorySelect('CASUAL_FRIEND')}
-        className="mb-3 p-5 bg-green-950/10 border-2 border-green-600 active:bg-green-950/30"
+        onPress={() => handleSubcategorySelect('HOBBY_SPORTS')}
+        className="mb-3 p-5 bg-green-950/30 border-2 border-green-900 active:bg-green-950/50"
       >
         <Text className="text-green-400 text-lg font-semibold mb-1">
-          Casual Friend
+          Hobby
         </Text>
         <Text className="text-green-300 text-sm">
-          Occasional hangouts, friendly acquaintances (Layer 4+)
+          Sports, music, activities, shared interests
+        </Text>
+      </Pressable>
+
+      <Pressable
+        onPress={() => handleSubcategorySelect('WORK')}
+        className="mb-3 p-5 bg-green-950/30 border-2 border-green-900 active:bg-green-950/50"
+      >
+        <Text className="text-green-400 text-lg font-semibold mb-1">
+          Work
+        </Text>
+        <Text className="text-green-300 text-sm">
+          Colleague, coworker, professional connection
+        </Text>
+      </Pressable>
+
+      <Pressable
+        onPress={() => handleSubcategorySelect('OTHER')}
+        className="mb-3 p-5 bg-green-950/30 border-2 border-green-900 active:bg-green-950/50"
+      >
+        <Text className="text-green-400 text-lg font-semibold mb-1">
+          Other
+        </Text>
+        <Text className="text-green-300 text-sm">
+          Online, travel, or other context
         </Text>
       </Pressable>
     </View>

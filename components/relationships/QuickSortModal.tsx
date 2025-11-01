@@ -31,7 +31,7 @@ const SWIPE_THRESHOLD = 120;
 
 // Layer definitions matching dashboard
 const LAYERS = [
-  { id: 0, name: "Loved Ones", color: "#ef4444", emoji: "❤️", descriptor: "Adore" },
+  { id: 0, name: "Loved Ones", color: "#ef4444", emoji: "❤️", descriptor: "Cherish" },
   { id: 1, name: "Inner Circle", color: "#f97316", emoji: "🧡", descriptor: "Love" },
   { id: 2, name: "Clan", color: "#eab308", emoji: "💛", descriptor: "Respect" },
   { id: 3, name: "Tribe", color: "#22c55e", emoji: "💚", descriptor: "Like" },
@@ -65,7 +65,7 @@ export function QuickSortModal({
   // Relationship type and subcategory for current contact
   const [selectedRelationshipType, setSelectedRelationshipType] = useState<"FAMILY" | "FRIEND" | "BUSINESS" | null>(null);
   const [selectedFamilyTier, setSelectedFamilyTier] = useState<"NUCLEAR" | "SECONDARY" | "TERTIARY" | null>(null);
-  const [selectedFriendTier, setSelectedFriendTier] = useState<"INNER_CIRCLE" | "CLOSE_FRIEND" | "GOOD_FRIEND" | "CASUAL_FRIEND" | null>(null);
+  const [selectedConnectionOrigin, setSelectedConnectionOrigin] = useState<"FAMILY_FRIEND" | "NEIGHBOR" | "SCHOOL" | "HOBBY_SPORTS" | "WORK" | "OTHER" | null>(null);
   const [selectedBusinessTier, setSelectedBusinessTier] = useState<"CLOSE_COLLEAGUE" | "ACQUAINTANCE" | null>(null);
   
   // Animation values
@@ -87,7 +87,7 @@ export function QuickSortModal({
     // Reset relationship type selections for new contact
     setSelectedRelationshipType(null);
     setSelectedFamilyTier(null);
-    setSelectedFriendTier(null);
+    setSelectedConnectionOrigin(null);
     setSelectedBusinessTier(null);
   }, [currentIndex]);
 
@@ -164,7 +164,7 @@ export function QuickSortModal({
     if (selectedRelationshipType === "FAMILY") {
       console.log(`  Family Tier: ${selectedFamilyTier || "Not set"}`);
     } else if (selectedRelationshipType === "FRIEND") {
-      console.log(`  Friend Tier: ${selectedFriendTier || "Not set"}`);
+      console.log(`  Connection Origin: ${selectedConnectionOrigin || "Not set"}`);
     } else if (selectedRelationshipType === "BUSINESS") {
       console.log(`  Business Tier: ${selectedBusinessTier || "Not set"}`);
     }
@@ -199,7 +199,7 @@ export function QuickSortModal({
           isFamily: selectedRelationshipType === "FAMILY" || existingContact.isFamily,
           familyTier: selectedRelationshipType === "FAMILY" ? selectedFamilyTier || existingContact.familyTier : existingContact.familyTier,
           familyRole: existingContact.familyRole,
-          friendTier: selectedRelationshipType === "FRIEND" ? selectedFriendTier || existingContact.friendTier : existingContact.friendTier,
+          connectionOrigin: selectedRelationshipType === "FRIEND" ? selectedConnectionOrigin || existingContact.connectionOrigin : existingContact.connectionOrigin,
           businessTier: selectedRelationshipType === "BUSINESS" ? selectedBusinessTier || existingContact.businessTier : existingContact.businessTier,
           notes: existingContact.notes,
           cultivationGoal: existingContact.cultivationGoal,
@@ -571,81 +571,117 @@ export function QuickSortModal({
                 {selectedRelationshipType === "FRIEND" && (
                   <View className="mb-4">
                     <Text className="text-zinc-400 text-xs text-center mb-2">
-                      FRIEND TIER
+                      HOW DID YOU MEET?
                     </Text>
                     <View className="flex-row gap-2 mb-2">
                       <Pressable
-                        onPress={() => setSelectedFriendTier("INNER_CIRCLE")}
+                        onPress={() => setSelectedConnectionOrigin("FAMILY_FRIEND")}
                         className={`flex-1 py-2 px-2 border ${
-                          selectedFriendTier === "INNER_CIRCLE"
-                            ? "border-red-500 bg-red-500/20"
-                            : "border-zinc-700 bg-zinc-800"
-                        }`}
-                      >
-                        <Text
-                          className={`text-xs text-center ${
-                            selectedFriendTier === "INNER_CIRCLE"
-                              ? "text-red-400 font-bold"
-                              : "text-zinc-400"
-                          }`}
-                        >
-                          Inner Circle
-                        </Text>
-                      </Pressable>
-                      <Pressable
-                        onPress={() => setSelectedFriendTier("CLOSE_FRIEND")}
-                        className={`flex-1 py-2 px-2 border ${
-                          selectedFriendTier === "CLOSE_FRIEND"
-                            ? "border-orange-500 bg-orange-500/20"
-                            : "border-zinc-700 bg-zinc-800"
-                        }`}
-                      >
-                        <Text
-                          className={`text-xs text-center ${
-                            selectedFriendTier === "CLOSE_FRIEND"
-                              ? "text-orange-400 font-bold"
-                              : "text-zinc-400"
-                          }`}
-                        >
-                          Close
-                        </Text>
-                      </Pressable>
-                    </View>
-                    <View className="flex-row gap-2">
-                      <Pressable
-                        onPress={() => setSelectedFriendTier("GOOD_FRIEND")}
-                        className={`flex-1 py-2 px-2 border ${
-                          selectedFriendTier === "GOOD_FRIEND"
-                            ? "border-yellow-500 bg-yellow-500/20"
-                            : "border-zinc-700 bg-zinc-800"
-                        }`}
-                      >
-                        <Text
-                          className={`text-xs text-center ${
-                            selectedFriendTier === "GOOD_FRIEND"
-                              ? "text-yellow-400 font-bold"
-                              : "text-zinc-400"
-                          }`}
-                        >
-                          Good Friend
-                        </Text>
-                      </Pressable>
-                      <Pressable
-                        onPress={() => setSelectedFriendTier("CASUAL_FRIEND")}
-                        className={`flex-1 py-2 px-2 border ${
-                          selectedFriendTier === "CASUAL_FRIEND"
+                          selectedConnectionOrigin === "FAMILY_FRIEND"
                             ? "border-green-500 bg-green-500/20"
                             : "border-zinc-700 bg-zinc-800"
                         }`}
                       >
                         <Text
                           className={`text-xs text-center ${
-                            selectedFriendTier === "CASUAL_FRIEND"
+                            selectedConnectionOrigin === "FAMILY_FRIEND"
                               ? "text-green-400 font-bold"
                               : "text-zinc-400"
                           }`}
                         >
-                          Casual
+                          Family
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => setSelectedConnectionOrigin("NEIGHBOR")}
+                        className={`flex-1 py-2 px-2 border ${
+                          selectedConnectionOrigin === "NEIGHBOR"
+                            ? "border-green-500 bg-green-500/20"
+                            : "border-zinc-700 bg-zinc-800"
+                        }`}
+                      >
+                        <Text
+                          className={`text-xs text-center ${
+                            selectedConnectionOrigin === "NEIGHBOR"
+                              ? "text-green-400 font-bold"
+                              : "text-zinc-400"
+                          }`}
+                        >
+                          Neighbor
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => setSelectedConnectionOrigin("SCHOOL")}
+                        className={`flex-1 py-2 px-2 border ${
+                          selectedConnectionOrigin === "SCHOOL"
+                            ? "border-green-500 bg-green-500/20"
+                            : "border-zinc-700 bg-zinc-800"
+                        }`}
+                      >
+                        <Text
+                          className={`text-xs text-center ${
+                            selectedConnectionOrigin === "SCHOOL"
+                              ? "text-green-400 font-bold"
+                              : "text-zinc-400"
+                          }`}
+                        >
+                          School
+                        </Text>
+                      </Pressable>
+                    </View>
+                    <View className="flex-row gap-2">
+                      <Pressable
+                        onPress={() => setSelectedConnectionOrigin("HOBBY_SPORTS")}
+                        className={`flex-1 py-2 px-2 border ${
+                          selectedConnectionOrigin === "HOBBY_SPORTS"
+                            ? "border-green-500 bg-green-500/20"
+                            : "border-zinc-700 bg-zinc-800"
+                        }`}
+                      >
+                        <Text
+                          className={`text-xs text-center ${
+                            selectedConnectionOrigin === "HOBBY_SPORTS"
+                              ? "text-green-400 font-bold"
+                              : "text-zinc-400"
+                          }`}
+                        >
+                          Hobby
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => setSelectedConnectionOrigin("WORK")}
+                        className={`flex-1 py-2 px-2 border ${
+                          selectedConnectionOrigin === "WORK"
+                            ? "border-green-500 bg-green-500/20"
+                            : "border-zinc-700 bg-zinc-800"
+                        }`}
+                      >
+                        <Text
+                          className={`text-xs text-center ${
+                            selectedConnectionOrigin === "WORK"
+                              ? "text-green-400 font-bold"
+                              : "text-zinc-400"
+                          }`}
+                        >
+                          Work
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => setSelectedConnectionOrigin("OTHER")}
+                        className={`flex-1 py-2 px-2 border ${
+                          selectedConnectionOrigin === "OTHER"
+                            ? "border-green-500 bg-green-500/20"
+                            : "border-zinc-700 bg-zinc-800"
+                        }`}
+                      >
+                        <Text
+                          className={`text-xs text-center ${
+                            selectedConnectionOrigin === "OTHER"
+                              ? "text-green-400 font-bold"
+                              : "text-zinc-400"
+                          }`}
+                        >
+                          Other
                         </Text>
                       </Pressable>
                     </View>
@@ -716,7 +752,7 @@ export function QuickSortModal({
             const hasRelationshipType = !!selectedRelationshipType;
             const hasTier = 
               (selectedRelationshipType === 'FAMILY' && !!selectedFamilyTier) ||
-              (selectedRelationshipType === 'FRIEND' && !!selectedFriendTier) ||
+              (selectedRelationshipType === 'FRIEND' && !!selectedConnectionOrigin) ||
               (selectedRelationshipType === 'BUSINESS' && !!selectedBusinessTier);
             const isComplete = hasRelationshipType && hasTier;
             
@@ -727,7 +763,7 @@ export function QuickSortModal({
               if (selectedRelationshipType === 'FAMILY') {
                 warningMessage = '⚠️ SELECT FAMILY TIER';
               } else if (selectedRelationshipType === 'FRIEND') {
-                warningMessage = '⚠️ SELECT FRIEND TIER';
+                warningMessage = '⚠️ SELECT HOW YOU MET';
               } else if (selectedRelationshipType === 'BUSINESS') {
                 warningMessage = '⚠️ SELECT BUSINESS TIER';
               }
@@ -748,7 +784,7 @@ export function QuickSortModal({
               const isEnabled = 
                 selectedRelationshipType && (
                   (selectedRelationshipType === 'FAMILY' && selectedFamilyTier) ||
-                  (selectedRelationshipType === 'FRIEND' && selectedFriendTier) ||
+                  (selectedRelationshipType === 'FRIEND' && selectedConnectionOrigin) ||
                   (selectedRelationshipType === 'BUSINESS' && selectedBusinessTier)
                 );
               
@@ -783,7 +819,7 @@ export function QuickSortModal({
               const isEnabled = 
                 selectedRelationshipType && (
                   (selectedRelationshipType === 'FAMILY' && selectedFamilyTier) ||
-                  (selectedRelationshipType === 'FRIEND' && selectedFriendTier) ||
+                  (selectedRelationshipType === 'FRIEND' && selectedConnectionOrigin) ||
                   (selectedRelationshipType === 'BUSINESS' && selectedBusinessTier)
                 );
               
@@ -814,7 +850,7 @@ export function QuickSortModal({
               const isEnabled = 
                 selectedRelationshipType && (
                   (selectedRelationshipType === 'FAMILY' && selectedFamilyTier) ||
-                  (selectedRelationshipType === 'FRIEND' && selectedFriendTier) ||
+                  (selectedRelationshipType === 'FRIEND' && selectedConnectionOrigin) ||
                   (selectedRelationshipType === 'BUSINESS' && selectedBusinessTier)
                 );
               

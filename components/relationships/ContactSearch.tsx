@@ -24,7 +24,7 @@ interface Contact {
   relationshipType?: 'FAMILY' | 'FRIEND' | 'BUSINESS';
   isFamily?: boolean;
   familyTier?: 'NUCLEAR' | 'SECONDARY' | 'TERTIARY';
-  friendTier?: 'INNER_CIRCLE' | 'CLOSE_FRIEND' | 'GOOD_FRIEND' | 'CASUAL_FRIEND';
+  connectionOrigin?: 'FAMILY_FRIEND' | 'NEIGHBOR' | 'SCHOOL' | 'HOBBY_SPORTS' | 'WORK' | 'OTHER';
   businessTier?: 'CLOSE_COLLEAGUE' | 'ACQUAINTANCE';
   phoneNumber?: string;
   email?: string;
@@ -60,14 +60,16 @@ const getRelationshipBadge = (contact: Contact) => {
     };
     return { emoji: '👨‍👩‍👧‍👦', label: tierLabels[contact.familyTier], color: 'text-red-400 bg-red-950/30' };
   }
-  if (contact.relationshipType === 'FRIEND' && contact.friendTier) {
-    const tierLabels = {
-      INNER_CIRCLE: 'Inner Circle',
-      CLOSE_FRIEND: 'Close Friend',
-      GOOD_FRIEND: 'Good Friend',
-      CASUAL_FRIEND: 'Casual',
+  if (contact.relationshipType === 'FRIEND' && contact.connectionOrigin) {
+    const originLabels = {
+      FAMILY_FRIEND: 'Family Friend',
+      NEIGHBOR: 'Neighbor',
+      SCHOOL: 'School',
+      HOBBY_SPORTS: 'Hobby',
+      WORK: 'Work',
+      OTHER: 'Other',
     };
-    return { emoji: '🤝', label: tierLabels[contact.friendTier], color: 'text-green-400 bg-green-950/30' };
+    return { emoji: '🤝', label: originLabels[contact.connectionOrigin], color: 'text-green-400 bg-green-950/30' };
   }
   if (contact.relationshipType === 'BUSINESS' && contact.businessTier) {
     const tierLabels = {

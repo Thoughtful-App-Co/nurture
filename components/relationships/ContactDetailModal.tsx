@@ -24,7 +24,7 @@ interface Contact {
   qualityRating?: number;
   // Relationship type fields
   relationshipType?: 'FAMILY' | 'FRIEND' | 'BUSINESS';
-  friendTier?: 'INNER_CIRCLE' | 'CLOSE_FRIEND' | 'GOOD_FRIEND' | 'CASUAL_FRIEND';
+  connectionOrigin?: 'FAMILY_FRIEND' | 'NEIGHBOR' | 'SCHOOL' | 'HOBBY_SPORTS' | 'WORK' | 'OTHER';
   businessTier?: 'CLOSE_COLLEAGUE' | 'ACQUAINTANCE';
   // Debug/transparency fields
   callCount?: number;
@@ -338,75 +338,107 @@ export function ContactDetailModal({ contact, layer, onClose, onSave }: Props) {
                   </View>
                 )}
 
-                {/* Friend Tier Selector */}
+                {/* Connection Origin Selector */}
                 {editedContact.relationshipType === 'FRIEND' && (
                   <View>
-                    <Text className="text-zinc-400 text-xs mb-2">FRIEND TIER</Text>
+                    <Text className="text-zinc-400 text-xs mb-2">HOW DID YOU MEET?</Text>
                     <View className="flex-row gap-2 mb-2">
                       <Pressable
-                        onPress={() => setEditedContact({ ...editedContact, friendTier: 'INNER_CIRCLE' })}
+                        onPress={() => setEditedContact({ ...editedContact, connectionOrigin: 'FAMILY_FRIEND' })}
                         className={`flex-1 py-2 px-2 border ${
-                          editedContact.friendTier === 'INNER_CIRCLE'
-                            ? 'border-red-500 bg-red-500/20'
-                            : 'border-zinc-700 bg-zinc-800'
-                        }`}
-                      >
-                        <Text className={`text-xs text-center ${
-                          editedContact.friendTier === 'INNER_CIRCLE'
-                            ? 'text-red-400 font-bold'
-                            : 'text-zinc-400'
-                        }`}>
-                          Inner Circle
-                        </Text>
-                      </Pressable>
-                      <Pressable
-                        onPress={() => setEditedContact({ ...editedContact, friendTier: 'CLOSE_FRIEND' })}
-                        className={`flex-1 py-2 px-2 border ${
-                          editedContact.friendTier === 'CLOSE_FRIEND'
-                            ? 'border-orange-500 bg-orange-500/20'
-                            : 'border-zinc-700 bg-zinc-800'
-                        }`}
-                      >
-                        <Text className={`text-xs text-center ${
-                          editedContact.friendTier === 'CLOSE_FRIEND'
-                            ? 'text-orange-400 font-bold'
-                            : 'text-zinc-400'
-                        }`}>
-                          Close
-                        </Text>
-                      </Pressable>
-                    </View>
-                    <View className="flex-row gap-2">
-                      <Pressable
-                        onPress={() => setEditedContact({ ...editedContact, friendTier: 'GOOD_FRIEND' })}
-                        className={`flex-1 py-2 px-2 border ${
-                          editedContact.friendTier === 'GOOD_FRIEND'
-                            ? 'border-yellow-500 bg-yellow-500/20'
-                            : 'border-zinc-700 bg-zinc-800'
-                        }`}
-                      >
-                        <Text className={`text-xs text-center ${
-                          editedContact.friendTier === 'GOOD_FRIEND'
-                            ? 'text-yellow-400 font-bold'
-                            : 'text-zinc-400'
-                        }`}>
-                          Good Friend
-                        </Text>
-                      </Pressable>
-                      <Pressable
-                        onPress={() => setEditedContact({ ...editedContact, friendTier: 'CASUAL_FRIEND' })}
-                        className={`flex-1 py-2 px-2 border ${
-                          editedContact.friendTier === 'CASUAL_FRIEND'
+                          editedContact.connectionOrigin === 'FAMILY_FRIEND'
                             ? 'border-green-500 bg-green-500/20'
                             : 'border-zinc-700 bg-zinc-800'
                         }`}
                       >
                         <Text className={`text-xs text-center ${
-                          editedContact.friendTier === 'CASUAL_FRIEND'
+                          editedContact.connectionOrigin === 'FAMILY_FRIEND'
                             ? 'text-green-400 font-bold'
                             : 'text-zinc-400'
                         }`}>
-                          Casual
+                          Family
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => setEditedContact({ ...editedContact, connectionOrigin: 'NEIGHBOR' })}
+                        className={`flex-1 py-2 px-2 border ${
+                          editedContact.connectionOrigin === 'NEIGHBOR'
+                            ? 'border-green-500 bg-green-500/20'
+                            : 'border-zinc-700 bg-zinc-800'
+                        }`}
+                      >
+                        <Text className={`text-xs text-center ${
+                          editedContact.connectionOrigin === 'NEIGHBOR'
+                            ? 'text-green-400 font-bold'
+                            : 'text-zinc-400'
+                        }`}>
+                          Neighbor
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => setEditedContact({ ...editedContact, connectionOrigin: 'SCHOOL' })}
+                        className={`flex-1 py-2 px-2 border ${
+                          editedContact.connectionOrigin === 'SCHOOL'
+                            ? 'border-green-500 bg-green-500/20'
+                            : 'border-zinc-700 bg-zinc-800'
+                        }`}
+                      >
+                        <Text className={`text-xs text-center ${
+                          editedContact.connectionOrigin === 'SCHOOL'
+                            ? 'text-green-400 font-bold'
+                            : 'text-zinc-400'
+                        }`}>
+                          School
+                        </Text>
+                      </Pressable>
+                    </View>
+                    <View className="flex-row gap-2">
+                      <Pressable
+                        onPress={() => setEditedContact({ ...editedContact, connectionOrigin: 'HOBBY_SPORTS' })}
+                        className={`flex-1 py-2 px-2 border ${
+                          editedContact.connectionOrigin === 'HOBBY_SPORTS'
+                            ? 'border-green-500 bg-green-500/20'
+                            : 'border-zinc-700 bg-zinc-800'
+                        }`}
+                      >
+                        <Text className={`text-xs text-center ${
+                          editedContact.connectionOrigin === 'HOBBY_SPORTS'
+                            ? 'text-green-400 font-bold'
+                            : 'text-zinc-400'
+                        }`}>
+                          Hobby
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => setEditedContact({ ...editedContact, connectionOrigin: 'WORK' })}
+                        className={`flex-1 py-2 px-2 border ${
+                          editedContact.connectionOrigin === 'WORK'
+                            ? 'border-green-500 bg-green-500/20'
+                            : 'border-zinc-700 bg-zinc-800'
+                        }`}
+                      >
+                        <Text className={`text-xs text-center ${
+                          editedContact.connectionOrigin === 'WORK'
+                            ? 'text-green-400 font-bold'
+                            : 'text-zinc-400'
+                        }`}>
+                          Work
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => setEditedContact({ ...editedContact, connectionOrigin: 'OTHER' })}
+                        className={`flex-1 py-2 px-2 border ${
+                          editedContact.connectionOrigin === 'OTHER'
+                            ? 'border-green-500 bg-green-500/20'
+                            : 'border-zinc-700 bg-zinc-800'
+                        }`}
+                      >
+                        <Text className={`text-xs text-center ${
+                          editedContact.connectionOrigin === 'OTHER'
+                            ? 'text-green-400 font-bold'
+                            : 'text-zinc-400'
+                        }`}>
+                          Other
                         </Text>
                       </Pressable>
                     </View>

@@ -19,7 +19,7 @@ interface Contact {
   relationshipType?: 'FAMILY' | 'FRIEND' | 'BUSINESS';
   isFamily?: boolean;
   familyTier?: 'NUCLEAR' | 'SECONDARY' | 'TERTIARY';
-  friendTier?: 'INNER_CIRCLE' | 'CLOSE_FRIEND' | 'GOOD_FRIEND' | 'CASUAL_FRIEND';
+  connectionOrigin?: 'FAMILY_FRIEND' | 'NEIGHBOR' | 'SCHOOL' | 'HOBBY_SPORTS' | 'WORK' | 'OTHER';
   businessTier?: 'CLOSE_COLLEAGUE' | 'ACQUAINTANCE';
   familyRole?: string;
   notes?: string;
@@ -113,7 +113,7 @@ export function LayerDetailScreen({ layer, contacts, onBack, onContactUpdate, on
       relationshipType: data.relationshipType,
       isFamily: data.relationshipType === 'FAMILY',
       familyTier: data.familyTier,
-      friendTier: data.friendTier,
+      connectionOrigin: data.connectionOrigin,
       businessTier: data.businessTier,
     };
 
@@ -130,14 +130,16 @@ export function LayerDetailScreen({ layer, contacts, onBack, onContactUpdate, on
       };
       return { emoji: '👨‍👩‍👧‍👦', label: tierLabels[contact.familyTier], color: 'text-red-400' };
     }
-    if (contact.relationshipType === 'FRIEND' && contact.friendTier) {
-      const tierLabels = {
-        INNER_CIRCLE: 'Inner Circle',
-        CLOSE_FRIEND: 'Close Friend',
-        GOOD_FRIEND: 'Good Friend',
-        CASUAL_FRIEND: 'Casual Friend',
+    if (contact.relationshipType === 'FRIEND' && contact.connectionOrigin) {
+      const originLabels = {
+        FAMILY_FRIEND: 'Family Friend',
+        NEIGHBOR: 'Neighbor',
+        SCHOOL: 'School',
+        HOBBY_SPORTS: 'Hobby',
+        WORK: 'Work',
+        OTHER: 'Other',
       };
-      return { emoji: '🤝', label: tierLabels[contact.friendTier], color: 'text-green-400' };
+      return { emoji: '🤝', label: originLabels[contact.connectionOrigin], color: 'text-green-400' };
     }
     if (contact.relationshipType === 'BUSINESS' && contact.businessTier) {
       const tierLabels = {
@@ -322,7 +324,7 @@ export function LayerDetailScreen({ layer, contacts, onBack, onContactUpdate, on
           currentType={relationshipSelectorContact.relationshipType ? {
             relationshipType: relationshipSelectorContact.relationshipType,
             familyTier: relationshipSelectorContact.familyTier,
-            friendTier: relationshipSelectorContact.friendTier,
+            connectionOrigin: relationshipSelectorContact.connectionOrigin,
             businessTier: relationshipSelectorContact.businessTier,
           } : undefined}
           onSelect={handleRelationshipTypeSelect}
