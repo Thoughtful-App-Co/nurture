@@ -16,6 +16,7 @@ import { Contact, ContactList, FamilyNames } from "@/jazz/schema";
 import type { ContactWithMetrics } from "@/services/dataMining";
 import { LoadingAnimation } from "@/components/LoadingAnimation";
 import { ContactSearch } from "@/components/relationships/ContactSearch";
+import { SearchBar } from "@/components/relationships/SearchBar";
 import { QuickSortModal } from "@/components/relationships/QuickSortModal";
 import { Card, Button } from "@/components/ui";
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
@@ -618,28 +619,19 @@ export default function Dashboard() {
     >
       <View className="px-6 py-8">
         {/* Header */}
-        <View className="flex-row justify-between items-start mb-6">
-          <View className="flex-1">
-            <Text className="text-4xl text-primary mb-2 font-bold tracking-wide">
-              Your Garden
-            </Text>
-            <Text className="text-base text-zinc-400">
-              {totalContacts} relationships cultivated
-            </Text>
-          </View>
+        <View className="mb-6">
+          <Text className="text-4xl text-primary mb-2 font-bold tracking-wide">
+            Your Garden
+          </Text>
+          <Text className="text-base text-zinc-400 mb-4">
+            {totalContacts} relationships cultivated
+          </Text>
           
-          {/* Search Button */}
-          <Pressable
+          {/* Search Bar */}
+          <SearchBar 
+            totalContacts={totalContacts}
             onPress={() => setShowSearch(true)}
-            className="bg-zinc-900 border-2 border-zinc-700 px-4 py-3 mt-2 min-h-[44px] justify-center"
-            accessibilityLabel="Search contacts"
-            accessibilityRole="button"
-            style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
-          >
-            <Text className="text-primary text-sm font-medium">
-              🔍 Search
-            </Text>
-          </Pressable>
+          />
         </View>
 
         {/* Tend Garden - Prime Real Estate (Von Restorff Effect) */}
