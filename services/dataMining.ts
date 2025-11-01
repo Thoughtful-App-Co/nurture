@@ -690,13 +690,17 @@ export function identifyPotentialFamily(
       
       if (contactLastName === normalizedFamilyName) {
         // Exact match - high confidence
-        console.log(`✅ Family match: ${contact.name} (${contactLastName} === ${normalizedFamilyName})`);
+        // Check if this is current/spouse last name (should be NUCLEAR) vs birth name (SECONDARY)
+        const isCurrentOrSpouse = familyName === familyNames.currentLastName || familyName === familyNames.spouseLastName;
+        const familyTier: 'NUCLEAR' | 'SECONDARY' = isCurrentOrSpouse ? 'NUCLEAR' : 'SECONDARY';
+        
+        console.log(`✅ Family match: ${contact.name} (${contactLastName} === ${normalizedFamilyName}) - Tier: ${familyTier}`);
         return {
           ...contact,
           potentialFamily: {
             matchedLastName: familyName,
-            confidence: 'high' as const,
-            tier: 'SECONDARY' as const, // Assume extended family unless pet name detected
+            confidence: 'high',
+            tier: familyTier,
           },
         };
       }

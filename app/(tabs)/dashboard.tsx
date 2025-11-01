@@ -23,9 +23,9 @@ import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 // Layer definitions based on Dunbar's research
 const LAYERS = [
   { id: 0, name: "Loved Ones", range: "0-5", color: "#ef4444" },
-  { id: 1, name: "Good Friends", range: "5-15", color: "#f97316" },
-  { id: 2, name: "Friends (Clan)", range: "15-50", color: "#eab308" },
-  { id: 3, name: "Meaningful Contacts (Tribe)", range: "50-150", color: "#22c55e" },
+  { id: 1, name: "Close Friends", range: "5-15", color: "#f97316" },
+  { id: 2, name: "Clan", range: "15-50", color: "#eab308" },
+  { id: 3, name: "Tribe", range: "50-150", color: "#22c55e" },
   { id: 4, name: "Acquaintances", range: "150-500", color: "#3b82f6" },
   { id: 5, name: "Social Nebula", range: "500-1500", color: "#8b5cf6" },
 ];
@@ -34,11 +34,11 @@ const LAYERS = [
 const getLayerDescription = (layerId: number): string => {
   const descriptions = [
     "Your innermost circle of 5 people. These are the relationships you'd drop everything for—partners, closest family, best friends. The people who know your deepest fears and greatest dreams.",
-    "Your core support network of 15 people. Close friends you see regularly and trust deeply. You'd be devastated if something happened to them, and they feel the same about you.",
-    "Your extended friend group of 50 people. Friends you actively maintain and genuinely care about. These are people you'd invite to important life events and who shape your social identity.",
-    "Your broader tribe of 150 people. Extended family, good colleagues, and friends you see periodically. Dunbar's number—the cognitive limit for stable social relationships where you know each person and how they relate to others.",
+    "Your core support network of 15 people. Close friends and immediate family you see regularly and trust deeply. You'd be devastated if something happened to them, and they feel the same about you.",
+    "Your extended friend group of 50 people. Friends and extended family you actively maintain and genuinely care about. These are people you'd invite to important life events and who shape your social identity.",
+    "Your broader tribe of 150 people. Friends, extended family, good colleagues, and regular contacts you see periodically. Dunbar's number—the cognitive limit for stable social relationships where you know each person and how they relate to others.",
     "People you recognize and interact with occasionally—up to 500 individuals. Colleagues, neighbors, parents from your kids' school, regular service providers. Friendly faces but not close relationships.",
-    "The outer limit of recognition—up to 1,500 people. Anyone you'd recognize by face or name but may not actively interact with. Former contacts, distant connections, or people you've met once."
+    "People you've met but rarely interact with. Former contacts, distant connections, or people you've only met once. These contacts have minimal or zero recent interaction."
   ];
   return descriptions[layerId] || "";
 };
@@ -737,40 +737,12 @@ export default function Dashboard() {
                   />
                 </View>
 
-                {/* Sample Names or Add Prompt */}
-                {isEmpty ? (
-                  <Pressable 
-                    onPress={() => setShowSearch(true)}
-                    className="mt-3 p-3 border-2 border-dashed border-zinc-700 bg-zinc-950 min-h-[44px] justify-center"
-                    accessibilityLabel={`Add people to ${layer.name}`}
-                    accessibilityRole="button"
-                    style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
-                  >
-                    <Text className="text-zinc-400 text-xs text-center font-medium">
-                      + Add people to this layer
-                    </Text>
-                  </Pressable>
-                ) : (
-                  <>
-                    <Text className="text-zinc-400 text-xs mt-3" numberOfLines={1}>
-                      {layerStat.contacts.slice(0, 3).map(c => c.name).join(", ")}
-                      {layerStat.contacts.length > 3 && ` +${layerStat.contacts.length - 3} more`}
-                    </Text>
-                    
-                    {isNotFull && (
-                      <Pressable 
-                        onPress={() => setShowSearch(true)}
-                        className="mt-2"
-                        accessibilityLabel={`Add more people to ${layer.name}`}
-                        accessibilityRole="button"
-                        style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
-                      >
-                        <Text className="text-zinc-500 text-xs">
-                          + Add more ({layerCapacity - layerStat.count} remaining)
-                        </Text>
-                      </Pressable>
-                    )}
-                  </>
+                {/* Sample Names */}
+                {!isEmpty && (
+                  <Text className="text-zinc-400 text-xs mt-3" numberOfLines={1}>
+                    {layerStat.contacts.slice(0, 3).map(c => c.name).join(", ")}
+                    {layerStat.contacts.length > 3 && ` +${layerStat.contacts.length - 3} more`}
+                  </Text>
                 )}
               </View>
             </Pressable>

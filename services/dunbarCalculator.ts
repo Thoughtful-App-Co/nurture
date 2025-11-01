@@ -48,9 +48,9 @@ interface LayerThreshold {
 // Dunbar layer thresholds based on Dunbar's research
 const LAYER_THRESHOLDS: LayerThreshold[] = [
   { layer: 0, minScore: 90, maxCount: 5 },     // Loved Ones (0-5)
-  { layer: 1, minScore: 70, maxCount: 15 },    // Good Friends (5-15)
-  { layer: 2, minScore: 50, maxCount: 50 },    // Friends/Clan (15-50)
-  { layer: 3, minScore: 30, maxCount: 150 },   // Meaningful Contacts/Tribe (50-150)
+  { layer: 1, minScore: 70, maxCount: 15 },    // Close Friends (5-15)
+  { layer: 2, minScore: 50, maxCount: 50 },    // Clan (15-50)
+  { layer: 3, minScore: 30, maxCount: 150 },   // Tribe (50-150)
   { layer: 4, minScore: 10, maxCount: 500 },   // Acquaintances (150-500)
   { layer: 5, minScore: 0, maxCount: 1500 },   // Social Nebula (500-1500)
 ];
@@ -162,75 +162,71 @@ export async function calculateDunbarLayers(contacts: Contact[]): Promise<Contac
   const activeContacts = sortedContacts.filter(c => (c.interactionScore || 0) > 0);
   const zeroInteractionContacts = sortedContacts.filter(c => (c.interactionScore || 0) === 0);
   
-  // Step 6: Use PERCENTILE-BASED distribution (inspired by Dunbar research)
-  // These percentages represent the natural distribution of relationship intimacy
-  const layerPercentages = [
-    { layer: 0, percentage: 0.003, name: 'Loved Ones' },              // Top 0.3% (0-5 people out of ~1500)
-    { layer: 1, percentage: 0.007, name: 'Good Friends' },            // Next 0.7% (5-15 people)
-    { layer: 2, percentage: 0.023, name: 'Friends (Clan)' },          // Next 2.3% (15-50 people)
-    { layer: 3, percentage: 0.067, name: 'Meaningful Contacts' },     // Next 6.7% (50-150 people)
-    { layer: 4, percentage: 0.233, name: 'Acquaintances' },           // Next 23.3% (150-500 people)
-    { layer: 5, percentage: 0.667, name: 'Social Nebula' },           // Bottom 66.7% (500-1500+ people)
-  ];
+  console.log(`📊 Distribution: ${activeContacts.length} active, ${zeroInteractionContacts.length} zero-interaction`);
   
-  const totalActive = activeContacts.length;
-  let currentIndex = 0;
   const layerCounts = [0, 0, 0, 0, 0, 0];
   
-  // Step 7: Assign layers based on percentiles
-  const layeredActiveContacts = activeContacts.map((contact, index) => {
-    let assignedLayer = 5; // Default
-    
-    // Calculate which percentile this contact falls into
-    const percentile = (index + 1) / totalActive;
-    
-    let cumulativePercentage = 0;
-    for (const { layer, percentage } of layerPercentages) {
-      cumulativePercentage += percentage;
-      if (percentile <= cumulativePercentage) {
-        assignedLayer = layer;
-        layerCounts[layer]++;
-        break;
+  // Step 6: Assign layers based on SCORE THRESHOLDS with capacity limits
+  // This ensures relative distribution based on actual relationship strength, not arbitrary percentiles
+  const layeredActiveContacts = sortedContacts
+    .filter(c => (c.interactionScore || 0) > 0)
+    .map(contact => {
+      const score = contact.interactionScore || 0;
+      let assignedLayer = 4; // Default to Acquaintances (not Social Nebula!)
+      
+      // Find the appropriate layer based on score thresholds
+      for (const threshold of LAYER_THRESHOLDS) {
+        if (score >= threshold.minScore) {
+          // Check if this layer is at capacity
+          if (layerCounts[threshold.layer] < threshold.maxCount) {
+            assignedLayer = threshold.layer;
+            break;
+          }
+        }
       }
-    }
-    
-    // Family members get a boost to higher layers
-    if (contact.isFamily) {
-      if (contact.familyTier === 'NUCLEAR' && assignedLayer > 1) {
-        // Nuclear family should be in top 2 layers
-        assignedLayer = Math.min(assignedLayer, 1);
-      } else if (contact.familyTier === 'SECONDARY' && assignedLayer > 2) {
-        // Secondary family should be in top 3 layers
+      
+      // Family members get special treatment
+      if (contact.isFamily) {
+        if (contact.familyTier === 'NUCLEAR') {
+          // Nuclear family should be in top 2 layers (0 or 1)
+          assignedLayer = Math.min(assignedLayer, 1);
+          // If layer 0 is full, put in layer 1
+          if (assignedLayer === 0 && layerCounts[0] >= LAYER_THRESHOLDS[0].maxCount) {
+            assignedLayer = 1;
+          }
+        } else if (contact.familyTier === 'SECONDARY') {
+          // Secondary family should be in top 3 layers (0-2)
+          assignedLayer = Math.min(assignedLayer, 2);
+        }
+      }
+      
+      // ⭐ Favorites get priority placement
+      if (contact.isFavorite && assignedLayer > 2) {
         assignedLayer = Math.min(assignedLayer, 2);
       }
-    }
-    
-    // ⭐ Favorites get priority placement
-    if (contact.isFavorite && assignedLayer > 2) {
-      // Favorites should be at least in Close Group
-      assignedLayer = Math.min(assignedLayer, 2);
-    }
-    
-    // High quality interactions boost placement
-    if (contact.qualityRating && contact.qualityRating >= 4 && assignedLayer > 2) {
-      assignedLayer = Math.min(assignedLayer, 2);
-    }
-    
-    return {
-      ...contact,
-      dunbarLayer: assignedLayer,
-    };
-  });
+      
+      // High quality interactions boost placement
+      if (contact.qualityRating && contact.qualityRating >= 4 && assignedLayer > 2) {
+        assignedLayer = Math.min(assignedLayer, 2);
+      }
+      
+      layerCounts[assignedLayer]++;
+      
+      return {
+        ...contact,
+        dunbarLayer: assignedLayer,
+      };
+    });
   
-  // Step 8: Assign zero-interaction contacts to Social Nebula
+  // Step 7: Assign ONLY zero-interaction contacts to Social Nebula
   const layeredZeroContacts = zeroInteractionContacts.map(contact => ({
     ...contact,
-    dunbarLayer: 5, // Social Nebula
+    dunbarLayer: 5, // Social Nebula - only for zero interaction
   }));
   
-  layerCounts[5] += zeroInteractionContacts.length;
+  layerCounts[5] = zeroInteractionContacts.length;
   
-  // Step 9: Combine and sort by layer
+  // Step 8: Combine and sort by layer
   const allLayeredContacts = [...layeredActiveContacts, ...layeredZeroContacts];
   allLayeredContacts.sort((a, b) => {
     if (a.dunbarLayer !== b.dunbarLayer) {
@@ -240,15 +236,15 @@ export async function calculateDunbarLayers(contacts: Contact[]): Promise<Contac
   });
   
   // Log layer distribution for debugging
-  console.log("Dunbar Layer Distribution (Percentile-Based):", {
-    layer0_intimate: `${layerCounts[0]} (${((layerCounts[0] / contacts.length) * 100).toFixed(1)}%)`,
-    layer1_sympathy: `${layerCounts[1]} (${((layerCounts[1] / contacts.length) * 100).toFixed(1)}%)`,
-    layer2_close: `${layerCounts[2]} (${((layerCounts[2] / contacts.length) * 100).toFixed(1)}%)`,
+  console.log("Dunbar Layer Distribution (Score-Based):", {
+    layer0_loved: `${layerCounts[0]} (${((layerCounts[0] / contacts.length) * 100).toFixed(1)}%)`,
+    layer1_close: `${layerCounts[1]} (${((layerCounts[1] / contacts.length) * 100).toFixed(1)}%)`,
+    layer2_clan: `${layerCounts[2]} (${((layerCounts[2] / contacts.length) * 100).toFixed(1)}%)`,
     layer3_tribe: `${layerCounts[3]} (${((layerCounts[3] / contacts.length) * 100).toFixed(1)}%)`,
     layer4_acquaintances: `${layerCounts[4]} (${((layerCounts[4] / contacts.length) * 100).toFixed(1)}%)`,
-    layer5_nebula: `${layerCounts[5]} (${((layerCounts[5] / contacts.length) * 100).toFixed(1)}%)`,
+    layer5_nebula: `${layerCounts[5]} (${((layerCounts[5] / contacts.length) * 100).toFixed(1)}%) - ZERO INTERACTION ONLY`,
     total: contacts.length,
-    active_contacts: totalActive,
+    active_contacts: activeContacts.length,
     zero_interaction: zeroInteractionContacts.length,
   });
   
