@@ -16,6 +16,7 @@ import { Contact, ContactList, FamilyNames } from "@/jazz/schema";
 import type { ContactWithMetrics } from "@/services/dataMining";
 import { LoadingAnimation } from "@/components/LoadingAnimation";
 import { ContactSearch } from "@/components/relationships/ContactSearch";
+import { QuickSortModal } from "@/components/relationships/QuickSortModal";
 import { Card, Button } from "@/components/ui";
 
 // Layer definitions from PRD
@@ -58,6 +59,7 @@ export default function Dashboard() {
   const [selectedLayerId, setSelectedLayerId] = useState<number | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   const [searchSelectedContact, setSearchSelectedContact] = useState<any | null>(null);
+  const [showQuickSort, setShowQuickSort] = useState(false);
   
   // Track if we've already analyzed to prevent loops
   const hasAnalyzed = useRef(false);
@@ -72,13 +74,13 @@ export default function Dashboard() {
     }
   }, [me]);
 
-  // Hide tab bar when showing data mining, layer details, or search
+  // Hide tab bar when showing data mining, layer details, search, or quick sort
   useEffect(() => {
-    const shouldHideTabBar = needsDataMining || showDataMining || selectedLayerId !== null || showSearch || searchSelectedContact !== null;
+    const shouldHideTabBar = needsDataMining || showDataMining || selectedLayerId !== null || showSearch || searchSelectedContact !== null || showQuickSort;
     navigation.setOptions({
       tabBarStyle: shouldHideTabBar ? { display: 'none' } : undefined,
     });
-  }, [needsDataMining, showDataMining, selectedLayerId, showSearch, searchSelectedContact, navigation]);
+  }, [needsDataMining, showDataMining, selectedLayerId, showSearch, searchSelectedContact, showQuickSort, navigation]);
 
   const analyzeRelationships = useCallback(async () => {
     try {
@@ -167,6 +169,13 @@ export default function Dashboard() {
               familyRole: contact?.familyRole || '',
               notes: contact?.notes || '',
               cultivationGoal: contact?.cultivationGoal || undefined,
+              // Quick Sort fields (IMPORTANT: needed to filter sorted contacts)
+              quickSortStatus: contact?.quickSortStatus || 'not_sorted',
+              quickSortedAt: contact?.quickSortedAt || undefined,
+              // Relationship type fields
+              relationshipType: contact?.relationshipType || undefined,
+              friendTier: contact?.friendTier || undefined,
+              businessTier: contact?.businessTier || undefined,
               // These fields are NOT stored in Jazz, so they won't exist on reload
               // That's OK - we use the already-calculated dunbarLayer and interactionScore
               callCount: 0,
@@ -343,6 +352,7 @@ export default function Dashboard() {
         isFamily: contact.isFamily,
         familyTier: contact.familyTier,
         familyRole: originalContact?.potentialFamily?.role,
+        quickSortStatus: "not_sorted", // Initialize as not sorted
         createdAt: new Date().toISOString(),
       }, me);
       
@@ -478,6 +488,9 @@ export default function Dashboard() {
         // Updated fields
         notes: updatedContact.notes,
         cultivationGoal: updatedContact.cultivationGoal,
+        // Preserve quick sort status
+        quickSortStatus: existingContact.quickSortStatus,
+        quickSortedAt: existingContact.quickSortedAt,
         createdAt: existingContact.createdAt,
       }, me);
       
@@ -721,18 +734,35 @@ export default function Dashboard() {
           );
         })}
 
-        {/* Cultivation Opportunities */}
-        <Card className="mt-8 border-primary bg-green-950/20">
-          <Text className="text-sm text-primary font-medium mb-2">
-            CULTIVATION OPPORTUNITIES
-          </Text>
-          <Text className="text-white text-base mb-3">
-            3 relationships need attention
-          </Text>
-          <Button variant="primary">
-            VIEW SUGGESTIONS
-          </Button>
-        </Card>
+        {/* Quick Sort */}
+        {(() => {
+          const root = me?.root as any;
+          const contacts = root?.contacts || [];
+          const unsortedCount = Array.from(contacts).filter(
+            (c: any) => c?.quickSortStatus === "not_sorted" || !c?.quickSortStatus
+          ).length;
+          
+          return (
+            <Card className="mt-8 border-primary bg-green-950/20">
+              <Text className="text-sm text-primary font-medium mb-2">
+                QUICK SORT
+              </Text>
+              <Text className="text-white text-base mb-3">
+                {unsortedCount > 0 
+                  ? `${unsortedCount} contact${unsortedCount !== 1 ? 's' : ''} ready to sort`
+                  : "All contacts sorted!"
+                }
+              </Text>
+              <Button 
+                variant="primary" 
+                onPress={() => setShowQuickSort(true)}
+                disabled={unsortedCount === 0}
+              >
+                {unsortedCount > 0 ? "START SORTING" : "ALL SORTED"}
+              </Button>
+            </Card>
+          );
+        })()}
 
         {/* Re-analyze Data Button */}
         <View className="mt-4 mb-8">
@@ -754,6 +784,18 @@ export default function Dashboard() {
           setShowSearch(false);
         }}
         onClose={() => setShowSearch(false)}
+      />
+
+      {/* Quick Sort Modal */}
+      <QuickSortModal
+        visible={showQuickSort}
+        contacts={layerStats.flatMap(layer => layer.contacts)}
+        onClose={() => {
+          setShowQuickSort(false);
+          // Reset analyzed flag to refresh dashboard with new layer assignments
+          hasAnalyzed.current = false;
+          analyzeRelationships();
+        }}
       />
     </ScrollView>
   );
