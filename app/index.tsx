@@ -104,9 +104,9 @@ export default function Index() {
           const root = me.root as any;
           
           // Update the user profile with onboarding data
-          root.displayName = `${data.firstName} ${data.lastName}`;
-          root.email = data.email;
-          root.phone = data.phone;
+          root.$jazz.set('displayName', `${data.firstName} ${data.lastName}`);
+          root.$jazz.set('email', data.email);
+          root.$jazz.set('phone', data.phone);
           
           // Save data sharing consent if provided
           if (data.dataSharingLevel) {
