@@ -158,10 +158,10 @@ export function BiometricLock({ onUnlock, fallbackPIN }: BiometricLockProps) {
 
       {/* App Logo/Title */}
       <View className="mb-12 items-center">
-        <Text className="text-5xl text-primary mb-4" style={{ fontFamily: 'Montserrat_600SemiBold' }}>
+        <Text className="text-5xl text-primary mb-4 font-bold tracking-wider">
           Nurture
         </Text>
-        <Text className="text-lg text-secondary">
+        <Text className="text-lg text-zinc-400">
           Your relationships are protected
         </Text>
       </View>

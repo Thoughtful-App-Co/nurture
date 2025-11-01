@@ -75,13 +75,13 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     return (
       <View className="flex-1 bg-black justify-center px-8">
         <View className="mb-12">
-          <Text className="text-5xl text-primary mb-6" style={{ fontFamily: 'Montserrat_600SemiBold' }}>
+          <Text className="text-5xl text-primary mb-6 font-bold tracking-wider">
             Nurture
           </Text>
-          <Text className="text-2xl text-white font-light mb-4 leading-relaxed">
+          <Text className="text-2xl text-white font-normal mb-4 leading-relaxed">
             Cultivate meaningful connections.
           </Text>
-          <Text className="text-lg text-secondary leading-relaxed">
+          <Text className="text-base text-zinc-400 leading-relaxed">
             Reclaim authentic relationships in a world of endless scrolling.{"\n\n"}
             Your data stays private, encrypted, and under your control.
           </Text>
@@ -89,7 +89,13 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
         <Pressable
           onPress={() => setCurrentStep("basic-info")}
-          className="bg-primary py-5 px-6 rounded-none border-2 border-primary"
+          className="bg-primary py-4 px-6 border-2 border-primary min-h-[52px] justify-center"
+          accessibilityLabel="Begin your journey"
+          accessibilityRole="button"
+          style={({ pressed }) => ({ 
+            opacity: pressed ? 0.9 : 1,
+            transform: [{ scale: pressed ? 0.98 : 1 }],
+          })}
         >
           <Text className="text-center text-lg font-bold text-black">
             BEGIN YOUR JOURNEY
@@ -97,7 +103,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         </Pressable>
 
         <View className="mt-8">
-          <Text className="text-xs text-secondary text-center leading-relaxed">
+          <Text className="text-xs text-zinc-500 text-center leading-relaxed">
             Takes 2 minutes • Your privacy is paramount
           </Text>
         </View>
@@ -117,15 +123,15 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         <ScrollView className="flex-1" contentContainerClassName="px-8 py-16">
           {/* Progress */}
           <View className="mb-8">
-            <Text className="text-sm text-secondary font-medium">STEP 1 OF 3</Text>
+            <Text className="text-xs text-zinc-400 font-semibold uppercase tracking-wider">STEP 1 OF 3</Text>
           </View>
 
           {/* Header */}
           <View className="mb-12">
-            <Text className="text-3xl font-bold text-white mb-4">
+            <Text className="text-3xl font-bold tracking-wide text-white mb-4">
               What should we call you?
             </Text>
-            <Text className="text-base text-secondary leading-relaxed">
+            <Text className="text-base text-zinc-400 leading-relaxed">
               We'll use this to personalize your experience and enable family relationship features.
             </Text>
           </View>
@@ -133,30 +139,30 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           {/* Input Fields */}
           <View className="space-y-6 mb-8">
             <View>
-              <Text className="text-sm text-secondary mb-2 font-medium">
+              <Text className="text-xs text-zinc-400 mb-2 font-semibold uppercase tracking-wider">
                 FIRST NAME
               </Text>
               <TextInput
                 value={data.firstName}
                 onChangeText={(text) => setData({ ...data, firstName: text })}
                 placeholder="Enter your first name"
-                placeholderTextColor="#475569"
-                className="bg-zinc-900 text-white text-lg px-4 py-4 border border-zinc-800 rounded-none"
+                placeholderTextColor="#71717a"
+                className="bg-zinc-900 text-white text-base px-4 py-3 border-2 border-zinc-800 min-h-[44px]"
                 autoCapitalize="words"
                 autoComplete="name-given"
               />
             </View>
 
             <View>
-              <Text className="text-sm text-secondary mb-2 font-medium">
+              <Text className="text-xs text-zinc-400 mb-2 font-semibold uppercase tracking-wider">
                 LAST NAME
               </Text>
               <TextInput
                 value={data.lastName}
                 onChangeText={(text) => setData({ ...data, lastName: text })}
                 placeholder="Enter your last name"
-                placeholderTextColor="#475569"
-                className="bg-zinc-900 text-white text-lg px-4 py-4 border border-zinc-800 rounded-none"
+                placeholderTextColor="#71717a"
+                className="bg-zinc-900 text-white text-base px-4 py-3 border-2 border-zinc-800 min-h-[44px]"
                 autoCapitalize="words"
                 autoComplete="name-family"
               />
@@ -170,11 +176,18 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               setTimeout(() => setCurrentStep("contact-info"), 100);
             }}
             disabled={!isValid}
-            className={`py-4 px-6 rounded-none border-2 ${
+            className={`py-4 px-6 border-2 min-h-[52px] justify-center ${
               isValid
                 ? "bg-primary border-primary"
                 : "bg-zinc-900 border-zinc-800"
             }`}
+            accessibilityLabel="Continue to next step"
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !isValid }}
+            style={({ pressed }) => ({ 
+              opacity: !isValid ? 0.5 : pressed ? 0.9 : 1,
+              transform: [{ scale: pressed && isValid ? 0.98 : 1 }],
+            })}
           >
             <Text
               className={`text-center text-lg font-bold ${
@@ -203,15 +216,15 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         <ScrollView className="flex-1" contentContainerClassName="px-8 py-16">
           {/* Progress */}
           <View className="mb-8">
-            <Text className="text-sm text-secondary font-medium">STEP 2 OF 3</Text>
+            <Text className="text-xs text-zinc-400 font-semibold uppercase tracking-wider">STEP 2 OF 3</Text>
           </View>
 
           {/* Header */}
           <View className="mb-12">
-            <Text className="text-3xl font-bold text-white mb-4">
+            <Text className="text-3xl font-bold tracking-wide text-white mb-4">
               How can we reach you?
             </Text>
-            <Text className="text-base text-secondary leading-relaxed">
+            <Text className="text-base text-zinc-400 leading-relaxed">
               For account recovery and important notifications.{"\n\n"}
               We'll never spam you or share your information.
             </Text>
@@ -220,15 +233,15 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           {/* Input Fields */}
           <View className="space-y-6 mb-8">
             <View>
-              <Text className="text-sm text-secondary mb-2 font-medium">
+              <Text className="text-xs text-zinc-400 mb-2 font-semibold uppercase tracking-wider">
                 EMAIL ADDRESS
               </Text>
               <TextInput
                 value={data.email}
                 onChangeText={(text) => setData({ ...data, email: text })}
                 placeholder="your.email@example.com"
-                placeholderTextColor="#475569"
-                className="bg-zinc-900 text-white text-lg px-4 py-4 border border-zinc-800 rounded-none"
+                placeholderTextColor="#71717a"
+                className="bg-zinc-900 text-white text-base px-4 py-3 border-2 border-zinc-800 min-h-[44px]"
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoComplete="email"
@@ -236,15 +249,15 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             </View>
 
             <View>
-              <Text className="text-sm text-secondary mb-2 font-medium">
+              <Text className="text-xs text-zinc-400 mb-2 font-semibold uppercase tracking-wider">
                 PHONE NUMBER
               </Text>
               <TextInput
                 value={data.phone}
                 onChangeText={(text) => setData({ ...data, phone: text })}
                 placeholder="+1 (555) 123-4567"
-                placeholderTextColor="#475569"
-                className="bg-zinc-900 text-white text-lg px-4 py-4 border border-zinc-800 rounded-none"
+                placeholderTextColor="#71717a"
+                className="bg-zinc-900 text-white text-base px-4 py-3 border-2 border-zinc-800 min-h-[44px]"
                 keyboardType="phone-pad"
                 autoComplete="tel"
               />
@@ -258,11 +271,18 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               setTimeout(() => setCurrentStep("contacts-permission"), 100);
             }}
             disabled={!isValid}
-            className={`py-4 px-6 rounded-none border-2 ${
+            className={`py-4 px-6 border-2 min-h-[52px] justify-center ${
               isValid
                 ? "bg-primary border-primary"
                 : "bg-zinc-900 border-zinc-800"
             }`}
+            accessibilityLabel="Continue to permissions"
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !isValid }}
+            style={({ pressed }) => ({ 
+              opacity: !isValid ? 0.5 : pressed ? 0.9 : 1,
+              transform: [{ scale: pressed && isValid ? 0.98 : 1 }],
+            })}
           >
             <Text
               className={`text-center text-lg font-bold ${
@@ -283,15 +303,15 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       <View className="flex-1 bg-black justify-center px-8">
         {/* Progress */}
         <View className="mb-8">
-          <Text className="text-sm text-secondary font-medium">STEP 3 OF 3</Text>
+          <Text className="text-xs text-zinc-400 font-semibold uppercase tracking-wider">STEP 3 OF 3</Text>
         </View>
 
         {/* Header */}
         <View className="mb-12">
-          <Text className="text-3xl font-bold text-white mb-4">
+          <Text className="text-3xl font-bold tracking-wide text-white mb-4">
             Access your contacts
           </Text>
-          <Text className="text-base text-secondary leading-relaxed">
+          <Text className="text-base text-zinc-400 leading-relaxed">
             Nurture analyzes your phone contacts to help you identify and cultivate meaningful relationships.{"\n\n"}
             Your contact data stays encrypted and never leaves your device without your permission.
           </Text>
@@ -305,7 +325,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               <Text className="text-white text-base mb-1 font-medium">
                 End-to-end encrypted
               </Text>
-              <Text className="text-secondary text-sm leading-relaxed">
+              <Text className="text-zinc-400 text-sm leading-relaxed">
                 Your data is encrypted before it ever leaves your device
               </Text>
             </View>
@@ -317,7 +337,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               <Text className="text-white text-base mb-1 font-medium">
                 Local-first storage
               </Text>
-              <Text className="text-secondary text-sm leading-relaxed">
+              <Text className="text-zinc-400 text-sm leading-relaxed">
                 Everything stored on your device, synced only when you choose
               </Text>
             </View>
@@ -329,7 +349,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               <Text className="text-white text-base mb-1 font-medium">
                 You're in control
               </Text>
-              <Text className="text-secondary text-sm leading-relaxed">
+              <Text className="text-zinc-400 text-sm leading-relaxed">
                 Revoke access anytime in your device settings
               </Text>
             </View>
@@ -339,7 +359,13 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         {/* Allow Access Button */}
         <Pressable
           onPress={handleRequestContactsPermission}
-          className="bg-primary py-5 px-6 rounded-none border-2 border-primary mb-4"
+          className="bg-primary py-4 px-6 border-2 border-primary mb-4 min-h-[52px] justify-center"
+          accessibilityLabel="Allow contacts access"
+          accessibilityRole="button"
+          style={({ pressed }) => ({ 
+            opacity: pressed ? 0.9 : 1,
+            transform: [{ scale: pressed ? 0.98 : 1 }],
+          })}
         >
           <Text className="text-center text-lg font-bold text-black">
             ALLOW CONTACTS ACCESS
@@ -349,9 +375,12 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         {/* Skip Option */}
         <Pressable
           onPress={() => setCurrentStep("complete")}
-          className="py-3"
+          className="py-3 min-h-[44px] justify-center"
+          accessibilityLabel="Skip for now"
+          accessibilityRole="button"
+          style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
         >
-          <Text className="text-center text-sm text-secondary">
+          <Text className="text-center text-sm text-zinc-400">
             I'll do this later
           </Text>
         </Pressable>
@@ -365,18 +394,18 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       <View className="flex-1 bg-black justify-center px-8">
         {/* Header */}
         <View className="mb-12">
-          <Text className="text-3xl font-bold text-white mb-4">
+          <Text className="text-3xl font-bold tracking-wide text-white mb-4">
             You're all set!
           </Text>
-          <Text className="text-base text-secondary leading-relaxed">
+          <Text className="text-base text-zinc-400 leading-relaxed">
             Your account is configured and ready.{"\n\n"}
             Next, we'll enable biometric security to protect your data.
           </Text>
         </View>
 
         {/* Security Features */}
-        <View className="mb-12 p-6 border border-zinc-800 bg-zinc-900">
-          <Text className="text-sm text-secondary font-medium mb-4">
+        <View className="mb-12 p-6 border-2 border-zinc-800 bg-zinc-900">
+          <Text className="text-xs text-zinc-400 font-semibold mb-4 uppercase tracking-wider">
             WHAT HAPPENS NEXT
           </Text>
           <View className="space-y-3">
@@ -395,7 +424,13 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         {/* Complete Button */}
         <Pressable
           onPress={handleComplete}
-          className="bg-primary py-5 px-6 rounded-none border-2 border-primary"
+          className="bg-primary py-4 px-6 border-2 border-primary min-h-[52px] justify-center"
+          accessibilityLabel="Enable biometric lock"
+          accessibilityRole="button"
+          style={({ pressed }) => ({ 
+            opacity: pressed ? 0.9 : 1,
+            transform: [{ scale: pressed ? 0.98 : 1 }],
+          })}
         >
           <Text className="text-center text-lg font-bold text-black">
             ENABLE BIOMETRIC LOCK
@@ -404,7 +439,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
         {/* Privacy Note */}
         <View className="mt-8">
-          <Text className="text-xs text-secondary text-center leading-relaxed">
+          <Text className="text-xs text-zinc-500 text-center leading-relaxed">
             By continuing, you agree to our privacy-first approach.{"\n"}
             Your data, your rules, always.
           </Text>

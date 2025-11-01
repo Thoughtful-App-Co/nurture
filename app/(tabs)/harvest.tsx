@@ -19,6 +19,7 @@ import { View, Text, ScrollView } from "react-native";
 import { useAccount } from "jazz-tools/expo";
 import { ALGORITHM_PRESETS, type AlgorithmType } from "@/jazz/harvestSchema";
 import { Card, Button, SectionHeader } from "@/components/ui";
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 export default function HarvestScreen() {
   const { me } = useAccount();
@@ -49,10 +50,14 @@ export default function HarvestScreen() {
   };
 
   return (
-    <ScrollView className="flex-1 bg-black">
+    <Animated.ScrollView 
+      className="flex-1 bg-black"
+      entering={FadeIn.duration(300)}
+      exiting={FadeOut.duration(200)}
+    >
       {/* Header */}
       <View className="px-6 pt-16 pb-8">
-        <Text className="text-4xl font-bold text-primary mb-2">Harvest</Text>
+        <Text className="text-4xl font-bold tracking-wide text-primary mb-2">Harvest</Text>
         <Text className="text-base text-zinc-400 leading-relaxed">
           Set your relationship goals. We'll guide you to tend your garden.
         </Text>
@@ -72,22 +77,22 @@ export default function HarvestScreen() {
                   accentColor={getAlgorithmColor(type)}
                 >
                   <View className="flex-row items-center justify-between mb-2">
-                    <Text className="text-white font-semibold text-lg">
+                    <Text className="text-white font-medium text-lg">
                       {preset.name}
                     </Text>
                     <Button
                       variant="ghost"
                       size="sm"
                       onPress={() => toggleAlgorithm(type)}
-                      className="px-3 py-1 bg-zinc-800"
+                      accessibilityLabel={`Disable ${preset.name}`}
                     >
                       <Text className="text-xs text-zinc-400">Disable</Text>
                     </Button>
                   </View>
-                  <Text className="text-sm text-zinc-400">
+                  <Text className="text-sm text-zinc-400 leading-relaxed">
                     {preset.description}
                   </Text>
-                  <View className="mt-2 flex-row items-center">
+                  <View className="mt-3 flex-row items-center">
                     <Text className="text-xs text-zinc-500">
                       Layers: {preset.targetLayers.join(", ")} • Checks every {preset.checkFrequency}d
                     </Text>
@@ -153,12 +158,14 @@ export default function HarvestScreen() {
               <Card
                 key={type}
                 onPress={() => toggleAlgorithm(type)}
-                className={isActive ? "border-primary" : "bg-black"}
+                className={isActive ? "border-2 border-primary" : "bg-black border-2"}
                 variant={isActive ? "accent" : "default"}
                 accentColor={isActive ? getAlgorithmColor(type) : "#27272a"}
+                accessibilityLabel={`${preset.name}, ${isActive ? 'active' : 'inactive'}`}
+                accessibilityRole="button"
               >
                 <View className="flex-row items-center justify-between mb-2">
-                  <Text className={`font-semibold text-lg ${isActive ? "text-primary" : "text-white"}`}>
+                  <Text className={`font-medium text-lg ${isActive ? "text-primary" : "text-white"}`}>
                     {preset.name}
                   </Text>
                   <View
@@ -169,7 +176,7 @@ export default function HarvestScreen() {
                     {isActive && <Text className="text-black text-xs font-bold">✓</Text>}
                   </View>
                 </View>
-                <Text className="text-sm text-zinc-400 mb-3">
+                <Text className="text-sm text-zinc-400 mb-3 leading-relaxed">
                   {preset.description}
                 </Text>
                 <View className="flex-row flex-wrap gap-2">
@@ -197,24 +204,24 @@ export default function HarvestScreen() {
 
       {/* Streak/Stats Section */}
       <View className="px-6 mb-20">
-        <Card className="p-6">
-          <Text className="text-zinc-400 text-sm mb-4">Your Progress</Text>
+        <Card className="p-6 border-2">
+          <Text className="text-xs text-zinc-400 font-semibold uppercase tracking-wider mb-4">Your Progress</Text>
           <View className="flex-row justify-between">
             <View>
               <Text className="text-3xl font-bold text-primary">0</Text>
-              <Text className="text-xs text-zinc-500 mt-1">Current Streak</Text>
+              <Text className="text-xs text-zinc-500 mt-2">Current Streak</Text>
             </View>
             <View>
               <Text className="text-3xl font-bold text-white">0</Text>
-              <Text className="text-xs text-zinc-500 mt-1">Actions Completed</Text>
+              <Text className="text-xs text-zinc-500 mt-2">Actions Completed</Text>
             </View>
             <View>
               <Text className="text-3xl font-bold text-zinc-400">0</Text>
-              <Text className="text-xs text-zinc-500 mt-1">Best Streak</Text>
+              <Text className="text-xs text-zinc-500 mt-2">Best Streak</Text>
             </View>
           </View>
         </Card>
       </View>
-    </ScrollView>
+    </Animated.ScrollView>
   );
 }

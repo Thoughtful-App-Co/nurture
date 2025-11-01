@@ -711,61 +711,135 @@ export function QuickSortModal({
 
         {/* Category Buttons */}
         <View className="mb-6">
-          <Text className="text-zinc-400 text-xs text-center mb-3">
-            TAP A CATEGORY
-          </Text>
+          {(() => {
+            // Check if relationship type and tier are selected
+            const hasRelationshipType = !!selectedRelationshipType;
+            const hasTier = 
+              (selectedRelationshipType === 'FAMILY' && !!selectedFamilyTier) ||
+              (selectedRelationshipType === 'FRIEND' && !!selectedFriendTier) ||
+              (selectedRelationshipType === 'BUSINESS' && !!selectedBusinessTier);
+            const isComplete = hasRelationshipType && hasTier;
+            
+            let warningMessage = 'TAP A CATEGORY';
+            if (!hasRelationshipType) {
+              warningMessage = '⚠️ SELECT RELATIONSHIP TYPE FIRST';
+            } else if (!hasTier) {
+              if (selectedRelationshipType === 'FAMILY') {
+                warningMessage = '⚠️ SELECT FAMILY TIER';
+              } else if (selectedRelationshipType === 'FRIEND') {
+                warningMessage = '⚠️ SELECT FRIEND TIER';
+              } else if (selectedRelationshipType === 'BUSINESS') {
+                warningMessage = '⚠️ SELECT BUSINESS TIER';
+              }
+            }
+            
+            return (
+              <Text className={`text-xs text-center mb-3 ${
+                !isComplete ? 'text-orange-400' : 'text-zinc-400'
+              }`}>
+                {warningMessage}
+              </Text>
+            );
+          })()}
 
           {/* Top Row: Layers 0-2 */}
           <View className="flex-row gap-2 mb-2">
-            {LAYERS.slice(0, 3).map((layer) => (
-              <Pressable
-                key={layer.id}
-                onPress={() => handleCategorySelect(layer.id)}
-                className="flex-1 bg-zinc-900 border border-zinc-700 py-3 items-center"
-              >
-                <Text className="text-2xl mb-1">{layer.emoji}</Text>
-                <Text
-                  className="text-xs font-bold mb-0.5"
-                  style={{ color: layer.color }}
+            {LAYERS.slice(0, 3).map((layer) => {
+              const isEnabled = 
+                selectedRelationshipType && (
+                  (selectedRelationshipType === 'FAMILY' && selectedFamilyTier) ||
+                  (selectedRelationshipType === 'FRIEND' && selectedFriendTier) ||
+                  (selectedRelationshipType === 'BUSINESS' && selectedBusinessTier)
+                );
+              
+              return (
+                <Pressable
+                  key={layer.id}
+                  onPress={() => isEnabled && handleCategorySelect(layer.id)}
+                  disabled={!isEnabled}
+                  className={`flex-1 py-3 items-center border ${
+                    !isEnabled 
+                      ? 'bg-zinc-900/50 border-zinc-800' 
+                      : 'bg-zinc-900 border-zinc-700'
+                  }`}
+                  style={{ opacity: !isEnabled ? 0.5 : 1 }}
                 >
-                  {layer.descriptor}
-                </Text>
-                <Text className="text-zinc-500 text-xs">L{layer.id}</Text>
-              </Pressable>
-            ))}
+                  <Text className="text-2xl mb-1">{layer.emoji}</Text>
+                  <Text
+                    className="text-xs font-bold mb-0.5"
+                    style={{ color: layer.color }}
+                  >
+                    {layer.descriptor}
+                  </Text>
+                  <Text className="text-zinc-500 text-xs">L{layer.id}</Text>
+                </Pressable>
+              );
+            })}
           </View>
 
           {/* Bottom Row: Layers 3-4 + Hidden */}
           <View className="flex-row gap-2">
-            {LAYERS.slice(3, 5).map((layer) => (
-              <Pressable
-                key={layer.id}
-                onPress={() => handleCategorySelect(layer.id)}
-                className="flex-1 bg-zinc-900 border border-zinc-700 py-3 items-center"
-              >
-                <Text className="text-2xl mb-1">{layer.emoji}</Text>
-                <Text
-                  className="text-xs font-bold mb-0.5"
-                  style={{ color: layer.color }}
+            {LAYERS.slice(3, 5).map((layer) => {
+              const isEnabled = 
+                selectedRelationshipType && (
+                  (selectedRelationshipType === 'FAMILY' && selectedFamilyTier) ||
+                  (selectedRelationshipType === 'FRIEND' && selectedFriendTier) ||
+                  (selectedRelationshipType === 'BUSINESS' && selectedBusinessTier)
+                );
+              
+              return (
+                <Pressable
+                  key={layer.id}
+                  onPress={() => isEnabled && handleCategorySelect(layer.id)}
+                  disabled={!isEnabled}
+                  className={`flex-1 py-3 items-center border ${
+                    !isEnabled 
+                      ? 'bg-zinc-900/50 border-zinc-800' 
+                      : 'bg-zinc-900 border-zinc-700'
+                  }`}
+                  style={{ opacity: !isEnabled ? 0.5 : 1 }}
                 >
-                  {layer.descriptor}
-                </Text>
-                <Text className="text-zinc-500 text-xs">L{layer.id}</Text>
-              </Pressable>
-            ))}
-            <Pressable
-              onPress={() => handleCategorySelect("hidden")}
-              className="flex-1 bg-zinc-900 border border-zinc-700 py-3 items-center"
-            >
-              <Text className="text-2xl mb-1">{HIDDEN_CATEGORY.emoji}</Text>
-              <Text
-                className="text-xs font-bold mb-0.5"
-                style={{ color: HIDDEN_CATEGORY.color }}
-              >
-                {HIDDEN_CATEGORY.descriptor}
-              </Text>
-              <Text className="text-zinc-500 text-xs">---</Text>
-            </Pressable>
+                  <Text className="text-2xl mb-1">{layer.emoji}</Text>
+                  <Text
+                    className="text-xs font-bold mb-0.5"
+                    style={{ color: layer.color }}
+                  >
+                    {layer.descriptor}
+                  </Text>
+                  <Text className="text-zinc-500 text-xs">L{layer.id}</Text>
+                </Pressable>
+              );
+            })}
+            {(() => {
+              const isEnabled = 
+                selectedRelationshipType && (
+                  (selectedRelationshipType === 'FAMILY' && selectedFamilyTier) ||
+                  (selectedRelationshipType === 'FRIEND' && selectedFriendTier) ||
+                  (selectedRelationshipType === 'BUSINESS' && selectedBusinessTier)
+                );
+              
+              return (
+                <Pressable
+                  onPress={() => isEnabled && handleCategorySelect("hidden")}
+                  disabled={!isEnabled}
+                  className={`flex-1 py-3 items-center border ${
+                    !isEnabled 
+                      ? 'bg-zinc-900/50 border-zinc-800' 
+                      : 'bg-zinc-900 border-zinc-700'
+                  }`}
+                  style={{ opacity: !isEnabled ? 0.5 : 1 }}
+                >
+                  <Text className="text-2xl mb-1">{HIDDEN_CATEGORY.emoji}</Text>
+                  <Text
+                    className="text-xs font-bold mb-0.5"
+                    style={{ color: HIDDEN_CATEGORY.color }}
+                  >
+                    {HIDDEN_CATEGORY.descriptor}
+                  </Text>
+                  <Text className="text-zinc-500 text-xs">---</Text>
+                </Pressable>
+              );
+            })()}
           </View>
         </View>
 
