@@ -20,25 +20,25 @@ import { QuickSortModal } from "@/components/relationships/QuickSortModal";
 import { Card, Button } from "@/components/ui";
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
-// Layer definitions from PRD
+// Layer definitions based on Dunbar's research
 const LAYERS = [
-  { id: 0, name: "Intimate Core", range: "1-5", color: "#ef4444" },
-  { id: 1, name: "Sympathy Group", range: "5-15", color: "#f97316" },
-  { id: 2, name: "Close Group", range: "15-50", color: "#eab308" },
-  { id: 3, name: "Tribe", range: "50-150", color: "#22c55e" },
-  { id: 4, name: "Acquaintances", range: "150-250", color: "#3b82f6" },
-  { id: 5, name: "Social Nebula", range: "250+", color: "#8b5cf6" },
+  { id: 0, name: "Loved Ones", range: "0-5", color: "#ef4444" },
+  { id: 1, name: "Good Friends", range: "5-15", color: "#f97316" },
+  { id: 2, name: "Friends (Clan)", range: "15-50", color: "#eab308" },
+  { id: 3, name: "Meaningful Contacts (Tribe)", range: "50-150", color: "#22c55e" },
+  { id: 4, name: "Acquaintances", range: "150-500", color: "#3b82f6" },
+  { id: 5, name: "Social Nebula", range: "500-1500", color: "#8b5cf6" },
 ];
 
 // Layer descriptions based on Dunbar research
 const getLayerDescription = (layerId: number): string => {
   const descriptions = [
-    "Your closest confidants. People you turn to in crisis and celebrate wins with. You know their deepest struggles and they know yours.",
-    "Close friends you see regularly. You'd drop everything to help them. They know your life story and current challenges.",
-    "Good friends you actively maintain. Regular contact, genuine care. You'd invite them to important life events.",
-    "Friends and extended family. Periodic contact, shared history or interests. Part of your broader social circle.",
-    "People you recognize and occasionally interact with. Colleagues, neighbors, service providers you know by name.",
-    "Everyone else in your contacts. Minimal recent interaction. May have been closer in the past."
+    "Your innermost circle of 5 people. These are the relationships you'd drop everything for—partners, closest family, best friends. The people who know your deepest fears and greatest dreams.",
+    "Your core support network of 15 people. Close friends you see regularly and trust deeply. You'd be devastated if something happened to them, and they feel the same about you.",
+    "Your extended friend group of 50 people. Friends you actively maintain and genuinely care about. These are people you'd invite to important life events and who shape your social identity.",
+    "Your broader tribe of 150 people. Extended family, good colleagues, and friends you see periodically. Dunbar's number—the cognitive limit for stable social relationships where you know each person and how they relate to others.",
+    "People you recognize and interact with occasionally—up to 500 individuals. Colleagues, neighbors, parents from your kids' school, regular service providers. Friendly faces but not close relationships.",
+    "The outer limit of recognition—up to 1,500 people. Anyone you'd recognize by face or name but may not actively interact with. Former contacts, distant connections, or people you've met once."
   ];
   return descriptions[layerId] || "";
 };
@@ -676,23 +676,20 @@ export default function Dashboard() {
           // Parse expected range to get min and max
           const rangeMatch = layer.range.match(/\d+/g);
           let minExpected = 0;
-          let maxExpected = 999;
+          let maxExpected = 5;
           
           if (rangeMatch) {
             if (rangeMatch.length === 2) {
-              // Range like "1-5" or "15-50"
+              // Range like "0-5" or "15-50"
               minExpected = parseInt(rangeMatch[0]);
               maxExpected = parseInt(rangeMatch[1]);
-            } else if (rangeMatch.length === 1 && layer.range.includes('+')) {
-              // Range like "250+"
-              minExpected = parseInt(rangeMatch[0]);
-              maxExpected = 999; // Social Nebula has no upper limit
             }
           }
           
-          // Calculate the layer's capacity (max - min for cumulative ranges)
-          // Dunbar layers are cumulative: 0-5, 5-15, 15-50, etc.
-          const layerCapacity = maxExpected === 999 ? 250 : (maxExpected - minExpected);
+          // Calculate the layer's capacity
+          // For ranges like "0-5", capacity is 5 (maxExpected)
+          // For ranges like "5-15", capacity is 15 (maxExpected) 
+          const layerCapacity = maxExpected;
           
           // Calculate percentage based on layer capacity
           const percentage = (layerStat.count / layerCapacity) * 100;
@@ -714,7 +711,7 @@ export default function Dashboard() {
             >
               <View className="bg-zinc-900 border-2 border-zinc-800 p-4">
                 {/* Layer Header */}
-                <View className="flex-row justify-between items-center mb-3">
+                  <View className="flex-row justify-between items-center mb-3">
                   <View className="flex-row items-center">
                     <View 
                       className="w-3 h-3 rounded-full mr-3"
@@ -725,7 +722,7 @@ export default function Dashboard() {
                     </Text>
                   </View>
                   <Text className="text-secondary text-sm">
-                    {layerStat.count} ({layer.range})
+                    {layerStat.count}/{layerCapacity} ({Math.round(percentage)}%)
                   </Text>
                 </View>
 
@@ -769,7 +766,7 @@ export default function Dashboard() {
                         style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
                       >
                         <Text className="text-zinc-500 text-xs">
-                          + Add more (room for {layerCapacity - layerStat.count} more)
+                          + Add more ({layerCapacity - layerStat.count} remaining)
                         </Text>
                       </Pressable>
                     )}

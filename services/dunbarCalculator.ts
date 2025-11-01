@@ -45,14 +45,14 @@ interface LayerThreshold {
   maxCount: number;
 }
 
-// Dunbar layer thresholds based on PRD
+// Dunbar layer thresholds based on Dunbar's research
 const LAYER_THRESHOLDS: LayerThreshold[] = [
-  { layer: 0, minScore: 90, maxCount: 5 },    // Intimate Core (1-5)
-  { layer: 1, minScore: 70, maxCount: 15 },   // Sympathy Group (5-15)
-  { layer: 2, minScore: 50, maxCount: 50 },   // Close Group (15-50)
-  { layer: 3, minScore: 30, maxCount: 150 },  // Tribe (50-150)
-  { layer: 4, minScore: 10, maxCount: 250 },  // Acquaintances (150-250)
-  { layer: 5, minScore: 0, maxCount: 9999 },  // Social Nebula (250+)
+  { layer: 0, minScore: 90, maxCount: 5 },     // Loved Ones (0-5)
+  { layer: 1, minScore: 70, maxCount: 15 },    // Good Friends (5-15)
+  { layer: 2, minScore: 50, maxCount: 50 },    // Friends/Clan (15-50)
+  { layer: 3, minScore: 30, maxCount: 150 },   // Meaningful Contacts/Tribe (50-150)
+  { layer: 4, minScore: 10, maxCount: 500 },   // Acquaintances (150-500)
+  { layer: 5, minScore: 0, maxCount: 1500 },   // Social Nebula (500-1500)
 ];
 
 /**
@@ -165,12 +165,12 @@ export async function calculateDunbarLayers(contacts: Contact[]): Promise<Contac
   // Step 6: Use PERCENTILE-BASED distribution (inspired by Dunbar research)
   // These percentages represent the natural distribution of relationship intimacy
   const layerPercentages = [
-    { layer: 0, percentage: 0.03, name: 'Intimate Core' },      // Top 3% (1-5 people)
-    { layer: 1, percentage: 0.07, name: 'Sympathy Group' },     // Next 7% (6-15 people) 
-    { layer: 2, percentage: 0.20, name: 'Close Group' },        // Next 20% (16-50 people)
-    { layer: 3, percentage: 0.35, name: 'Tribe' },              // Next 35% (51-150 people)
-    { layer: 4, percentage: 0.25, name: 'Acquaintances' },      // Next 25% (151-250 people)
-    { layer: 5, percentage: 0.10, name: 'Social Nebula' },      // Bottom 10% + zero interactions
+    { layer: 0, percentage: 0.003, name: 'Loved Ones' },              // Top 0.3% (0-5 people out of ~1500)
+    { layer: 1, percentage: 0.007, name: 'Good Friends' },            // Next 0.7% (5-15 people)
+    { layer: 2, percentage: 0.023, name: 'Friends (Clan)' },          // Next 2.3% (15-50 people)
+    { layer: 3, percentage: 0.067, name: 'Meaningful Contacts' },     // Next 6.7% (50-150 people)
+    { layer: 4, percentage: 0.233, name: 'Acquaintances' },           // Next 23.3% (150-500 people)
+    { layer: 5, percentage: 0.667, name: 'Social Nebula' },           // Bottom 66.7% (500-1500+ people)
   ];
   
   const totalActive = activeContacts.length;

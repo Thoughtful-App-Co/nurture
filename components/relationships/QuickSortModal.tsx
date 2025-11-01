@@ -31,10 +31,10 @@ const SWIPE_THRESHOLD = 120;
 
 // Layer definitions matching dashboard
 const LAYERS = [
-  { id: 0, name: "Intimate Core", color: "#ef4444", emoji: "❤️", descriptor: "Adore" },
-  { id: 1, name: "Sympathy Group", color: "#f97316", emoji: "🧡", descriptor: "Love" },
-  { id: 2, name: "Close Group", color: "#eab308", emoji: "💛", descriptor: "Respect" },
-  { id: 3, name: "Tribe", color: "#22c55e", emoji: "💚", descriptor: "Like" },
+  { id: 0, name: "Loved Ones", color: "#ef4444", emoji: "❤️", descriptor: "Adore" },
+  { id: 1, name: "Good Friends", color: "#f97316", emoji: "🧡", descriptor: "Love" },
+  { id: 2, name: "Friends (Clan)", color: "#eab308", emoji: "💛", descriptor: "Respect" },
+  { id: 3, name: "Meaningful Contacts (Tribe)", color: "#22c55e", emoji: "💚", descriptor: "Like" },
   { id: 4, name: "Acquaintances", color: "#3b82f6", emoji: "💙", descriptor: "Know" },
 ];
 

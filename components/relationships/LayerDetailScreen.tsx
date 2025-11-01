@@ -164,7 +164,7 @@ export function LayerDetailScreen({ layer, contacts, onBack, onContactUpdate }: 
         </View>
         
         <Text className="text-secondary text-base mb-2">
-          {contacts.length} {contacts.length === 1 ? 'person' : 'people'} • {layer.range} typical
+          {contacts.length} {contacts.length === 1 ? 'person' : 'people'} • Expected: {layer.range}
         </Text>
         
         <Text className="text-zinc-400 text-sm leading-relaxed">
