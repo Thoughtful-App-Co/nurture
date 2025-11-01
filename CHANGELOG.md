@@ -5,6 +5,47 @@ All notable changes to the Nurture app will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.3] - 2025-11-01
+
+### Changed
+
+#### Dunbar Layer Naming and Descriptions
+- **Improved layer names** with clearer, research-based terminology:
+  - Layer 0: **Loved Ones** (0-5) - was "Intimate Core" (1-5)
+  - Layer 1: **Good Friends** (5-15) - was "Sympathy Group"
+  - Layer 2: **Friends (Clan)** (15-50) - was "Close Group"
+  - Layer 3: **Meaningful Contacts (Tribe)** (50-150) - was "Tribe"
+  - Layer 4: **Acquaintances** (150-500) - expanded from 150-250
+  - Layer 5: **Social Nebula** (500-1500) - expanded from 250+
+- **Enhanced layer descriptions** with better prose explaining Dunbar's research
+  - Each description now clearly explains the relationship depth and social dynamics
+  - Added context about cognitive limits and recognition boundaries
+  - Loved Ones: "Your innermost circle of 5 people... The people who know your deepest fears and greatest dreams"
+  - Good Friends: "Your core support network of 15 people... You'd be devastated if something happened to them"
+  - Friends (Clan): "Your extended friend group of 50 people... who shape your social identity"
+  - Meaningful Contacts (Tribe): "Your broader tribe of 150 people... Dunbar's number—the cognitive limit for stable social relationships"
+  - Acquaintances: "People you recognize and interact with occasionally—up to 500 individuals"
+  - Social Nebula: "The outer limit of recognition—up to 1,500 people... anyone you'd recognize by face or name"
+
+#### Garden View Display Format
+- **Changed display format** from "47 left" / "room for X more" to **"3/5 (60%)"** format
+  - Shows current count / total capacity with percentage
+  - More intuitive and informative for users at a glance
+  - Updated prompt text from "room for X more" to "X remaining"
+  - Visual progress bars now accurately reflect percentage of layer capacity
+
+#### Calculator Logic
+- Updated layer capacity thresholds in dunbarCalculator.ts to match new definitions
+- Adjusted percentile distribution for proper scaling across all 1500 recognizable people
+  - Layer 0: 0.3% (top 5 people)
+  - Layer 1: 0.7% (5-15 people)
+  - Layer 2: 2.3% (15-50 people)
+  - Layer 3: 6.7% (50-150 people)
+  - Layer 4: 23.3% (150-500 people)
+  - Layer 5: 66.7% (500-1500 people)
+
+---
+
 ## [0.2.2] - 2025-11-01
 
 ### Added
@@ -216,6 +257,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History
 
+- **0.2.3** - Improved Dunbar layer naming, better descriptions, garden view display format
 - **0.2.2** - Glassmorphic tab bar, smooth transitions, tab consistency fixes
 - **0.2.1** - Interaction metrics persistence, nuclear family prioritization, UX fixes
 - **0.2.0** - Quick Sort feature, relationship categorization, UI improvements
