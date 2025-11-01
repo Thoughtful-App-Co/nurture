@@ -176,9 +176,9 @@ export async function fetchCallLogs(): Promise<CallLogEntry[]> {
 
   try {
     // Dynamically import to avoid errors when not available
-    const CallLogsModule = require('react-native-call-log');
+    const CallLogs = require('react-native-call-log');
     
-    if (!CallLogsModule || !CallLogsModule.default) {
+    if (!CallLogs) {
       console.warn('⚠️ react-native-call-log not available in current build');
       console.warn('📱 Native modules require one of:');
       console.warn('   - EAS Build: eas build --profile development --platform android');
@@ -190,8 +190,6 @@ export async function fetchCallLogs(): Promise<CallLogEntry[]> {
       console.warn('   - Check permissions instead: Settings > Apps > Nurture > Permissions');
       return [];
     }
-    
-    const CallLogs = CallLogsModule.default;
     
     // Check if we have the necessary permission
     const hasPermission = await PermissionsAndroid.check(
@@ -279,9 +277,9 @@ export async function fetchSMSHistory(): Promise<SMSEntry[]> {
 
   try {
     // Dynamically import to avoid errors when not available
-    const SmsAndroidModule = require('react-native-get-sms-android');
+    const SmsAndroid = require('react-native-get-sms-android');
     
-    if (!SmsAndroidModule || !SmsAndroidModule.default) {
+    if (!SmsAndroid) {
       console.warn('⚠️ react-native-get-sms-android not available in current build');
       console.warn('📱 Native modules require one of:');
       console.warn('   - EAS Build: eas build --profile development --platform android');
@@ -292,8 +290,6 @@ export async function fetchSMSHistory(): Promise<SMSEntry[]> {
       console.warn('   - Check permissions: Settings > Apps > Nurture > Permissions > SMS');
       return [];
     }
-    
-    const SmsAndroid = SmsAndroidModule.default;
     
     // Check if we have the necessary permission
     const hasPermission = await PermissionsAndroid.check(
