@@ -5,6 +5,60 @@ All notable changes to the Nurture app will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2] - 2025-11-01
+
+### Added
+
+#### Glassmorphic Tab Bar Design
+- Implemented modern glassmorphic (frosted glass) design for tab navigation
+- Added `expo-blur` v15.0.7 dependency for blur effects
+- BlurView with 80% intensity for authentic frosted glass appearance
+- Layered transparent gradient overlay (85%, 75%, 80% opacity) for visual depth
+- Glowing green border (#22c55e) with shadow effect instead of solid line
+- Deeper shadows (16px blur radius) for floating tab bar appearance
+
+#### Smooth Tab Transitions
+- Added fade-in/fade-out animations between Garden and Harvest tabs
+- 300ms fade-in and 200ms fade-out for seamless screen transitions
+- Integrated `react-native-reanimated` for smooth animations
+- Enhanced user experience when switching between tabs
+
+### Changed
+
+#### Tab Bar Behavior
+- Changed tab bar position from `relative` to `absolute` to prevent shifting
+- Tab bar now maintains consistent height across all screens
+- Removed duplicate tab bar style definitions from individual screen options
+- Centralized tab bar styling in layout component
+
+### Fixed
+
+- **Critical**: Fixed tab bar height inconsistency between Garden and Harvest tabs
+  - Root cause: Dashboard was setting `tabBarStyle: undefined` when visible
+  - Solution: Replace undefined with proper glassmorphic style object
+  - Tab bar now maintains 88pt (iOS) or 72pt (Android) consistently
+- Fixed tab bar "jumping" and movement when switching between screens
+- Fixed console log spam from tab selection logging
+  - Logs now only fire on actual tab changes, not on every render
+  - Added state tracking to prevent duplicate logs
+- Fixed verbose console output during tab bar visibility changes
+  - Only logs when visibility actually changes, not on every useEffect run
+
+### Developer Experience
+
+- Improved console logging for tab selection (only shows actual changes)
+- Added state tracking for tab bar visibility to reduce log noise
+- Removed redundant tab bar layout configuration logs
+- Better debugging experience with meaningful, non-repetitive logs
+
+### Technical Notes
+
+- **Breaking**: Requires native rebuild due to `expo-blur` integration
+- Run `npx expo prebuild --clean && npx expo run:ios` (or `run:android`)
+- Glassmorphic effect works best with scrollable content behind tab bar
+
+---
+
 ## [0.2.1] - 2025-11-01
 
 ### Added
@@ -162,6 +216,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History
 
+- **0.2.2** - Glassmorphic tab bar, smooth transitions, tab consistency fixes
 - **0.2.1** - Interaction metrics persistence, nuclear family prioritization, UX fixes
 - **0.2.0** - Quick Sort feature, relationship categorization, UI improvements
 - **0.1.0** - Initial MVP with core features
