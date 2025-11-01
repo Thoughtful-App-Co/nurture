@@ -47,6 +47,7 @@ export function LayerDetailScreen({ layer, contacts, onBack, onContactUpdate }: 
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [relationshipSelectorContact, setRelationshipSelectorContact] = useState<Contact | null>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isLongPress = useRef<boolean>(false);
 
   const formatLastInteraction = (date?: string) => {
     if (!date) return 'No recent contact';
@@ -72,9 +73,11 @@ export function LayerDetailScreen({ layer, contacts, onBack, onContactUpdate }: 
   };
 
   const handleLongPressStart = (contact: Contact) => {
+    isLongPress.current = false;
     longPressTimer.current = setTimeout(() => {
+      isLongPress.current = true;
       setRelationshipSelectorContact(contact);
-    }, 800); // 800ms long press
+    }, 500); // 500ms long press
   };
 
   const handlePressEnd = () => {
@@ -82,6 +85,16 @@ export function LayerDetailScreen({ layer, contacts, onBack, onContactUpdate }: 
       clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
     }
+  };
+
+  const handlePress = (contact: Contact) => {
+    // Small delay to check if it was a long press
+    setTimeout(() => {
+      if (!isLongPress.current) {
+        setSelectedContact(contact);
+      }
+      isLongPress.current = false;
+    }, 50);
   };
 
   const handleRelationshipTypeSelect = (data: RelationshipTypeData) => {
@@ -175,7 +188,7 @@ export function LayerDetailScreen({ layer, contacts, onBack, onContactUpdate }: 
               return (
               <Pressable
                 key={contact.id || index}
-                onPress={() => setSelectedContact(contact)}
+                onPress={() => handlePress(contact)}
                 onPressIn={() => handleLongPressStart(contact)}
                 onPressOut={handlePressEnd}
                 className="mb-3 bg-zinc-900 border border-zinc-800 p-4 active:bg-zinc-800"
@@ -188,28 +201,11 @@ export function LayerDetailScreen({ layer, contacts, onBack, onContactUpdate }: 
                     </Text>
                     
                     {relationshipBadge && (
-                      <Pressable 
-                        onPress={() => setRelationshipSelectorContact(contact)}
-                        className="flex-row items-center mb-1 self-start"
-                      >
-                        <Text className={`text-xs font-medium mr-2 ${relationshipBadge.color}`}>
+                      <View className="flex-row items-center mb-1 self-start">
+                        <Text className={`text-xs font-medium ${relationshipBadge.color}`}>
                           {relationshipBadge.emoji} {relationshipBadge.label.toUpperCase()}
                         </Text>
-                        <Text className="text-xs text-zinc-500">
-                          (tap to change)
-                        </Text>
-                      </Pressable>
-                    )}
-                    
-                    {!relationshipBadge && (
-                      <Pressable 
-                        onPress={() => setRelationshipSelectorContact(contact)}
-                        className="mb-1 self-start"
-                      >
-                        <Text className="text-xs text-zinc-500">
-                          Tap to set relationship type
-                        </Text>
-                      </Pressable>
+                      </View>
                     )}
                     
                     <Text className="text-secondary text-sm">
@@ -259,7 +255,7 @@ export function LayerDetailScreen({ layer, contacts, onBack, onContactUpdate }: 
                 {/* Tap to edit indicator */}
                 <View className="mt-2">
                   <Text className="text-zinc-600 text-xs text-right">
-                    Tap to view/edit • Hold to categorize →
+                    Tap to view/edit • Hold to set relationship type →
                   </Text>
                 </View>
               </Pressable>
