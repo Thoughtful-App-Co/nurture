@@ -5,6 +5,77 @@ All notable changes to the Nurture app will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2025-11-01
+
+### Added
+
+#### Tend Garden Visibility Improvements (Von Restorff Effect)
+- **Prime Real Estate Placement**: Moved Tend Garden to top of dashboard (directly below header)
+  - Previously buried at bottom where users could miss it
+  - Now occupies most prominent screen position
+  - Only shows when there are unsorted contacts (auto-hides when complete)
+- **High Visual Contrast** (Von Restorff isolation effect):
+  - Large card with 3px primary green border for maximum attention
+  - Gradient background (from-primary/20 to-primary/5) for visual depth
+  - Animated pulsing dot indicator to create urgency
+  - Bold "🌱 ACTION NEEDED" label with emoji
+  - White headline: "Tend Your Garden" (2xl bold)
+  - Prominent CTA button with count badge: "START SORTING (X)"
+  - Time estimate and benefit callout: "⚡ Takes 2-3 minutes • Unlock relationship insights"
+- **Layer Detail Screen Integration**:
+  - Added Tend Garden CTA banner at top of contact list in each layer
+  - Shows context-specific count of unsorted contacts in current layer
+  - "OPEN TEND GARDEN" button navigates to sort modal
+  - Only displays when unsorted contacts exist
+  - Helps users discover feature from multiple entry points
+
+#### UX Principles Applied
+- ✅ **Von Restorff Effect**: Strong visual contrast creates isolation and memorability
+- ✅ **Progressive Disclosure**: Only shows when relevant (unsorted contacts exist)
+- ✅ **Primacy Effect**: Positioned at top where users look first
+- ✅ **Social Proof**: Shows exact counts to create urgency ("X relationships waiting")
+- ✅ **Clear Value Proposition**: Explains benefit and time investment upfront
+- ✅ **Contextual Assistance**: Appears in both global (dashboard) and local (layer) views
+- ✅ **Completion Reward**: Disappears when done, providing sense of accomplishment
+
+### Changed
+
+#### Dashboard Layout Hierarchy
+- **New visual hierarchy**:
+  1. Dashboard header (Your Garden)
+  2. **→ TEND GARDEN (unmissable, animated, prominent)** ← Moved here
+  3. Family members count
+  4. Dunbar status
+  5. Relationship layers
+  6. Re-analyze data button
+- **Removed**: Small Tend Garden card from bottom of dashboard (replaced by prominent version)
+
+### Fixed
+
+#### Critical: Jazz CoMap Update Error During Onboarding
+- **Error**: `Cannot update a CoMap directly. Use '$jazz.set' instead`
+- **Location**: `app/index.tsx:107-109`
+- **Root Cause**: Direct property assignment to Jazz CoMap during onboarding
+  - `root.displayName = value` (incorrect)
+  - `root.email = value` (incorrect)
+  - `root.phone = value` (incorrect)
+- **Impact**: Onboarding crashed when trying to save user data
+- **Solution**: Use `$jazz.set()` method for all CoMap updates
+  - `root.$jazz.set('displayName', value)` (correct)
+  - `root.$jazz.set('email', value)` (correct)
+  - `root.$jazz.set('phone', value)` (correct)
+- **Why This Matters**: Jazz requires all CoMap updates to go through `$jazz.set` to properly track changes and maintain data consistency across devices
+- **Note**: Contact saving logic was already using `$jazz.set` correctly and remains unchanged
+
+### Technical Notes
+
+- Added `quickSortStatus` and `quickSortedAt` fields to Contact interface in LayerDetailScreen
+- Added `onStartTendGarden` callback prop to LayerDetailScreen component
+- Dashboard now passes callback to open Tend Garden modal from layer detail view
+- Tend Garden feature now discoverable from 3 locations: dashboard, layer detail screens, and search results
+
+---
+
 ## [0.3.0] - 2025-11-01
 
 ### Fixed
