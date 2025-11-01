@@ -5,6 +5,97 @@ All notable changes to the Nurture app will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2025-11-01
+
+### Fixed
+
+#### Critical Onboarding Bypass Issue
+- **BREAKING**: Fixed users bypassing onboarding and accessing app without providing demographic data
+  - Root cause: Jazz migration was setting `displayName: "New User"` before onboarding started
+  - Onboarding check relied on `!root?.displayName` which was always false
+  - Users were authorized anonymously with zero collected data
+- **Solution**: Added `hasCompletedOnboarding` flag to properly track onboarding state
+  - Migration now sets `displayName: ""` and `hasCompletedOnboarding: false`
+  - Onboarding check now uses `!root?.hasCompletedOnboarding` flag
+  - Flag only set to `true` after user completes entire onboarding flow
+  - Users must now provide name, email, phone, and consent before accessing app
+
+### Added
+
+#### Data Verification & Consent System
+- **New onboarding step**: Data Verification Screen (step 5 of 6)
+  - Shows users exactly what demographic data was collected
+  - Displays name, email, phone, and contacts permission status
+  - Transparent review before accessing the app
+- **Three-tier data sharing consent system**:
+  - **NONE**: Complete privacy, no data sharing (0% premium discount)
+  - **ANONYMIZED**: Share anonymous usage insights (10% premium discount)
+  - **FULL**: Share demographic + usage data (25% premium discount)
+- **Explicit opt-in consent**:
+  - Users must actively choose a privacy level to continue
+  - Cannot bypass or skip the verification step
+  - Clear explanations of benefits for each tier
+  - Privacy policy and terms of service references
+- **Consent tracking in schema**:
+  - New `DataSharingConsent` CoMap with `hasConsented`, `consentedAt`, `level`, `lastUpdated`
+  - Added `dataSharing` field to `UserProfile`
+  - Enables future rebate/credit programs for premium features
+
+#### Schema Enhancements
+- Added `hasCompletedOnboarding: boolean` to `UserProfile` schema
+- Added `DataSharingConsent` schema for opt-in data sharing tracking
+- Added `dataSharing: DataSharingConsent` field to user profile
+
+### Changed
+
+#### Onboarding Flow
+- Updated flow: Welcome → Basic Info → Contact Info → Contacts Permission → **Data Verification (NEW)** → Complete
+- `OnboardingData` interface now includes `dataSharingLevel?: "NONE" | "ANONYMIZED" | "FULL"`
+- All paths (contacts granted/denied/skipped) now route through data verification
+- Enhanced logging for onboarding state tracking and debugging
+
+#### Jazz Account Migration
+- Removed default `displayName: "New User"` from migration
+- Explicitly set `hasCompletedOnboarding: false` on account creation
+- Added explanatory comments about onboarding enforcement
+- Users must complete onboarding to set their actual display name
+
+### Documentation
+
+- Added `docs/implementation/ONBOARDING_FIX.md` with:
+  - Root cause analysis of onboarding bypass issue
+  - Detailed solution explanation with code examples
+  - Data verification and consent system documentation
+  - Privacy level explanations and benefits
+  - Testing instructions and reset procedures
+  - GDPR/CCPA compliance considerations
+  - Future enhancement roadmap
+
+### Breaking Changes
+
+⚠️ **Existing users may need to re-onboard**
+- Users who completed onboarding before this version will have `hasCompletedOnboarding = undefined`
+- These users will be prompted to complete onboarding again
+- This is intentional to ensure all users have provided explicit consent
+
+**Migration path** (if needed in future):
+```typescript
+// Mark existing users with displayName as having completed onboarding
+if (root.displayName && root.displayName !== "" && !root.hasCompletedOnboarding) {
+  root.$jazz.set('hasCompletedOnboarding', true);
+}
+```
+
+### Developer Notes
+
+- Still using DemoAuth (development only) - replace with PassphraseAuth/PasskeyAuth for production
+- Data sharing consent is collected but not yet enforced in backend
+- Future: Add Settings page to change data sharing preference
+- Future: Implement data export/deletion for GDPR compliance
+- Future: Add Privacy Policy and Terms of Service documents
+
+---
+
 ## [0.2.4] - 2025-11-01
 
 ### Fixed
