@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+#### Critical: Sorted Contacts Reappearing in Tend Garden
+- **Root Cause**: `quickSortStatus` field not being passed from Jazz contacts to plain objects
+- **Impact**: All previously organized contacts appeared as "ready to tend" again
+- **Solution**: Added missing fields to contact conversion in dashboard
+  - `quickSortStatus`, `quickSortedAt` now properly passed through
+  - `relationshipType`, `friendTier`, `businessTier` also added for completeness
+- **Result**: Already-tended relationships now correctly filtered out
+
 #### Critical Onboarding Bypass Issue
 - **BREAKING**: Fixed users bypassing onboarding and accessing app without providing demographic data
   - Root cause: Jazz migration was setting `displayName: "New User"` before onboarding started
@@ -19,6 +27,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Onboarding check now uses `!root?.hasCompletedOnboarding` flag
   - Flag only set to `true` after user completes entire onboarding flow
   - Users must now provide name, email, phone, and consent before accessing app
+
+### Changed
+
+#### Garden-Themed Rebranding: Quick Sort → Tend Garden
+- **Renamed "Quick Sort" to "Tend Garden"** throughout entire app
+  - Better alignment with gardening metaphor and app philosophy
+  - Emphasizes caring, cultivating, and organizing relationships
+  - More meaningful and less technical/mechanical
+- **UI Text Updates**:
+  - "Quick Sort" → "Tend Garden" / "Tend Your Garden"
+  - "ready to sort" → "ready to tend"
+  - "START SORTING" → "START TENDING"
+  - "All contacts sorted!" → "Garden fully tended!"
+  - "You sorted X contacts" → "You organized X relationships"
+  - Completion emoji changed from 🎉 to 🌱 (growth/garden theme)
+- **Documentation**: Renamed `QUICK_SORT.md` → `TEND_GARDEN.md`
 
 ### Added
 
