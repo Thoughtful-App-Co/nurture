@@ -100,6 +100,13 @@ if (root.displayName && root.displayName !== "" && !root.hasCompletedOnboarding)
 
 ### Fixed
 
+#### Layer 1 Naming
+- **Changed Layer 1** from "Close Friends" to **"Inner Circle"**
+  - Removes friend-prescriptive terminology that was inappropriate for family members
+  - "Inner Circle" is neutral and accommodates both immediate family and close friends
+  - Layer descriptions now mention family before friends in layers 1-2
+  - Quick Sort maintains "Love" descriptor (non-prescriptive)
+
 #### Dunbar Layer Distribution Algorithm
 - **Critical**: Fixed layer distribution using score-based thresholds instead of percentiles
   - Previous percentile-based approach put 51% of contacts in Social Nebula (incorrect)
@@ -118,10 +125,10 @@ if (root.displayName && root.displayName !== "" && !root.hasCompletedOnboarding)
 ### Changed
 
 #### Layer Naming Refinements
-- **Layer 1**: "Good Friends" → **"Close Friends"** (better accommodates immediate family)
+- **Layer 1**: "Good Friends" → **"Inner Circle"** (neutral, non-friend-prescriptive)
 - **Layer 2**: "Friends (Clan)" → **"Clan"** (cleaner, family mentioned in description)
 - **Layer 3**: "Meaningful Contacts (Tribe)" → **"Tribe"** (simpler naming)
-- Updated all layer descriptions to mention both friends and family throughout
+- Updated all layer descriptions to mention family first, then friends
 - Social Nebula description now emphasizes "minimal or zero interaction"
 
 #### User Experience
