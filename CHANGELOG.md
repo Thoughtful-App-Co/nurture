@@ -42,10 +42,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Nuclear family sorted by interaction score and placed first in layer assignment queue
 
 #### Data Mining Progress
-- Fixed progress animation getting stuck at percentages
-- Replaced interval-based approach with deterministic stepped progress
-- Progress now reliably moves through: 20% → 40% → 60% → 80% → 95% → 100%
-- Removed clearInterval usage that could cause freezing
+- Removed percentage-based progress bar (was unreliable and inaccurate)
+- Simplified to show pulsing animation with descriptive text
+- Cleaner UX without fake progress indicators
+- Animation shows work is happening without misleading percentages
 
 ### Fixed
 - **Critical**: Fixed interaction metrics (calls/texts) not showing in contact detail screen
