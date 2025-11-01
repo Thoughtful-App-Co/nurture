@@ -23,7 +23,7 @@ import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 // Layer definitions based on Dunbar's research
 const LAYERS = [
   { id: 0, name: "Loved Ones", range: "0-5", color: "#ef4444" },
-  { id: 1, name: "Close Friends", range: "5-15", color: "#f97316" },
+  { id: 1, name: "Inner Circle", range: "5-15", color: "#f97316" },
   { id: 2, name: "Clan", range: "15-50", color: "#eab308" },
   { id: 3, name: "Tribe", range: "50-150", color: "#22c55e" },
   { id: 4, name: "Acquaintances", range: "150-500", color: "#3b82f6" },
@@ -34,9 +34,9 @@ const LAYERS = [
 const getLayerDescription = (layerId: number): string => {
   const descriptions = [
     "Your innermost circle of 5 people. These are the relationships you'd drop everything for—partners, closest family, best friends. The people who know your deepest fears and greatest dreams.",
-    "Your core support network of 15 people. Close friends and immediate family you see regularly and trust deeply. You'd be devastated if something happened to them, and they feel the same about you.",
-    "Your extended friend group of 50 people. Friends and extended family you actively maintain and genuinely care about. These are people you'd invite to important life events and who shape your social identity.",
-    "Your broader tribe of 150 people. Friends, extended family, good colleagues, and regular contacts you see periodically. Dunbar's number—the cognitive limit for stable social relationships where you know each person and how they relate to others.",
+    "Your core support network of 15 people. Immediate family and close friends you see regularly and trust deeply. You'd be devastated if something happened to them, and they feel the same about you.",
+    "Your extended group of 50 people. Extended family and friends you actively maintain and genuinely care about. These are people you'd invite to important life events and who shape your social identity.",
+    "Your broader tribe of 150 people. Extended family, friends, good colleagues, and regular contacts you see periodically. Dunbar's number—the cognitive limit for stable social relationships where you know each person and how they relate to others.",
     "People you recognize and interact with occasionally—up to 500 individuals. Colleagues, neighbors, parents from your kids' school, regular service providers. Friendly faces but not close relationships.",
     "People you've met but rarely interact with. Former contacts, distant connections, or people you've only met once. These contacts have minimal or zero recent interaction."
   ];

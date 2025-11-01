@@ -48,7 +48,7 @@ interface LayerThreshold {
 // Dunbar layer thresholds based on Dunbar's research
 const LAYER_THRESHOLDS: LayerThreshold[] = [
   { layer: 0, minScore: 90, maxCount: 5 },     // Loved Ones (0-5)
-  { layer: 1, minScore: 70, maxCount: 15 },    // Close Friends (5-15)
+  { layer: 1, minScore: 70, maxCount: 15 },    // Inner Circle (5-15)
   { layer: 2, minScore: 50, maxCount: 50 },    // Clan (15-50)
   { layer: 3, minScore: 30, maxCount: 150 },   // Tribe (50-150)
   { layer: 4, minScore: 10, maxCount: 500 },   // Acquaintances (150-500)
