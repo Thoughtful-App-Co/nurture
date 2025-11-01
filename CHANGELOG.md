@@ -5,6 +5,75 @@ All notable changes to the Nurture app will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2025-11-01
+
+### Added
+
+#### Interaction Metrics Persistence
+- Added `callCount`, `smsCount`, and `totalDuration` fields to Contact schema
+- Raw interaction data now persists in Jazz database
+- Contact detail screen now displays:
+  - Voice call count and total duration
+  - SMS message count
+  - Average call duration
+  - Interaction breakdown from last 3 months
+
+#### Dunbar Layer Editor
+- Added layer selector to contact edit screen
+- Users can now manually adjust Dunbar layer assignments
+- Visual layer picker shows all 6 layers with color indicators
+- Tap current layer to open dropdown selector
+
+#### Relationship Type Management
+- Hold gesture on contact cards opens relationship type selector
+- Removed redundant "tap to set relationship type" interaction
+- Keep only long-press (500ms) for setting Family/Friend/Business
+- Added relationship type editor to contact detail modal with:
+  - Family tier selector (Nuclear/Secondary/Tertiary)
+  - Friend tier selector (Inner Circle/Close/Good/Casual)
+  - Business tier selector (Close Colleague/Acquaintance)
+
+### Changed
+
+#### Dunbar Layer Prioritization
+- Nuclear family members now prioritized for intimate layers (0-1)
+- Algorithm separates nuclear family before sorting by interaction score
+- Ensures important family members aren't relegated to outer layers due to low call/text frequency
+- Nuclear family sorted by interaction score and placed first in layer assignment queue
+
+#### Data Mining Progress
+- Fixed progress animation getting stuck at percentages
+- Replaced interval-based approach with deterministic stepped progress
+- Progress now reliably moves through: 20% → 40% → 60% → 80% → 95% → 100%
+- Removed clearInterval usage that could cause freezing
+
+### Fixed
+- **Critical**: Fixed interaction metrics (calls/texts) not showing in contact detail screen
+  - Root cause: Raw interaction counts weren't being saved to Jazz database
+  - Solution: Added persistence for callCount, smsCount, totalDuration fields
+  - Users must re-run "Re-analyze Relationship Data" to populate metrics for existing contacts
+- Fixed long-press on contact card opening edit screen instead of relationship selector
+  - Implemented proper gesture detection with `isLongPress` ref
+  - Short tap → Opens detail/edit screen
+  - Long press → Opens relationship type selector
+- Fixed data mining animation freezing before completion
+- Fixed dunbarLayer not persisting when edited in contact modal
+
+### Removed
+- Removed "Add to Favorites" feature (redundant, not aligned with app philosophy)
+- Removed tap interaction for relationship type on contact cards (hold only now)
+
+### UI/UX Improvements
+- Improved dashboard styling with better borders and spacing
+- Enhanced typography consistency (removed Montserrat font-specific styling)
+- Added accessibility labels to all interactive elements
+- Added press states and opacity feedback
+- Improved progress bar visibility (increased height from 2px to 3px)
+- Added fade animations to ScrollView for smoother transitions
+- Better visual hierarchy throughout the app
+
+---
+
 ## [0.2.0] - 2025-10-31
 
 ### Added
@@ -93,6 +162,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History
 
+- **0.2.1** - Interaction metrics persistence, nuclear family prioritization, UX fixes
 - **0.2.0** - Quick Sort feature, relationship categorization, UI improvements
 - **0.1.0** - Initial MVP with core features
 
