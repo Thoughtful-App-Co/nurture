@@ -154,13 +154,26 @@ export const FamilyNames = co.map({
 });
 
 /**
+ * Data sharing consent tracking
+ * Enables users to opt-in to data sharing for rebates/credits
+ */
+export const DataSharingConsent = co.map({
+  hasConsented: z.boolean(),
+  consentedAt: z.string().optional(), // ISO date
+  level: z.enum(["NONE", "ANONYMIZED", "FULL"]),
+  lastUpdated: z.string().optional(), // ISO date
+});
+
+/**
  * Main user profile with all data
  */
 export const UserProfile = co.map({
   displayName: z.string(),
   email: z.string().optional(),
   phone: z.string().optional(),
+  hasCompletedOnboarding: z.boolean().optional(), // Track if user has completed initial onboarding
   hasCompletedContactAnalysis: z.boolean().optional(), // Track if one-time contact analysis is complete
+  dataSharing: DataSharingConsent.optional(), // Opt-in data sharing for rebates
   contacts: ContactList,
   interactions: InteractionList,
   goals: GoalList,
