@@ -2,6 +2,7 @@ import "../global.css";
 import "../polyfills";
 import { Stack } from "expo-router";
 import { JazzProvider } from "@/jazz/provider";
+import { DevToolsMenu } from "@/components/dev/DevToolsMenu";
 import { 
   useFonts,
   Montserrat_400Regular,
@@ -21,7 +22,13 @@ function RootLayoutNav() {
     return null;
   }
 
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <>
+      <Stack screenOptions={{ headerShown: false }} />
+      {/* Dev tools menu - only shows in __DEV__ mode */}
+      <DevToolsMenu />
+    </>
+  );
 }
 
 export default function RootLayout() {
