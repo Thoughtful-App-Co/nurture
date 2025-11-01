@@ -6,7 +6,7 @@
  */
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import { View, Text, ScrollView, Pressable, ActivityIndicator } from "react-native";
+import { View, Text, ScrollView, Pressable, ActivityIndicator, Platform } from "react-native";
 import { useAccount } from "jazz-tools/expo";
 import { useNavigation } from "expo-router";
 import { calculateDunbarLayers } from "@/services/dunbarCalculator";
@@ -64,6 +64,9 @@ export default function Dashboard() {
   
   // Track if we've already analyzed to prevent loops
   const hasAnalyzed = useRef(false);
+  
+  // Track previous tab bar visibility state to reduce log spam
+  const previousTabBarVisible = useRef<boolean | null>(null);
 
   useEffect(() => {
     if (!me) return;
@@ -78,8 +81,31 @@ export default function Dashboard() {
   // Hide tab bar when showing data mining, layer details, search, or quick sort
   useEffect(() => {
     const shouldHideTabBar = needsDataMining || showDataMining || selectedLayerId !== null || showSearch || searchSelectedContact !== null || showQuickSort;
+    
+    const defaultTabBarStyle = {
+      backgroundColor: 'transparent',
+      borderTopWidth: 0, // Remove border since we have glassmorphic design
+      elevation: 0,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: -8 },
+      shadowOpacity: 0.4,
+      shadowRadius: 16,
+      height: Platform.OS === "ios" ? 88 : 72,
+      paddingBottom: Platform.OS === "ios" ? 28 : 12,
+      paddingTop: 8,
+      position: 'absolute' as const,
+      overflow: 'hidden' as const, // Important for blur effect
+    };
+    
+    // Only log when visibility actually changes
+    const isVisible = !shouldHideTabBar;
+    if (previousTabBarVisible.current !== null && previousTabBarVisible.current !== isVisible) {
+      console.log(`🌱 Garden tab bar: ${isVisible ? 'visible' : 'hidden'}`);
+    }
+    previousTabBarVisible.current = isVisible;
+    
     navigation.setOptions({
-      tabBarStyle: shouldHideTabBar ? { display: 'none' } : undefined,
+      tabBarStyle: shouldHideTabBar ? { display: 'none' } : defaultTabBarStyle,
     });
   }, [needsDataMining, showDataMining, selectedLayerId, showSearch, searchSelectedContact, showQuickSort, navigation]);
 
