@@ -12,6 +12,7 @@
 
 import React, { useState } from "react";
 import { View, Text, TextInput, Pressable, KeyboardAvoidingView, Platform, ScrollView, Keyboard } from "react-native";
+import { DataVerificationScreen } from "@/components/onboarding/DataVerificationScreen";
 
 // Dynamically import expo-contacts to avoid errors in Expo Go
 let Contacts: any = null;
@@ -21,7 +22,7 @@ try {
   console.log("expo-contacts not available - running in Expo Go or dev client");
 }
 
-type OnboardingStep = "welcome" | "basic-info" | "contact-info" | "contacts-permission" | "complete";
+type OnboardingStep = "welcome" | "basic-info" | "contact-info" | "contacts-permission" | "data-verification" | "complete";
 
 interface OnboardingData {
   firstName: string;
@@ -29,6 +30,7 @@ interface OnboardingData {
   email: string;
   phone: string;
   hasContactsPermission: boolean;
+  dataSharingLevel?: "NONE" | "ANONYMIZED" | "FULL";
 }
 
 interface OnboardingFlowProps {
@@ -47,8 +49,8 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
   const handleRequestContactsPermission = async () => {
     if (!Contacts) {
-      console.log("Contacts API not available - completing onboarding");
-      setCurrentStep("complete");
+      console.log("Contacts API not available - going to data verification");
+      setCurrentStep("data-verification");
       return;
     }
 
@@ -58,10 +60,10 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       console.log("Contacts permission status:", status);
       
       setData({ ...data, hasContactsPermission: status === "granted" });
-      setCurrentStep("complete");
+      setCurrentStep("data-verification");
     } catch (error) {
       console.error("Failed to request contacts permission:", error);
-      setCurrentStep("complete");
+      setCurrentStep("data-verification");
     }
   };
 
@@ -374,7 +376,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
         {/* Skip Option */}
         <Pressable
-          onPress={() => setCurrentStep("complete")}
+          onPress={() => setCurrentStep("data-verification")}
           className="py-3 min-h-[44px] justify-center"
           accessibilityLabel="Skip for now"
           accessibilityRole="button"
@@ -385,6 +387,26 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           </Text>
         </Pressable>
       </View>
+    );
+  }
+
+  // Step 4.5: Data Verification
+  if (currentStep === "data-verification") {
+    return (
+      <DataVerificationScreen
+        userData={{
+          firstName: data.firstName,
+          lastName: data.lastName,
+          email: data.email,
+          phone: data.phone,
+          hasContactsPermission: data.hasContactsPermission,
+        }}
+        onComplete={(consentLevel) => {
+          console.log("Data sharing consent level:", consentLevel);
+          setData({ ...data, dataSharingLevel: consentLevel });
+          setCurrentStep("complete");
+        }}
+      />
     );
   }
 
