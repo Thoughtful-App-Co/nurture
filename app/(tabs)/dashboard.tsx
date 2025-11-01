@@ -23,12 +23,12 @@ import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 // Layer definitions based on Dunbar's research
 const LAYERS = [
-  { id: 0, name: "Loved Ones", range: "0-5", color: "#ef4444" },
-  { id: 1, name: "Inner Circle", range: "5-15", color: "#f97316" },
-  { id: 2, name: "Clan", range: "15-50", color: "#eab308" },
-  { id: 3, name: "Tribe", range: "50-150", color: "#22c55e" },
-  { id: 4, name: "Acquaintances", range: "150-500", color: "#3b82f6" },
-  { id: 5, name: "Social Nebula", range: "500-1500", color: "#8b5cf6" },
+  { id: 0, name: "Loved Ones", range: "0-5", color: "#ef4444", descriptor: "Cherish" },
+  { id: 1, name: "Inner Circle", range: "5-15", color: "#f97316", descriptor: "Love" },
+  { id: 2, name: "Clan", range: "15-50", color: "#eab308", descriptor: "Respect" },
+  { id: 3, name: "Tribe", range: "50-150", color: "#22c55e", descriptor: "Like" },
+  { id: 4, name: "Acquaintances", range: "150-500", color: "#3b82f6", descriptor: "Know" },
+  { id: 5, name: "Social Nebula", range: "500-1500", color: "#8b5cf6", descriptor: "Aware" },
 ];
 
 // Layer descriptions based on Dunbar research
@@ -206,7 +206,7 @@ export default function Dashboard() {
               quickSortedAt: contact?.quickSortedAt || undefined,
               // Relationship type fields
               relationshipType: contact?.relationshipType || undefined,
-              friendTier: contact?.friendTier || undefined,
+              connectionOrigin: contact?.connectionOrigin || undefined,
               businessTier: contact?.businessTier || undefined,
             };
           } catch (e) {
