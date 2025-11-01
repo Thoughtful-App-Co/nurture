@@ -21,7 +21,6 @@ interface Contact {
   cultivationGoal?: 'MAINTAIN' | 'STRENGTHEN' | 'RECONNECT' | 'DEPRIORITIZE';
   phoneNumber?: string;
   email?: string;
-  isFavorite?: boolean;
   qualityRating?: number;
   // Debug/transparency fields
   callCount?: number;
@@ -45,10 +44,21 @@ interface Props {
   onSave: (contact: Contact) => void;
 }
 
+// Layer definitions matching dashboard
+const LAYERS = [
+  { id: 0, name: "Intimate Core", range: "1-5", color: "#ef4444" },
+  { id: 1, name: "Sympathy Group", range: "5-15", color: "#f97316" },
+  { id: 2, name: "Close Group", range: "15-50", color: "#eab308" },
+  { id: 3, name: "Tribe", range: "50-150", color: "#22c55e" },
+  { id: 4, name: "Acquaintances", range: "150-250", color: "#3b82f6" },
+  { id: 5, name: "Social Nebula", range: "250+", color: "#8b5cf6" },
+];
+
 export function ContactDetailModal({ contact, layer, onClose, onSave }: Props) {
   const [editedContact, setEditedContact] = useState<Contact>(contact);
   const [isEditing, setIsEditing] = useState(false);
   const [showInteractionLogger, setShowInteractionLogger] = useState(false);
+  const [showLayerSelector, setShowLayerSelector] = useState(false);
 
   const cultivationGoals: Array<{ value: Contact['cultivationGoal']; label: string; color: string }> = [
     { value: 'STRENGTHEN', label: 'Strengthen', color: 'bg-green-900 text-green-400' },
@@ -108,56 +118,87 @@ export function ContactDetailModal({ contact, layer, onClose, onSave }: Props) {
                 {contact.name}
               </Text>
               
-              <View className="flex-row items-center mb-2">
-                <View 
-                  className="w-3 h-3 rounded-full mr-2"
-                  style={{ backgroundColor: layer.color }}
-                />
-                <Text className="text-secondary text-base">
-                  {layer.name}
-                </Text>
-              </View>
+              {isEditing ? (
+                <Pressable 
+                  onPress={() => setShowLayerSelector(!showLayerSelector)}
+                  className="flex-row items-center mb-2 self-start"
+                >
+                  <View 
+                    className="w-3 h-3 rounded-full mr-2"
+                    style={{ backgroundColor: LAYERS[editedContact.dunbarLayer ?? 5].color }}
+                  />
+                  <Text className="text-secondary text-base mr-2">
+                    {LAYERS[editedContact.dunbarLayer ?? 5].name}
+                  </Text>
+                  <Text className="text-zinc-500 text-sm">
+                    (tap to change)
+                  </Text>
+                </Pressable>
+              ) : (
+                <View className="flex-row items-center mb-2">
+                  <View 
+                    className="w-3 h-3 rounded-full mr-2"
+                    style={{ backgroundColor: layer.color }}
+                  />
+                  <Text className="text-secondary text-base">
+                    {layer.name}
+                  </Text>
+                </View>
+              )}
+
               
-              <View className="flex-row items-center mt-2 gap-3">
-                {contact.isFamily && (
-                  <View className="flex-row items-center">
-                    <Text className="text-primary text-sm font-medium mr-2">
-                      👨‍👩‍👧‍👦 Family
+              {/* Layer Selector (when editing) */}
+              {isEditing && showLayerSelector && (
+                <View className="mb-4 p-4 bg-zinc-900 border border-zinc-700">
+                  <Text className="text-xs text-secondary font-medium mb-3">
+                    SELECT DUNBAR LAYER
+                  </Text>
+                  {LAYERS.map((layerOption) => (
+                    <Pressable
+                      key={layerOption.id}
+                      onPress={() => {
+                        setEditedContact({ ...editedContact, dunbarLayer: layerOption.id });
+                        setShowLayerSelector(false);
+                      }}
+                      className={`mb-2 p-3 border ${
+                        editedContact.dunbarLayer === layerOption.id
+                          ? 'border-primary bg-green-950/30'
+                          : 'border-zinc-800 bg-zinc-900'
+                      }`}
+                    >
+                      <View className="flex-row items-center">
+                        <View 
+                          className="w-3 h-3 rounded-full mr-3"
+                          style={{ backgroundColor: layerOption.color }}
+                        />
+                        <View className="flex-1">
+                          <Text className={`text-sm font-medium ${
+                            editedContact.dunbarLayer === layerOption.id ? 'text-primary' : 'text-white'
+                          }`}>
+                            {layerOption.name}
+                          </Text>
+                          <Text className="text-zinc-500 text-xs">
+                            {layerOption.range}
+                          </Text>
+                        </View>
+                      </View>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+              
+              {contact.isFamily && (
+                <View className="flex-row items-center mt-2">
+                  <Text className="text-primary text-sm font-medium mr-2">
+                    👨‍👩‍👧‍👦 Family
+                  </Text>
+                  {contact.familyRole && (
+                    <Text className="text-zinc-400 text-sm">
+                      ({contact.familyRole})
                     </Text>
-                    {contact.familyRole && (
-                      <Text className="text-zinc-400 text-sm">
-                        ({contact.familyRole})
-                      </Text>
-                    )}
-                  </View>
-                )}
-                
-                {isEditing ? (
-                  <Pressable
-                    onPress={() => setEditedContact({ 
-                      ...editedContact, 
-                      isFavorite: !editedContact.isFavorite 
-                    })}
-                    className={`flex-row items-center px-3 py-1.5 border ${
-                      editedContact.isFavorite 
-                        ? 'border-yellow-500 bg-yellow-950/30' 
-                        : 'border-zinc-700 bg-zinc-900'
-                    }`}
-                  >
-                    <Text className={`text-sm font-medium ${
-                      editedContact.isFavorite ? 'text-yellow-400' : 'text-zinc-500'
-                    }`}>
-                      ⭐ {editedContact.isFavorite ? 'Favorited' : 'Add to Favorites'}
-                    </Text>
-                  </Pressable>
-                ) : contact.isFavorite ? (
-                  <View className="flex-row items-center px-3 py-1.5 border border-yellow-500 bg-yellow-950/30">
-                    <Text className="text-yellow-400 text-sm font-medium">
-                      ⭐ Favorite
-                    </Text>
-                  </View>
-                ) : null}
-              </View>
+                  )}
+                </View>
+              )}
             </View>
 
             {/* Contact Info */}
