@@ -13,9 +13,11 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Modal, ScrollView, Alert } from 'react-native';
 import { FeatureFlags } from '@/config/featureFlags';
 import { runDiagnostics } from '@/scripts/diagnose-data-mining';
+import { JazzInspector } from './JazzInspector';
 
 export function DevToolsMenu() {
   const [isOpen, setIsOpen] = useState(false);
+  const [showJazzInspector, setShowJazzInspector] = useState(false);
   
   // Only show in development builds
   if (!FeatureFlags.SHOW_DEV_MENU) {
@@ -47,8 +49,8 @@ export function DevToolsMenu() {
   };
 
   const handleViewJazzData = () => {
-    Alert.alert('Jazz Inspector', 'Check console for Jazz data structure');
-    console.log('📊 Jazz Inspector - View data in React DevTools');
+    setIsOpen(false);
+    setShowJazzInspector(true);
   };
 
   return (
@@ -61,6 +63,15 @@ export function DevToolsMenu() {
       >
         <Text className="text-white text-2xl">🛠️</Text>
       </TouchableOpacity>
+
+      {/* Jazz Inspector Modal */}
+      <Modal
+        visible={showJazzInspector}
+        animationType="slide"
+        onRequestClose={() => setShowJazzInspector(false)}
+      >
+        <JazzInspector onClose={() => setShowJazzInspector(false)} />
+      </Modal>
 
       {/* Dev Tools Modal */}
       <Modal

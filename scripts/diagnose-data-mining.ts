@@ -50,13 +50,9 @@ export async function runDiagnostics() {
   let callLogStatus = 'NOT_LOADED';
   try {
     callLogModule = require('react-native-call-log');
-    if (callLogModule && callLogModule.default) {
+    if (callLogModule) {
       callLogStatus = 'LOADED';
       console.log('   ✅ react-native-call-log: LOADED');
-    } else {
-      callLogStatus = 'LOADED_BUT_NO_DEFAULT';
-      console.warn('   ⚠️ react-native-call-log: Loaded but no default export');
-      console.warn('      Module structure:', Object.keys(callLogModule || {}));
     }
   } catch (error: any) {
     console.error('   ❌ react-native-call-log: FAILED TO LOAD');
@@ -68,13 +64,9 @@ export async function runDiagnostics() {
   let smsStatus = 'NOT_LOADED';
   try {
     smsModule = require('react-native-get-sms-android');
-    if (smsModule && smsModule.default) {
+    if (smsModule) {
       smsStatus = 'LOADED';
       console.log('   ✅ react-native-get-sms-android: LOADED');
-    } else {
-      smsStatus = 'LOADED_BUT_NO_DEFAULT';
-      console.warn('   ⚠️ react-native-get-sms-android: Loaded but no default export');
-      console.warn('      Module structure:', Object.keys(smsModule || {}));
     }
   } catch (error: any) {
     console.error('   ❌ react-native-get-sms-android: FAILED TO LOAD');
@@ -128,10 +120,10 @@ export async function runDiagnostics() {
   console.log('\n5. Testing data fetch...');
   
   // Test call logs
-  if (callLogModule && callLogModule.default) {
+  if (callLogModule) {
     try {
       console.log('   📞 Fetching call logs...');
-      const CallLogs = callLogModule.default;
+      const CallLogs = callLogModule;
       const calls = await CallLogs.load(10); // Just fetch 10 to test
       console.log(`   ✅ Call logs fetched: ${calls ? calls.length : 0} entries`);
       
@@ -154,10 +146,10 @@ export async function runDiagnostics() {
   }
 
   // Test SMS
-  if (smsModule && smsModule.default) {
+  if (smsModule) {
     try {
       console.log('   💬 Fetching SMS...');
-      const SmsAndroid = smsModule.default;
+      const SmsAndroid = smsModule;
       
       const filter = {
         box: '',
