@@ -46,8 +46,8 @@ export const Contact = co.map({
   familyTier: z.enum(["NUCLEAR", "SECONDARY", "TERTIARY"]).optional(),
   familyRole: z.string().optional(), // "mother", "brother", "cousin", etc.
   
-  // Friends subcategories (aligned with Dunbar layers)
-  friendTier: z.enum(["INNER_CIRCLE", "CLOSE_FRIEND", "GOOD_FRIEND", "CASUAL_FRIEND"]).optional(),
+  // Friend connection context (how you met - orthogonal to Dunbar layers)
+  connectionOrigin: z.enum(["FAMILY_FRIEND", "NEIGHBOR", "SCHOOL", "HOBBY_SPORTS", "WORK", "OTHER"]).optional(),
   
   // Business subcategories
   businessTier: z.enum(["CLOSE_COLLEAGUE", "ACQUAINTANCE"]).optional(),
