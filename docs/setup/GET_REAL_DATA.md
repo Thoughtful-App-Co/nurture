@@ -184,7 +184,6 @@ SMS frequency: +30 points
 Reciprocity:   +20 points
 Recency:       +10 points (exponential decay)
 Family:        +15 points (nuclear family)
-Favorites:     +20 points (manual override)
 Quality:       +15 points (from manual logs)
 ```
 

@@ -147,7 +147,7 @@ This document clearly explains:
 **When to Use:**
 - After meaningful conversations
 - Weekly batch logging
-- For VIP relationships
+- For important relationships
 
 **Example Flow:**
 ```
@@ -156,24 +156,7 @@ Instagram DM with Mike → Log as "Social Media" → Platform: Instagram → Rat
 Zoom call with team → Log as "Video Call" → Platform: Zoom → Rate 2 stars (work)
 ```
 
-### 2. Favorite/VIP Tagging
-
-**What It Does:**
-- Manual override for automatic detection
-- Ensures important people rank high
-- +20 points to interaction score
-
-**How to Use:**
-1. Open contact detail
-2. Toggle "Add to Favorites"
-3. Person automatically moves to higher layer
-
-**When to Use:**
-- Close friends you see in person (not tracked)
-- Family you primarily text via WhatsApp
-- Important relationships with limited phone/SMS data
-
-### 3. Quality Ratings
+### 2. Quality Ratings
 
 **What It Does:**
 - Captures interaction depth, not just frequency
@@ -192,7 +175,7 @@ Zoom call with team → Log as "Video Call" → Platform: Zoom → Rate 2 stars 
 - One deep call > 100 quick texts
 - Intentional > Automatic
 
-### 4. Platform Tracking
+### 3. Platform Tracking
 
 **What It Does:**
 - Log which apps/platforms you use most
@@ -233,7 +216,6 @@ Zoom call with team → Log as "Video Call" → Platform: Zoom → Rate 2 stars 
 **Accuracy:** 70-80%
 - You log what matters most
 - Quality ratings capture depth
-- Favorites ensure VIPs are prioritized
 - Platform tracking shows real patterns
 
 **Result:** Better than automatic for iOS users
@@ -248,7 +230,6 @@ Zoom call with team → Log as "Video Call" → Platform: Zoom → Rate 2 stars 
 2. **Grant all permissions:** Contacts, Call Logs, SMS
 3. **Let it analyze:** First run processes 3 months of data
 4. **Manual log gaps:** In-person, WhatsApp, social media
-5. **Tag favorites:** Override any missed VIPs
 
 ### For iOS Users (Limited Data)
 
@@ -256,7 +237,6 @@ Zoom call with team → Log as "Video Call" → Platform: Zoom → Rate 2 stars 
 2. **Manual logging is key:** Log all meaningful interactions
 3. **Be consistent:** Log weekly or after events
 4. **Quality over quantity:** Focus on 5-star interactions
-5. **Use favorites liberally:** Ensure VIPs are recognized
 
 ### For Expo Go Users (Testing Only)
 
@@ -331,7 +311,6 @@ A: 10 seconds per interaction. Log weekly in batches (5 minutes for 30 interacti
 **Quality Over Quantity:**
 - One deep conversation > 100 surface texts
 - Manual ratings capture what matters
-- Favorites override automatic detection
 
 **Privacy First:**
 - All analysis on-device
@@ -355,4 +334,4 @@ A: 10 seconds per interaction. Log weekly in batches (5 minutes for 30 interacti
 
 **For Everyone:** Manual logging captures what automatic detection misses (WhatsApp, Instagram, in-person, video calls).
 
-**Bottom Line:** Android users get 85% accuracy automatically. iOS users need manual logging for 70% accuracy. Both benefit from favorites and quality ratings.
+**Bottom Line:** Android users get 85% accuracy automatically. iOS users need manual logging for 70% accuracy. Both benefit from quality ratings.

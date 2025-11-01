@@ -69,17 +69,14 @@ onSave={(interaction) => {
 
 **What was done:**
 - Enhanced Dunbar calculator to prioritize quality over quantity
-- Added support for favorites (VIP contacts)
 - Quality rating boost (+0 to +15 points based on 1-5 star rating)
-- Favorite boost (+20 points) to ensure VIPs rank high
 - Automatic layer promotion for high-quality relationships
 
 **Files modified:**
 - `services/dunbarCalculator.ts` - added manual signal processing
-- `jazz/schema.ts` - added isFavorite, qualityRating, manuallyPinned fields
+- `jazz/schema.ts` - added qualityRating, manuallyPinned fields
 
 **Scoring breakdown:**
-- Favorite contact: +20 points
 - 5-star quality avg: +15 points
 - 1-star quality avg: +0 points
 - Family (nuclear): +15 points
@@ -88,31 +85,7 @@ onSave={(interaction) => {
 
 ---
 
-### 4. Manual Favorites/VIP Tagging
-**Status:** COMPLETED
-
-**What was done:**
-- Added favorite toggle to contact detail screen
-- Visual indicator (⭐ badge) for favorited contacts
-- Favorites automatically prioritized in Dunbar layers
-- Favorites pushed to at least "Close Group" layer (2) regardless of data
-- Edit mode for easy toggling
-
-**Files modified:**
-- `components/relationships/ContactDetailModal.tsx` - added favorite UI
-- `jazz/schema.ts` - added isFavorite field
-- `services/dunbarCalculator.ts` - favorite boost logic
-
-**UI Flow:**
-1. Open contact detail
-2. Tap "Edit"
-3. Toggle "⭐ Add to Favorites"
-4. Save
-5. Contact automatically moves to higher layer
-
----
-
-### 5. Interaction Quality Ratings System
+### 4. Interaction Quality Ratings System
 **Status:** COMPLETED
 
 **What was done:**
@@ -137,7 +110,7 @@ onSave={(interaction) => {
 
 ---
 
-### 6. User-Facing Limitations Messaging
+### 5. User-Facing Limitations Messaging
 **Status:** COMPLETED
 
 **What was done:**
@@ -145,7 +118,7 @@ onSave={(interaction) => {
 - Shows what data IS available vs. what ISN'T
 - Platform-specific messaging (iOS vs Android)
 - Explains why certain data can't be accessed
-- Provides actionable solutions (manual logging, favorites, quality ratings)
+- Provides actionable solutions (manual logging, quality ratings)
 - Integrated into onboarding flow after data analysis
 
 **Files created:**
@@ -158,7 +131,7 @@ onSave={(interaction) => {
 **What users see:**
 - ✅ Data we have (contacts, calls, SMS)
 - ⚠️ Data gaps (WhatsApp, Instagram, video calls, in-person)
-- 💡 How to improve (manual logging, favorites, quality ratings)
+- 💡 How to improve (manual logging, quality ratings)
 - Platform-specific instructions (Android native build, iOS restrictions)
 
 ---
@@ -170,13 +143,12 @@ onSave={(interaction) => {
 | Android Native Fixes | HIGH | ✅ | 1 modified |
 | Manual Logging UI | HIGH | ✅ | 3 created/modified |
 | App Usage Patterns | MEDIUM | ✅ | 2 modified |
-| Favorites Tagging | MEDIUM | ✅ | 3 modified |
 | Quality Ratings | MEDIUM | ✅ | 4 modified |
 | Limitations Messaging | LOW | ✅ | 2 created/modified |
 
 **Total files created:** 3  
-**Total files modified:** 8  
-**Lines of code added:** ~1,200
+**Total files modified:** 7  
+**Lines of code added:** ~1,100
 
 ---
 
@@ -185,19 +157,18 @@ onSave={(interaction) => {
 ### For Android Users (with native build)
 1. **Real data extraction** - Call logs, SMS history, contact frequency
 2. **Manual gap filling** - WhatsApp, social media, in-person interactions
-3. **Quality signals** - Favorites and ratings override automatic detection
+3. **Quality signals** - Ratings override automatic detection
 4. **85-90% accuracy** with full data + manual logging
 
 ### For iOS Users
 1. **Manual logging essential** - No call/SMS access due to Apple restrictions
-2. **Favorites critical** - Ensures VIPs are recognized
-3. **Quality over quantity** - Manual quality ratings > automatic frequency counts
-4. **70-80% accuracy** with consistent manual logging
+2. **Quality over quantity** - Manual quality ratings > automatic frequency counts
+3. **70-80% accuracy** with consistent manual logging
 
 ### For All Users
 1. **Transparent limitations** - Clear communication about what's tracked and what isn't
 2. **Quick logging** - 10 seconds to log an interaction
-3. **Flexible tagging** - Favorites, quality ratings, platforms
+3. **Flexible tagging** - Quality ratings, platforms
 4. **Behavioral honesty** - Shows reality, not wishful thinking
 
 ---
@@ -250,14 +221,7 @@ npx expo run:android
 - Log a few interactions with different types and quality ratings
 - Verify they're saved (currently shows alert)
 
-4. **Test favorites:**
-- Open contact detail
-- Tap "Edit"
-- Toggle "⭐ Add to Favorites"
-- Save
-- Verify badge appears
-
-5. **Test limitations screen:**
+4. **Test limitations screen:**
 - After analysis completes, limitations screen should appear
 - Verify it shows correct data availability based on platform
 - Tap "I Understand - Continue to Dashboard"
@@ -277,7 +241,6 @@ npx expo run:ios
 
 3. **Focus on manual features:**
 - Test manual interaction logger
-- Test favorites tagging
 - Test quality ratings
 
 ---
@@ -319,21 +282,7 @@ npx expo run:ios
 **Solution:**
 - Quick 10-second logging UI
 - Quality ratings capture depth (more important than frequency)
-- Favorites override automatic detection
 - Platform tracking shows where relationships actually live
-
-### Why Favorites?
-
-**Problem:**
-- Your best friend might be in "Social Nebula" because you use WhatsApp
-- Family members might rank low because you see them in person
-- Important people get lost in the noise
-
-**Solution:**
-- Manual "VIP" tag
-- +20 point boost to interaction score
-- Automatic promotion to at least "Close Group" layer
-- User intent > algorithmic detection
 
 ### Why Quality Ratings?
 
@@ -374,13 +323,12 @@ npx expo run:ios
 
 ## ✨ Summary
 
-**All 6 priorities completed:**
+**All 5 priorities completed:**
 1. ✅ Android native module fixes
 2. ✅ Manual logging UI
-3. ✅ App usage patterns (favorites, quality)
-4. ✅ Manual favorites tagging
-5. ✅ Quality ratings system
-6. ✅ Limitations messaging
+3. ✅ App usage patterns (quality)
+4. ✅ Quality ratings system
+5. ✅ Limitations messaging
 
 **Ready for:**
 - Real device testing with native builds
@@ -393,7 +341,7 @@ Built a comprehensive system that:
 - Gets real data when possible (Android)
 - Gracefully handles limitations (iOS, social media)
 - Empowers users to fill gaps (manual logging)
-- Prioritizes quality over quantity (ratings, favorites)
+- Prioritizes quality over quantity (ratings)
 - Communicates honestly (transparent limitations)
 
 This positions Nurture as the most honest, transparent relationship tracking app - showing behavioral reality, not wishful thinking.
