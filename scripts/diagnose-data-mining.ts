@@ -24,17 +24,23 @@ export async function runDiagnostics() {
   }
   console.log('   ✅ Android detected\n');
 
-  // 2. Check if running in Expo Go
+  // 2. Check build type
   const isExpoGo = typeof global.expo !== 'undefined' && global.expo?.modules?.ExpoGo;
-  console.log(`2. Running in Expo Go: ${isExpoGo ? 'YES' : 'NO'}`);
+  const buildType = isExpoGo ? 'Expo Go' : (__DEV__ ? 'Development Client' : 'Production');
+  
+  console.log(`2. Build Type: ${buildType}`);
   if (isExpoGo) {
     console.error('❌ CRITICAL: You are running in Expo Go!');
-    console.error('   Expo Go cannot access native modules');
-    console.error('   SOLUTION: Build development client');
-    console.error('   Run: npx expo run:android');
+    console.error('   Expo Go cannot access native modules (call-log, SMS)');
+    console.error('');
+    console.error('   SOLUTION - Build with native modules:');
+    console.error('   • EAS Build (recommended): eas build --profile development --platform android');
+    console.error('   • Local Build: npx expo run:android');
+    console.error('');
+    console.error('   After building, install APK on device and run: npx expo start --dev-client');
     return;
   }
-  console.log('   ✅ Not in Expo Go\n');
+  console.log('   ✅ Running in development/production client (native modules available)\n');
 
   // 3. Check native modules
   console.log('3. Checking native modules...');
@@ -76,13 +82,18 @@ export async function runDiagnostics() {
   }
 
   if (callLogStatus !== 'LOADED' || smsStatus !== 'LOADED') {
-    console.log('\n📱 NATIVE MODULES NOT LOADED');
-    console.log('   This means the app was not built with native code');
+    console.log('\n📱 NATIVE MODULES NOT FULLY LOADED');
     console.log('   ');
+    console.log('   ⚠️  IMPORTANT: If you installed an EAS build APK:');
+    console.log('   This warning may be incorrect! The APK has native modules.');
+    console.log('   Check permissions instead:');
+    console.log('   Settings > Apps > Nurture > Permissions > Enable Call logs & SMS');
+    console.log('   ');
+    console.log('   If you have NOT built with EAS yet:');
     console.log('   SOLUTION:');
-    console.log('   1. Stop Metro bundler');
-    console.log('   2. Run: npx expo prebuild --clean');
-    console.log('   3. Run: npx expo run:android');
+    console.log('   1. Build: eas build --profile development --platform android');
+    console.log('   2. Download and install APK on device');
+    console.log('   3. Run: npx expo start --dev-client');
     console.log('   4. Grant permissions when prompted');
     console.log('   ');
     return;

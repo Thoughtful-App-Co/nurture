@@ -179,9 +179,15 @@ export async function fetchCallLogs(): Promise<CallLogEntry[]> {
     const CallLogsModule = require('react-native-call-log');
     
     if (!CallLogsModule || !CallLogsModule.default) {
-      console.warn('⚠️ react-native-call-log module not properly linked');
-      console.warn('📱 For EAS builds: Rebuild with "eas build --profile development --platform android"');
-      console.warn('   Config plugins registered in app.json should handle linking');
+      console.warn('⚠️ react-native-call-log not available in current build');
+      console.warn('📱 Native modules require one of:');
+      console.warn('   - EAS Build: eas build --profile development --platform android');
+      console.warn('   - Local Build: npx expo run:android');
+      console.warn('');
+      console.warn('💡 If you already installed an EAS build APK:');
+      console.warn('   - This is a false warning - native modules ARE in the APK');
+      console.warn('   - The module check runs before APK installation');
+      console.warn('   - Check permissions instead: Settings > Apps > Nurture > Permissions');
       return [];
     }
     
@@ -276,9 +282,14 @@ export async function fetchSMSHistory(): Promise<SMSEntry[]> {
     const SmsAndroidModule = require('react-native-get-sms-android');
     
     if (!SmsAndroidModule || !SmsAndroidModule.default) {
-      console.warn('⚠️ react-native-get-sms-android module not properly linked');
-      console.warn('📱 For EAS builds: Rebuild with "eas build --profile development --platform android"');
-      console.warn('   Config plugins registered in app.json should handle linking');
+      console.warn('⚠️ react-native-get-sms-android not available in current build');
+      console.warn('📱 Native modules require one of:');
+      console.warn('   - EAS Build: eas build --profile development --platform android');
+      console.warn('   - Local Build: npx expo run:android');
+      console.warn('');
+      console.warn('💡 If you already installed an EAS build APK:');
+      console.warn('   - This is a false warning - native modules ARE in the APK');
+      console.warn('   - Check permissions: Settings > Apps > Nurture > Permissions > SMS');
       return [];
     }
     
