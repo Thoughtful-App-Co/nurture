@@ -33,6 +33,11 @@ export const Contact = co.map({
   contactInitiationRatio: z.number().optional(), // 0-1
   averageResponseTime: z.number().optional(), // seconds
   
+  // Raw interaction counts (for UI transparency)
+  callCount: z.number().optional(), // Total calls in last 3 months
+  smsCount: z.number().optional(), // Total SMS in last 3 months
+  totalDuration: z.number().optional(), // Total call duration in seconds
+  
   // Relationship Type & Family Structure
   relationshipType: z.enum(["FAMILY", "FRIEND", "BUSINESS"]).optional(),
   

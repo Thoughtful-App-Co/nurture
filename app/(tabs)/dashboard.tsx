@@ -18,6 +18,7 @@ import { LoadingAnimation } from "@/components/LoadingAnimation";
 import { ContactSearch } from "@/components/relationships/ContactSearch";
 import { QuickSortModal } from "@/components/relationships/QuickSortModal";
 import { Card, Button } from "@/components/ui";
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 // Layer definitions from PRD
 const LAYERS = [
@@ -164,23 +165,15 @@ export default function Dashboard() {
               reciprocityScore: contact?.reciprocityScore ?? 0,
               contactInitiationRatio: contact?.contactInitiationRatio ?? 0,
               averageResponseTime: contact?.averageResponseTime ?? 0,
+              // Raw interaction counts (now stored in Jazz)
+              callCount: contact?.callCount ?? 0,
+              smsCount: contact?.smsCount ?? 0,
+              totalDuration: contact?.totalDuration ?? 0,
               isFamily: contact?.isFamily ?? false,
               familyTier: contact?.familyTier || undefined,
               familyRole: contact?.familyRole || '',
               notes: contact?.notes || '',
               cultivationGoal: contact?.cultivationGoal || undefined,
-              // Quick Sort fields (IMPORTANT: needed to filter sorted contacts)
-              quickSortStatus: contact?.quickSortStatus || 'not_sorted',
-              quickSortedAt: contact?.quickSortedAt || undefined,
-              // Relationship type fields
-              relationshipType: contact?.relationshipType || undefined,
-              friendTier: contact?.friendTier || undefined,
-              businessTier: contact?.businessTier || undefined,
-              // These fields are NOT stored in Jazz, so they won't exist on reload
-              // That's OK - we use the already-calculated dunbarLayer and interactionScore
-              callCount: 0,
-              smsCount: 0,
-              totalDuration: 0,
             };
           } catch (e) {
             console.error("Error processing contact:", e, contact);
@@ -349,6 +342,10 @@ export default function Dashboard() {
         reciprocityScore: contact.reciprocityScore,
         contactInitiationRatio: contact.contactInitiationRatio,
         averageResponseTime: contact.averageResponseTime,
+        // Raw interaction counts for transparency
+        callCount: contact.callCount,
+        smsCount: contact.smsCount,
+        totalDuration: contact.totalDuration,
         isFamily: contact.isFamily,
         familyTier: contact.familyTier,
         familyRole: originalContact?.potentialFamily?.role,
@@ -475,13 +472,17 @@ export default function Dashboard() {
         name: existingContact.name,
         phoneNumber: existingContact.phoneNumber,
         email: existingContact.email,
-        dunbarLayer: existingContact.dunbarLayer,
+        dunbarLayer: updatedContact.dunbarLayer ?? existingContact.dunbarLayer,
         interactionScore: existingContact.interactionScore,
         lastInteraction: existingContact.lastInteraction,
         interactionFrequency: existingContact.interactionFrequency,
         reciprocityScore: existingContact.reciprocityScore,
         contactInitiationRatio: existingContact.contactInitiationRatio,
         averageResponseTime: existingContact.averageResponseTime,
+        // Preserve raw interaction counts
+        callCount: existingContact.callCount,
+        smsCount: existingContact.smsCount,
+        totalDuration: existingContact.totalDuration,
         isFamily: existingContact.isFamily,
         familyTier: existingContact.familyTier,
         familyRole: existingContact.familyRole,
@@ -569,15 +570,19 @@ export default function Dashboard() {
   }
 
   return (
-    <ScrollView className="flex-1 bg-black">
+    <Animated.ScrollView 
+      className="flex-1 bg-black"
+      entering={FadeIn.duration(300)}
+      exiting={FadeOut.duration(200)}
+    >
       <View className="px-6 py-8">
         {/* Header */}
-        <View className="flex-row justify-between items-start mb-4">
+        <View className="flex-row justify-between items-start mb-6">
           <View className="flex-1">
-            <Text className="text-4xl text-primary mb-2" style={{ fontFamily: 'Montserrat_600SemiBold' }}>
+            <Text className="text-4xl text-primary mb-2 font-bold tracking-wide">
               Your Garden
             </Text>
-            <Text className="text-lg text-secondary mb-2">
+            <Text className="text-base text-zinc-400">
               {totalContacts} relationships cultivated
             </Text>
           </View>
@@ -585,7 +590,10 @@ export default function Dashboard() {
           {/* Search Button */}
           <Pressable
             onPress={() => setShowSearch(true)}
-            className="bg-zinc-900 border border-zinc-700 px-4 py-3 mt-2"
+            className="bg-zinc-900 border-2 border-zinc-700 px-4 py-3 mt-2 min-h-[44px] justify-center"
+            accessibilityLabel="Search contacts"
+            accessibilityRole="button"
+            style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
           >
             <Text className="text-primary text-sm font-medium">
               🔍 Search
@@ -612,18 +620,18 @@ export default function Dashboard() {
         })()}
 
         {/* Dunbar Health */}
-        <View className={`p-4 border mb-8 ${
+        <View className={`p-4 border-2 mb-8 ${
           dunbarHealth === "healthy" ? "border-green-900 bg-green-950/30" : "border-orange-900 bg-orange-950/30"
         }`}>
-          <Text className={`text-sm font-medium mb-2 ${
+          <Text className={`text-xs font-semibold mb-3 uppercase tracking-wider ${
             dunbarHealth === "healthy" ? "text-green-400" : "text-orange-400"
           }`}>
             DUNBAR STATUS
           </Text>
-          <Text className="text-white text-base">
+          <Text className="text-white text-lg font-medium mb-1">
             {withinDunbar} of 150 active relationships
           </Text>
-          <Text className="text-secondary text-sm mt-1">
+          <Text className="text-zinc-400 text-sm">
             {dunbarHealth === "healthy" 
               ? "Your network is within healthy limits"
               : "Consider pruning to maintain quality connections"
@@ -632,7 +640,7 @@ export default function Dashboard() {
         </View>
 
         {/* Layers */}
-        <Text className="text-xl text-white mb-4 font-medium">
+        <Text className="text-2xl text-white mb-4 font-bold tracking-wide">
           Relationship Layers
         </Text>
 
@@ -671,8 +679,14 @@ export default function Dashboard() {
               key={layer.id}
               onPress={() => setSelectedLayerId(layer.id)}
               className="mb-4"
+              accessibilityLabel={`${layer.name} layer, ${layerStat.count} contacts`}
+              accessibilityRole="button"
+              style={({ pressed }) => ({ 
+                opacity: pressed ? 0.9 : 1,
+                transform: [{ scale: pressed ? 0.99 : 1 }],
+              })}
             >
-              <View className="bg-zinc-900 border border-zinc-800 p-4">
+              <View className="bg-zinc-900 border-2 border-zinc-800 p-4">
                 {/* Layer Header */}
                 <View className="flex-row justify-between items-center mb-3">
                   <View className="flex-row items-center">
@@ -689,10 +703,10 @@ export default function Dashboard() {
                   </Text>
                 </View>
 
-                {/* Progress Bar */}
-                <View className="h-2 bg-zinc-800 rounded-full overflow-hidden">
+                {/* Progress Bar - Increased height for better visibility */}
+                <View className="h-3 bg-zinc-800 rounded-full overflow-hidden">
                   <View 
-                    className="h-full"
+                    className="h-full rounded-full"
                     style={{ 
                       width: `${Math.min(percentage, 100)}%`,
                       backgroundColor: layer.color,
@@ -704,15 +718,18 @@ export default function Dashboard() {
                 {isEmpty ? (
                   <Pressable 
                     onPress={() => setShowSearch(true)}
-                    className="mt-3 p-3 border border-dashed border-zinc-700 bg-zinc-950"
+                    className="mt-3 p-3 border-2 border-dashed border-zinc-700 bg-zinc-950 min-h-[44px] justify-center"
+                    accessibilityLabel={`Add people to ${layer.name}`}
+                    accessibilityRole="button"
+                    style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
                   >
-                    <Text className="text-zinc-500 text-xs text-center">
+                    <Text className="text-zinc-400 text-xs text-center font-medium">
                       + Add people to this layer
                     </Text>
                   </Pressable>
                 ) : (
                   <>
-                    <Text className="text-secondary text-xs mt-3" numberOfLines={1}>
+                    <Text className="text-zinc-400 text-xs mt-3" numberOfLines={1}>
                       {layerStat.contacts.slice(0, 3).map(c => c.name).join(", ")}
                       {layerStat.contacts.length > 3 && ` +${layerStat.contacts.length - 3} more`}
                     </Text>
@@ -721,8 +738,11 @@ export default function Dashboard() {
                       <Pressable 
                         onPress={() => setShowSearch(true)}
                         className="mt-2"
+                        accessibilityLabel={`Add more people to ${layer.name}`}
+                        accessibilityRole="button"
+                        style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
                       >
-                        <Text className="text-zinc-600 text-xs">
+                        <Text className="text-zinc-500 text-xs">
                           + Add more (room for {layerCapacity - layerStat.count} more)
                         </Text>
                       </Pressable>
@@ -797,6 +817,6 @@ export default function Dashboard() {
           analyzeRelationships();
         }}
       />
-    </ScrollView>
+    </Animated.ScrollView>
   );
 }
