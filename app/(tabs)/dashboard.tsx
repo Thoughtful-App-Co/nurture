@@ -200,6 +200,13 @@ export default function Dashboard() {
               familyRole: contact?.familyRole || '',
               notes: contact?.notes || '',
               cultivationGoal: contact?.cultivationGoal || undefined,
+              // Quick Sort / Tend Garden status
+              quickSortStatus: contact?.quickSortStatus || 'not_sorted',
+              quickSortedAt: contact?.quickSortedAt || undefined,
+              // Relationship type fields
+              relationshipType: contact?.relationshipType || undefined,
+              friendTier: contact?.friendTier || undefined,
+              businessTier: contact?.businessTier || undefined,
             };
           } catch (e) {
             console.error("Error processing contact:", e, contact);
@@ -749,7 +756,7 @@ export default function Dashboard() {
           );
         })}
 
-        {/* Quick Sort */}
+        {/* Tend Garden */}
         {(() => {
           const root = me?.root as any;
           const contacts = root?.contacts || [];
@@ -760,12 +767,12 @@ export default function Dashboard() {
           return (
             <Card className="mt-8 border-primary bg-green-950/20">
               <Text className="text-sm text-primary font-medium mb-2">
-                QUICK SORT
+                TEND GARDEN
               </Text>
               <Text className="text-white text-base mb-3">
                 {unsortedCount > 0 
-                  ? `${unsortedCount} contact${unsortedCount !== 1 ? 's' : ''} ready to sort`
-                  : "All contacts sorted!"
+                  ? `${unsortedCount} relationship${unsortedCount !== 1 ? 's' : ''} ready to tend`
+                  : "Garden fully tended!"
                 }
               </Text>
               <Button 
@@ -773,7 +780,7 @@ export default function Dashboard() {
                 onPress={() => setShowQuickSort(true)}
                 disabled={unsortedCount === 0}
               >
-                {unsortedCount > 0 ? "START SORTING" : "ALL SORTED"}
+                {unsortedCount > 0 ? "START TENDING" : "GARDEN TENDED"}
               </Button>
             </Card>
           );
@@ -801,7 +808,7 @@ export default function Dashboard() {
         onClose={() => setShowSearch(false)}
       />
 
-      {/* Quick Sort Modal */}
+      {/* Tend Garden Modal */}
       <QuickSortModal
         visible={showQuickSort}
         contacts={layerStats.flatMap(layer => layer.contacts)}

@@ -1,15 +1,15 @@
 /**
- * Quick Sort Modal
+ * Tend Garden Modal
  * 
- * Allows users to quickly categorize contacts into Dunbar layers or hide them.
- * Prevents double-sorting by tracking quickSortStatus on each contact.
+ * Helps users organize and catalog their relationships into appropriate layers.
+ * Like tending a garden - bringing clarity and order to your relationship network.
  * 
  * Features:
- * - Swipeable card interface
+ * - Swipeable card interface for easy categorization
  * - 6 categories: Layers 0-4 + Hidden
  * - Progress tracking
- * - Skip functionality
- * - Reset option
+ * - Skip functionality for uncertain contacts
+ * - Prevents re-tending already organized contacts
  */
 
 import React, { useState, useEffect, useRef } from "react";
@@ -159,7 +159,7 @@ export function QuickSortModal({
   const handleCategorySelect = async (layerId: number | "hidden") => {
     if (!me || !currentContact) return;
 
-    console.log(`Quick Sort: ${currentContact.name} → ${layerId === "hidden" ? "Hidden" : `Layer ${layerId}`}`);
+    console.log(`Tend Garden: ${currentContact.name} → ${layerId === "hidden" ? "Hidden" : `Layer ${layerId}`}`);
     console.log(`  Relationship Type: ${selectedRelationshipType || "Not set"}`);
     if (selectedRelationshipType === "FAMILY") {
       console.log(`  Family Tier: ${selectedFamilyTier || "Not set"}`);
@@ -265,7 +265,7 @@ export function QuickSortModal({
   const handleReset = async () => {
     if (!me) return;
 
-    console.log("🔄 Resetting Quick Sort statuses...");
+    console.log("🔄 Resetting Tend Garden statuses...");
 
     const root = me.root as any;
     const allContacts = root?.contacts || [];
@@ -306,7 +306,7 @@ export function QuickSortModal({
     setSortedCount(0);
     setIsComplete(false);
 
-    console.log("✅ Quick Sort reset complete");
+    console.log("✅ Tend Garden reset complete");
   };
 
   // Close and reset
@@ -341,19 +341,19 @@ export function QuickSortModal({
       <Modal visible={visible} animationType="slide" transparent>
         <View className="flex-1 bg-black/95 justify-center items-center px-6">
           <View className="bg-zinc-900 border border-zinc-800 p-8 w-full max-w-md">
-            <Text className="text-4xl text-center mb-4">🎉</Text>
+            <Text className="text-4xl text-center mb-4">🌱</Text>
             <Text className="text-white text-2xl font-bold text-center mb-2">
-              Quick Sort Complete!
+              Garden Tended!
             </Text>
             <Text className="text-zinc-400 text-center mb-6">
-              You sorted {sortedCount} contact{sortedCount !== 1 ? "s" : ""}
+              You organized {sortedCount} relationship{sortedCount !== 1 ? "s" : ""}
             </Text>
 
             <Button variant="primary" onPress={handleClose} className="mb-3">
-              View Dashboard
+              View Garden
             </Button>
             <Button variant="secondary" onPress={handleReset}>
-              Reset & Sort Again
+              Reset & Tend Again
             </Button>
           </View>
         </View>
@@ -368,17 +368,17 @@ export function QuickSortModal({
         <View className="flex-1 bg-black/95 justify-center items-center px-6">
           <View className="bg-zinc-900 border border-zinc-800 p-8 w-full max-w-md">
             <Text className="text-white text-xl font-bold text-center mb-4">
-              No Contacts to Sort
+              Garden Fully Tended
             </Text>
             <Text className="text-zinc-400 text-center mb-6">
-              All contacts have been sorted!
+              All relationships have been organized!
             </Text>
 
             <Button variant="primary" onPress={handleClose} className="mb-3">
               Close
             </Button>
             <Button variant="secondary" onPress={handleReset}>
-              Reset & Sort Again
+              Reset & Tend Again
             </Button>
           </View>
         </View>
@@ -392,7 +392,7 @@ export function QuickSortModal({
         {/* Header */}
         <View className="flex-row justify-between items-center mb-4">
           <View>
-            <Text className="text-white text-2xl font-bold">Quick Sort</Text>
+            <Text className="text-white text-2xl font-bold">Tend Your Garden</Text>
             <Text className="text-zinc-400 text-sm">
               {remainingCount} remaining
             </Text>

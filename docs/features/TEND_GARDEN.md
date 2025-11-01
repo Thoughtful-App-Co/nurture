@@ -1,22 +1,22 @@
-# Quick Sort Feature
+# Tend Garden Feature
 
 ## Overview
 
-The Quick Sort utility provides a fast, intuitive way to categorize contacts into Dunbar layers or hide them. It uses a swipeable card interface to make sorting hundreds of contacts quick and effortless.
+The Tend Garden tool helps you organize and catalog your relationships into appropriate Dunbar layers. Like tending a garden, it brings clarity and order to your relationship network through an intuitive swipeable interface.
 
 ## Features
 
 ### 🎯 Core Functionality
 - **Swipeable card interface** - One contact at a time, smooth animations
 - **6 categories**: Layers 0-4 + Hidden
-- **Prevents double-sorting** - Each contact can only be sorted once per session
+- **Prevents double-tending** - Each contact can only be tended once per session
 - **Progress tracking** - Visual progress bar and count
 - **Skip functionality** - Skip contacts you're unsure about
-- **Reset capability** - Start over and re-sort all contacts
+- **Reset capability** - Start over and re-tend all contacts
 
 ### 🛡️ Data Integrity
-- `quickSortStatus` field tracks sorting state: `"not_sorted" | "sorted" | "hidden"`
-- `quickSortedAt` timestamp records when contact was last sorted
+- `quickSortStatus` field tracks tending state: `"not_tended" | "tended" | "hidden"`
+- `quickSortedAt` timestamp records when contact was last tended
 - Status persists across app sessions in Jazz database
 
 ## Categories
@@ -43,13 +43,13 @@ Each category has an emoji, a descriptor word, and a layer number for easy recog
 
 ## User Flow
 
-1. **Launch Quick Sort** from dashboard
-   - Shows count of unsorted contacts
-   - Disabled if all contacts are sorted
+1. **Launch Tend Garden** from dashboard
+   - Shows count of untended contacts
+   - Disabled if all contacts are tended
 
 2. **Categorize contacts**
    - Card appears with contact name and current layer
-   - Tap one of 6 category buttons to sort
+   - Tap one of 6 category buttons to tend
    - Card animates away, next contact appears
    - Progress bar updates automatically
 
@@ -59,8 +59,8 @@ Each category has an emoji, a descriptor word, and a layer number for easy recog
    - Option to return to dashboard or reset
 
 4. **Reset (optional)**
-   - Clear all quick sort statuses
-   - Start fresh sorting session
+   - Clear all tend garden statuses
+   - Start fresh tending session
    - Useful for periodic re-evaluation
 
 ## Implementation Details
@@ -68,7 +68,7 @@ Each category has an emoji, a descriptor word, and a layer number for easy recog
 ### Schema Changes
 ```typescript
 // Added to Contact schema
-quickSortStatus: z.enum(["not_sorted", "sorted", "hidden"]).optional()
+quickSortStatus: z.enum(["not_tended", "tended", "hidden"]).optional()
 quickSortedAt: z.string().optional() // ISO date
 ```
 
@@ -77,7 +77,7 @@ quickSortedAt: z.string().optional() // ISO date
 QuickSortModal.tsx
 ├── State Management
 │   ├── currentIndex (which contact is showing)
-│   ├── sortedCount (how many sorted)
+│   ├── tendedCount (how many tended)
 │   └── isComplete (all done?)
 ├── Card Stack
 │   └── Single current card (animated, no preview)
@@ -92,35 +92,35 @@ QuickSortModal.tsx
 
 ### Database Operations
 - **Sort Contact**: Updates `dunbarLayer`, `quickSortStatus`, and `quickSortedAt`
-- **Reset All**: Sets all contacts to `quickSortStatus: "not_sorted"`
+- **Reset All**: Sets all contacts to `quickSortStatus: "not_tended"`
 - **Hide Contact**: Sets `dunbarLayer: 5` and `quickSortStatus: "hidden"`
 
 ## Dashboard Integration
 
-Replaced "Cultivation Opportunities" section with "Quick Sort":
-- Shows count of unsorted contacts
-- Button to launch Quick Sort modal
-- Disabled when all contacts sorted
-- Refreshes dashboard after sorting complete
+Replaced "Cultivation Opportunities" section with "Tend Garden":
+- Shows count of untended contacts
+- Button to launch Tend Garden modal
+- Disabled when all contacts tended
+- Refreshes dashboard after tending complete
 
 ## Usage Tips
 
 ### Best Practices
 1. **First time**: Sort all contacts to establish baseline
-2. **New contacts**: Quick Sort automatically includes unsorted contacts
-3. **Re-evaluation**: Reset and re-sort every few months
+2. **New contacts**: Tend Garden automatically includes untended contacts
+3. **Re-evaluation**: Reset and re-tend every few months
 4. **Skip liberally**: Better to skip than mis-categorize
 
 ### When to Use
-- **After initial data mining** - All contacts start as "not_sorted"
-- **After adding new contacts** - New contacts are automatically "not_sorted"
-- **Periodic review** - Every 3-6 months, reset and re-sort
+- **After initial data mining** - All contacts start as "not_tended"
+- **After adding new contacts** - New contacts are automatically "not_tended"
+- **Periodic review** - Every 3-6 months, reset and re-tend
 - **Life changes** - Major life events may shift relationship priorities
 
 ### When NOT to Use
-- Don't use Quick Sort for fine-tuning individual contacts
+- Don't use Tend Garden for fine-tuning individual contacts
 - Use the contact detail screen for notes and cultivation goals
-- Quick Sort is for bulk categorization, not detailed management
+- Tend Garden is for bulk categorization, not detailed management
 
 ## Technical Notes
 
@@ -138,19 +138,19 @@ Replaced "Cultivation Opportunities" section with "Quick Sort":
 
 ### Future Enhancements
 - [ ] Swipe gestures (currently tap-only)
-- [ ] Undo last sort
-- [ ] Bulk operations (sort entire layer)
+- [ ] Undo last tend
+- [ ] Bulk operations (tend entire layer)
 - [ ] Smart suggestions based on metrics
 - [ ] Keyboard shortcuts (web version)
 
 ## Troubleshooting
 
 ### "No Contacts to Sort"
-- All contacts have been sorted
+- All contacts have been tended
 - Use "Reset & Sort Again" to start over
 
 ### Dashboard Not Updating
-- Close and reopen Quick Sort modal
+- Close and reopen Tend Garden modal
 - Modal automatically triggers dashboard refresh on close
 
 ### Contact Sorted Twice
@@ -158,7 +158,7 @@ Replaced "Cultivation Opportunities" section with "Quick Sort":
 - If it does, report as a bug
 
 ### Lost Progress
-- Quick Sort saves after each contact
+- Tend Garden saves after each contact
 - Progress persists in Jazz database
 - If app crashes, resume where you left off
 
@@ -167,7 +167,7 @@ Replaced "Cultivation Opportunities" section with "Quick Sort":
 - `/jazz/schema.ts` - Added quickSort fields to Contact
 - `/components/relationships/QuickSortModal.tsx` - New component
 - `/components/ui/Card.tsx` - Added onPress support
-- `/app/(tabs)/dashboard.tsx` - Integrated Quick Sort, replaced Cultivation Opportunities
+- `/app/(tabs)/dashboard.tsx` - Integrated Tend Garden, replaced Cultivation Opportunities
 
 ## Related Documentation
 
