@@ -93,6 +93,188 @@ Complete authentication + data mining + layer discovery for 100 beta users withi
 
 **Philosophy**: Relationship categories complement Dunbar layers. Categories show intentional structure, layers show behavioral reality.
 
+### Hero Card System
+
+**Purpose**: Surface critical user actions that require immediate attention through high-visibility carousel
+
+**Design Philosophy**: 
+- **Von Restorff Effect**: High visual contrast to stand out from normal dashboard content
+- **Progressive Disclosure**: Only show cards when action is genuinely needed
+- **Swipeable Carousel**: Horizontal navigation between multiple hero cards when applicable
+- **Single Focus**: Maximum one hero card visible at a time for cognitive clarity
+
+**Architecture**:
+```typescript
+interface HeroCard {
+  id: string;
+  type: 'TEND_GARDEN' | 'DUNBAR_VIOLATION' | 'DORMANT_ALERT' | 'PRUNING_SUGGESTION';
+  priority: number; // Lower = higher priority, determines carousel order
+  triggerCondition: () => boolean; // Function that determines if card should show
+  dismissible: boolean; // Can user dismiss or is it forced?
+  snoozeableDays?: number; // If dismissible, how many days until it returns
+  component: ReactComponent; // The actual UI component to render
+  analyticsId: string; // For tracking engagement
+}
+```
+
+**Current Hero Cards**:
+1. **Tend Garden** (Priority: 10)
+   - Trigger: Unsorted contacts exist (`quickSortStatus === 'not_sorted'`)
+   - Dismissible: Yes (returns after 7 days)
+   - Action: Opens QuickSortModal for relationship classification
+   
+2. **Dunbar Violation Cleanup** (Priority: 5 - HIGHER than Tend Garden)
+   - Trigger: Any layer exceeds maximum capacity
+     - Layer 0 > 5 people
+     - Layer 1 > 15 people
+     - Layer 2 > 50 people
+     - Layer 3 > 150 people
+   - Dismissible: No (forced action to maintain network health)
+   - Action: Opens Would You Rather ranking tool
+   - Visual: Red/warning theme (vs green for Tend Garden)
+
+3. **Future**: Dormant Relationship Alert (Priority: 15)
+   - Trigger: Close relationship (Layer 0-2) with no contact in 30+ days
+   - Dismissible: Yes (snooze 7 days)
+
+**Display Rules**:
+- Show maximum 1 hero card at a time (highest priority wins)
+- Hero card appears at top of dashboard, below search bar
+- If multiple cards applicable, use horizontal swipe dots to indicate more
+- User can swipe between applicable cards
+- Card must be completed or dismissed before it disappears
+- Analytics track: impressions, swipes, completions, dismissals
+
+**Visual Hierarchy**:
+1. Dashboard header ("Your Garden")
+2. Search bar
+3. **→ Hero Card Carousel** ← Inserted here
+4. Family members count
+5. Dunbar status
+6. Relationship layers
+7. Re-analyze data button
+
+**UX Principles**:
+- **Urgency Indication**: Color-coded by severity (green = helpful, yellow = suggested, red = critical)
+- **Clear CTAs**: Single, obvious action button with descriptive text
+- **Progress Transparency**: Show completion state (e.g., "15/32 contacts classified")
+- **Celebratory Completion**: Reward screens when tasks are finished
+- **Intelligent Scheduling**: Don't show multiple high-priority cards simultaneously to avoid overwhelm
+
+### Would You Rather - Forced Ranking Engine
+
+**Purpose**: Resolve Dunbar layer violations through pairwise comparison when users are unable to make hard prioritization decisions
+
+**Problem**:
+- Users struggle with abstract "move this person to Layer 3" decisions
+- Comparing family vs friends creates emotional paralysis
+- Binary choices are cognitively easier than ranking 50+ people
+- Acts of service framing makes decisions more concrete
+
+**Algorithm**: QuickSort-based pairwise comparison
+```typescript
+interface RankingSession {
+  sessionId: string;
+  violatedLayer: number; // Which layer is over capacity
+  contactsToRank: Contact[]; // People in violated layer + candidates from layer below
+  comparisons: Comparison[]; // Record of all decisions
+  currentPair: [Contact, Contact]; // Current choice being presented
+  progress: number; // Percentage complete
+  resumable: true; // Can exit and return later
+}
+
+interface Comparison {
+  contactA: Contact;
+  contactB: Contact;
+  chosen: Contact; // Who user chose
+  question: string; // Which question was asked
+  timestamp: number;
+  responseTimeMs: number; // How long to decide
+}
+```
+
+**Question Bank** (Acts of Service Framework):
+- **Emergency Support**: "Who would you call first in a crisis?"
+- **Time Investment**: "Who would you help move apartments on a Saturday?"
+- **Emotional Labor**: "Whose birthday would you never want to miss?"
+- **Reciprocity**: "Who has shown up for you when you needed them?"
+- **Loyalty**: "Who has been consistently there through ups and downs?"
+- **Intent**: "Who do you genuinely want to spend more time with?"
+- **Future-Focused**: "Who do you want in your life 5 years from now?"
+- **Mutual Benefit**: "Who brings out the best in you?"
+- **Energy**: "After spending time with this person, do you feel energized?"
+- **Trust**: "Who would you trust with your deepest secret?"
+
+**Cross-Category Handling** (Family vs Friend):
+- Use universal human values: loyalty, reciprocity, trust, energy
+- Avoid category-specific framing ("family duty" vs "friendship fun")
+- Focus on behavioral reality ("who have you called lately?") not social obligation
+- Acknowledge difficulty: "This is a hard choice - go with your gut"
+
+**Comparison Strategy**:
+1. **Randomize question order** to prevent pattern answering
+2. **Rotate questions** within session to avoid fatigue
+3. **Skip option** for truly impossible decisions (counts as tie, both stay in layer)
+4. **Consistency check**: Occasionally re-ask same comparison with different framing
+5. **Early termination**: Stop when ranking is stable (no changes in last 5 comparisons)
+
+**Outcome Processing**:
+```typescript
+// After ranking session completes
+function reallocateContacts(rankedContacts: Contact[], layerCapacity: number) {
+  // Top N stay in current layer (where N = layer capacity)
+  const stayInLayer = rankedContacts.slice(0, layerCapacity);
+  
+  // Bottom contacts move down one layer
+  const moveToLowerLayer = rankedContacts.slice(layerCapacity);
+  
+  // Update contact records
+  stayInLayer.forEach(c => c.dunbarLayer = currentLayer);
+  moveToLowerLayer.forEach(c => c.dunbarLayer = currentLayer + 1);
+  
+  // Record event for analytics
+  trackLayerReallocation(stayInLayer, moveToLowerLayer);
+}
+```
+
+**UI/UX Flow**:
+1. **Hero Card Trigger**: Red warning card appears on dashboard
+   - Title: "Your Inner Circle needs attention"
+   - Description: "You have 23 people in Layer 1, but research shows we can only maintain 15 close relationships"
+   - CTA: "Help me prioritize (5 min)"
+   
+2. **Introduction Screen**: 
+   - Explain the process: "We'll ask you to choose between pairs of people"
+   - Set expectations: "This takes about 5 minutes for 20 comparisons"
+   - Frame positively: "You're not removing anyone, just being honest about closeness"
+   
+3. **Comparison Cards**:
+   - Two contact cards side-by-side with photos/names
+   - Question at top: "Who would you call first in an emergency?"
+   - Tap left or right card to choose
+   - Progress bar at bottom
+   - "Skip this one" button for impossible choices
+   
+4. **Completion Screen**:
+   - Celebrate: "You've clarified your Inner Circle!"
+   - Summary: "15 people staying in Layer 1, 8 moving to Clan (Layer 2)"
+   - Reassurance: "You can still spend time with everyone - this just helps you focus"
+   - CTA: "Return to Garden"
+
+**Resumability**:
+- Session saved to Jazz database after each comparison
+- Can close app and return later without losing progress
+- Progress bar shows where you left off
+- Maximum session time: 7 days (then resets to prevent stale data)
+
+**Analytics Tracking**:
+- Comparison count per session
+- Average response time per comparison
+- Skip rate (should be <5%)
+- Family vs friend comparison outcomes
+- Layer reallocation patterns
+- User satisfaction rating post-completion
+
 ### Data Sources
 
 #### Primary Sources (P0)
@@ -389,6 +571,68 @@ Complete authentication + data mining + layer discovery for 100 beta users withi
 - Speed: Log interaction in <5 seconds
 - Complexity: Medium
 
+**STORY-015: Swipeable Hero Card System** (P0)
+- **Priority**: P0  
+- **Description**: Extensible hero card carousel on dashboard for critical user actions
+- **Purpose**: Surface high-priority tasks that require user intervention
+- **Initial Use Cases**:
+  1. Tend Garden (relationship classification)
+  2. Dunbar Violation Cleanup (forced ranking when layers are overallocated)
+  3. Future: Dormant relationship alerts, pruning suggestions, etc.
+- **Interaction Model**: Horizontal swipe to navigate between hero cards, tap to enter flow
+- **Design**: Prominent, unmissable, uses Von Restorff effect (high contrast)
+- **Behavior**: Only shows cards when action is genuinely needed (progressive disclosure)
+- **Complexity**: Medium
+
+**STORY-016: Would You Rather - Forced Ranking Tool** (P0)
+- **Priority**: P0  
+- **Description**: Decision engine for resolving Dunbar layer violations through pairwise comparison
+- **Problem Statement**: Users struggle to make difficult prioritization decisions, especially comparing family vs friends
+- **Solution**: Binary choice interface ("Would You Rather spend time with...") with acts of service framing
+- **Triggering Conditions**:
+  - Layer 0 (Loved Ones) has >5 people
+  - Layer 1 (Inner Circle) has >15 people  
+  - Layer 2 (Clan) has >50 people
+  - Layer 3 (Tribe) has >150 people
+  - User is cognitively overextended and needs forced prioritization
+- **Comparison Algorithm**:
+  - **Stage 1**: Present pairs from same layer, rank by preference
+  - **Stage 2**: Bottom-ranked contacts compared against top of next layer down
+  - **Decision Framework**: Acts of service, loyalty, reciprocity-based questions
+  - **Example Questions**:
+    - "Who would you call first in an emergency?"
+    - "Who would you help move apartments on a Saturday?"
+    - "Whose birthday would you never want to miss?"
+    - "Who have you thought about reaching out to lately?"
+  - **Cross-Category Handling**: When comparing family vs friends, use universal metrics
+    - Loyalty: "Who has been there for you consistently?"
+    - Reciprocity: "Who shows up when you need them?"
+    - Intent: "Who do you genuinely want in your inner circle?"
+- **Outcome**: Contacts automatically re-assigned to appropriate layers based on ranking
+- **UI/UX**:
+  - Swipeable cards with two contact photos side-by-side
+  - Tap left or right to choose
+  - Progress bar showing ranking completion
+  - Option to skip truly impossible decisions (counted as tie)
+  - Celebratory completion screen when layers are balanced
+- **Progressive Disclosure**: 
+  - Only triggered when Dunbar violations exist
+  - Presented as hero card in dashboard carousel
+  - Can be dismissed/snoozed but returns weekly until resolved
+- **Complexity**: High
+- **Definition of Done**:
+  - Pairwise comparison algorithm implemented
+  - Question bank with 20+ variants
+  - Layer reallocation logic working correctly
+  - Progress tracking and resumability (can exit and return)
+  - Integration with hero card system
+  - Analytics tracking for decision patterns
+- **Test Criteria**:
+  - Resolve 100-contact ranking in <10 minutes
+  - Algorithm converges to stable layer allocation
+  - User satisfaction rating >7/10 for decision clarity
+  - <5% of comparisons result in "skip" (well-designed questions)
+
 ---
 
 ### EPIC-004: Analytics & Insights
@@ -398,11 +642,11 @@ Complete authentication + data mining + layer discovery for 100 beta users withi
 
 #### Stories
 
-**STORY-015: Network Health Dashboard** (P1)
+**STORY-017: Network Health Dashboard** (P1)
 - Aggregate view of relationship network status
 - Complexity: Medium
 
-**STORY-016: Pruning Recommendations** (P2)
+**STORY-018: Pruning Recommendations** (P2)
 - Identify relationships that may no longer serve growth
 - Tone: Empowering, aligned with 'courage to prune' philosophy
 - Complexity: High
@@ -487,9 +731,18 @@ Complete authentication + data mining + layer discovery for 100 beta users withi
   - ✅ Authentication & Account Setup
   - 🔄 EPIC-001: Stories 1-3 (Contact ingestion, Call/SMS mining, Layer calculator)
   - 🔄 EPIC-002: Stories 6-8 (Onboarding, Layer discovery, Family registration)
-  - 🔄 EPIC-003: Stories 11-12 (Dashboard, Contact detail)
+  - 🔄 EPIC-003: Stories 11-12, 15-16 (Dashboard, Contact detail, Hero Cards, Would You Rather)
   
 - **Validation**: 100 beta users, manual layer validation
+
+**Critical Path Features** (Must-Have for MVP):
+1. Data mining + Dunbar layer calculation
+2. Tend Garden (relationship classification)
+3. Hero card system (extensible for future features)
+4. Would You Rather (Dunbar violation resolution)
+   - Required because automated layer calculation WILL create violations
+   - Users need tool to make hard prioritization decisions
+   - Prevents cognitive overload from abstract layer management
 
 ### Completed Milestones
 - **2025-10-27**: Authentication flow complete
@@ -544,6 +797,30 @@ Complete authentication + data mining + layer discovery for 100 beta users withi
 6. **Should permissions be requested all at once or progressively?**
    - Options: All upfront / Progressive disclosure / Hybrid
    - Decision: TBD (leaning toward progressive to reduce friction)
+
+7. **How many comparisons does Would You Rather need for accurate ranking?**
+   - Options: Fixed count (20) / Dynamic based on contacts / QuickSort optimal (O(n log n))
+   - Decision: TBD (leaning toward QuickSort algorithm for efficiency)
+
+8. **Should Would You Rather be forced or dismissible?**
+   - Options: Completely forced (blocks app) / Soft force (hero card returns daily) / Dismissible with warning
+   - Decision: TBD (leaning toward soft force - can dismiss but returns until resolved)
+
+9. **What happens to contacts moved down a layer?**
+   - Options: Auto-notify user / Silent reallocation / Suggest goals for moved contacts / Ask for confirmation
+   - Decision: TBD
+
+10. **How to handle ties in Would You Rather (both equally important)?**
+    - Options: Force choice / Allow "both stay" option / Re-ask with different question
+    - Decision: TBD (leaning toward "skip" option that keeps both in current layer)
+
+11. **Should hero cards show simultaneously or one at a time?**
+    - Options: Stack all cards / Show highest priority only / Swipeable carousel
+    - Decision: Swipeable carousel with dots indicator ✅
+
+12. **How to prioritize between Tend Garden and Dunbar Violation cards?**
+    - Options: Always show Dunbar first / User choice / Completion sequence (Tend first, then Dunbar)
+    - Decision: Dunbar Violation higher priority (5 vs 10) - health issues trump classification ✅
 
 ---
 
