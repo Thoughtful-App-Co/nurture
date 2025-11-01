@@ -563,6 +563,10 @@ export default function Dashboard() {
           handleContactUpdate(updatedContact);
           setSearchSelectedContact(null);
         }}
+        onStartTendGarden={() => {
+          setSearchSelectedContact(null);
+          setShowQuickSort(true);
+        }}
       />
     );
   }
@@ -582,6 +586,10 @@ export default function Dashboard() {
           contacts={layerContacts}
           onBack={() => setSelectedLayerId(null)}
           onContactUpdate={handleContactUpdate}
+          onStartTendGarden={() => {
+            setSelectedLayerId(null);
+            setShowQuickSort(true);
+          }}
         />
       );
     }
@@ -633,6 +641,65 @@ export default function Dashboard() {
             </Text>
           </Pressable>
         </View>
+
+        {/* Tend Garden - Prime Real Estate (Von Restorff Effect) */}
+        {(() => {
+          const root = me?.root as any;
+          const contacts = root?.contacts || [];
+          const unsortedCount = Array.from(contacts).filter(
+            (c: any) => c?.quickSortStatus === "not_sorted" || !c?.quickSortStatus
+          ).length;
+          
+          // Only show if there are unsorted contacts
+          if (unsortedCount === 0) return null;
+          
+          return (
+            <Animated.View 
+              entering={FadeIn.duration(400)}
+              className="mb-8"
+            >
+              <View className="bg-gradient-to-br from-primary/20 to-primary/5 border-3 border-primary p-6 shadow-lg">
+                {/* Attention-grabbing header */}
+                <View className="flex-row items-center mb-3">
+                  <View className="bg-primary w-2 h-2 rounded-full mr-2 animate-pulse" />
+                  <Text className="text-primary text-xs font-bold uppercase tracking-widest">
+                    🌱 ACTION NEEDED
+                  </Text>
+                </View>
+                
+                <Text className="text-white text-2xl font-bold mb-2 tracking-tight">
+                  Tend Your Garden
+                </Text>
+                
+                <Text className="text-zinc-300 text-base leading-relaxed mb-4">
+                  You have <Text className="text-primary font-bold">{unsortedCount}</Text> relationship{unsortedCount !== 1 ? 's' : ''} waiting to be classified. Quick sort them into Family, Friends, or Business to unlock deeper insights.
+                </Text>
+                
+                <Pressable
+                  onPress={() => setShowQuickSort(true)}
+                  className="bg-primary py-4 px-6 border-2 border-primary shadow-xl"
+                  accessibilityLabel="Start tending garden"
+                  accessibilityRole="button"
+                  style={({ pressed }) => ({ 
+                    opacity: pressed ? 0.9 : 1,
+                    transform: [{ scale: pressed ? 0.98 : 1 }],
+                  })}
+                >
+                  <Text className="text-center text-lg font-bold text-black tracking-wide">
+                    START SORTING ({unsortedCount})
+                  </Text>
+                </Pressable>
+                
+                {/* Visual separator line */}
+                <View className="mt-4 pt-4 border-t border-primary/30">
+                  <Text className="text-primary/70 text-xs text-center">
+                    ⚡ Takes 2-3 minutes • Unlock relationship insights
+                  </Text>
+                </View>
+              </View>
+            </Animated.View>
+          );
+        })()}
         
         {/* Family Members Indicator */}
         {(() => {
@@ -756,35 +823,7 @@ export default function Dashboard() {
           );
         })}
 
-        {/* Tend Garden */}
-        {(() => {
-          const root = me?.root as any;
-          const contacts = root?.contacts || [];
-          const unsortedCount = Array.from(contacts).filter(
-            (c: any) => c?.quickSortStatus === "not_sorted" || !c?.quickSortStatus
-          ).length;
-          
-          return (
-            <Card className="mt-8 border-primary bg-green-950/20">
-              <Text className="text-sm text-primary font-medium mb-2">
-                TEND GARDEN
-              </Text>
-              <Text className="text-white text-base mb-3">
-                {unsortedCount > 0 
-                  ? `${unsortedCount} relationship${unsortedCount !== 1 ? 's' : ''} ready to tend`
-                  : "Garden fully tended!"
-                }
-              </Text>
-              <Button 
-                variant="primary" 
-                onPress={() => setShowQuickSort(true)}
-                disabled={unsortedCount === 0}
-              >
-                {unsortedCount > 0 ? "START TENDING" : "GARDEN TENDED"}
-              </Button>
-            </Card>
-          );
-        })()}
+
 
         {/* Re-analyze Data Button */}
         <View className="mt-4 mb-8">

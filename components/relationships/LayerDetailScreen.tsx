@@ -26,6 +26,8 @@ interface Contact {
   cultivationGoal?: 'MAINTAIN' | 'STRENGTHEN' | 'RECONNECT' | 'DEPRIORITIZE';
   phoneNumber?: string;
   email?: string;
+  quickSortStatus?: 'not_sorted' | 'sorted' | 'hidden';
+  quickSortedAt?: string;
 }
 
 interface LayerInfo {
@@ -41,13 +43,19 @@ interface Props {
   contacts: Contact[];
   onBack: () => void;
   onContactUpdate: (contact: Contact) => void;
+  onStartTendGarden?: () => void; // Optional callback to open Tend Garden
 }
 
-export function LayerDetailScreen({ layer, contacts, onBack, onContactUpdate }: Props) {
+export function LayerDetailScreen({ layer, contacts, onBack, onContactUpdate, onStartTendGarden }: Props) {
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [relationshipSelectorContact, setRelationshipSelectorContact] = useState<Contact | null>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLongPress = useRef<boolean>(false);
+
+  // Calculate unsorted contacts in this layer
+  const unsortedInLayer = contacts.filter(
+    c => c.quickSortStatus === "not_sorted" || !c.quickSortStatus
+  ).length;
 
   const formatLastInteraction = (date?: string) => {
     if (!date) return 'No recent contact';
@@ -175,6 +183,34 @@ export function LayerDetailScreen({ layer, contacts, onBack, onContactUpdate }: 
       {/* Contact List */}
       <ScrollView className="flex-1">
         <View className="px-6 py-4">
+          {/* Tend Garden CTA - Only show if there are unsorted contacts */}
+          {unsortedInLayer > 0 && onStartTendGarden && (
+            <View className="mb-6 bg-primary/10 border-2 border-primary p-4">
+              <View className="flex-row items-center mb-2">
+                <Text className="text-primary text-xs font-bold uppercase tracking-wider">
+                  🌱 SORT NEEDED
+                </Text>
+              </View>
+              <Text className="text-white text-base font-medium mb-2">
+                {unsortedInLayer} contact{unsortedInLayer !== 1 ? 's' : ''} in this layer {unsortedInLayer !== 1 ? 'need' : 'needs'} classification
+              </Text>
+              <Text className="text-zinc-400 text-sm mb-3">
+                Use Tend Garden to quickly sort contacts into Family, Friends, or Business for better insights.
+              </Text>
+              <Pressable
+                onPress={onStartTendGarden}
+                className="bg-primary py-3 px-4 border border-primary"
+                accessibilityLabel="Open Tend Garden"
+                accessibilityRole="button"
+                style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1 })}
+              >
+                <Text className="text-center text-sm font-bold text-black">
+                  OPEN TEND GARDEN
+                </Text>
+              </Pressable>
+            </View>
+          )}
+
           {contacts.length === 0 ? (
             <View className="py-12">
               <Text className="text-center text-secondary text-base">
