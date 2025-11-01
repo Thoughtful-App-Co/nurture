@@ -11,7 +11,7 @@ import { useDemoAuth } from "jazz-tools/expo";
 import { OnboardingFlow } from "@/components/auth/onboarding-flow";
 import { BiometricLock } from "@/components/auth/BiometricLock";
 import { DataMiningScreen } from "@/components/onboarding/DataMiningScreen";
-import { Contact, ContactList } from "@/jazz/schema";
+import { Contact, ContactList, DataSharingConsent } from "@/jazz/schema";
 import { useState, useEffect, useRef } from "react";
 import { calculateDunbarLayers } from "@/services/dunbarCalculator";
 import type { ContactWithMetrics } from "@/services/dataMining";
@@ -26,15 +26,16 @@ export default function Index() {
   const appState = useRef(RNAppState.currentState);
   const auth = useDemoAuth();
 
-  // Check if user needs onboarding (no displayName set) or contact analysis (no completion flag)
+  // Check if user needs onboarding (hasCompletedOnboarding flag) or contact analysis
   useEffect(() => {
     if (me) {
       const root = me.root as any;
-      const needsOnboarding = !root?.displayName;
-      const needsContactAnalysis = root?.displayName && !root?.hasCompletedContactAnalysis;
+      const needsOnboarding = !root?.hasCompletedOnboarding;
+      const needsContactAnalysis = root?.hasCompletedOnboarding && !root?.hasCompletedContactAnalysis;
       
       console.log('Flow check:', {
         displayName: root?.displayName,
+        hasCompletedOnboarding: root?.hasCompletedOnboarding,
         hasCompletedContactAnalysis: root?.hasCompletedContactAnalysis,
         contactCount: root?.contacts?.length || 0,
         needsOnboarding,
@@ -107,10 +108,32 @@ export default function Index() {
           root.email = data.email;
           root.phone = data.phone;
           
+          // Save data sharing consent if provided
+          if (data.dataSharingLevel) {
+            const now = new Date().toISOString();
+            const dataSharingConsent = DataSharingConsent.create({
+              hasConsented: data.dataSharingLevel !== "NONE",
+              consentedAt: data.dataSharingLevel !== "NONE" ? now : undefined,
+              level: data.dataSharingLevel,
+              lastUpdated: now,
+            }, me);
+            root.$jazz.set('dataSharing', dataSharingConsent);
+            
+            console.log("Data sharing consent saved:", {
+              level: data.dataSharingLevel,
+              hasConsented: data.dataSharingLevel !== "NONE",
+            });
+          }
+          
+          // CRITICAL: Mark onboarding as completed
+          root.$jazz.set('hasCompletedOnboarding', true);
+          
           console.log("User data saved:", {
             displayName: root.displayName,
             email: root.email,
             phone: root.phone,
+            hasCompletedOnboarding: true,
+            dataSharingLevel: data.dataSharingLevel,
           });
           
           // Save onboarding data for data mining screen
