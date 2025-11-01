@@ -11,12 +11,13 @@ interface CardProps extends ViewProps {
   variant?: 'default' | 'accent';
   accentColor?: string;
   children: React.ReactNode;
+  onPress?: () => void;
 }
 
-export function Card({ variant = 'default', accentColor, children, className = '', ...props }: CardProps) {
+export function Card({ variant = 'default', accentColor, children, className = '', onPress, ...props }: CardProps) {
   const baseClass = "p-4 bg-zinc-900 border border-zinc-800";
   
-  return (
+  const content = (
     <View 
       className={`${baseClass} ${className}`}
       style={[
@@ -31,4 +32,11 @@ export function Card({ variant = 'default', accentColor, children, className = '
       {children}
     </View>
   );
+
+  if (onPress) {
+    const Pressable = require('react-native').Pressable;
+    return <Pressable onPress={onPress}>{content}</Pressable>;
+  }
+
+  return content;
 }
