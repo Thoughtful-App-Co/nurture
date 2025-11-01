@@ -5,6 +5,52 @@ All notable changes to the Nurture app will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2025-11-01
+
+### Changed
+
+#### Relationship Classification System Refactor
+- **BREAKING CHANGE**: Replaced `friendTier` with `connectionOrigin` in schema
+  - **Old System**: `friendTier` enum with values: INNER_CIRCLE, CLOSE_FRIEND, GOOD_FRIEND, CASUAL_FRIEND
+  - **New System**: `connectionOrigin` enum with values: FAMILY_FRIEND, NEIGHBOR, SCHOOL, HOBBY_SPORTS, WORK, OTHER
+  - **Rationale**: Eliminates duplication between friendTier and Dunbar layers
+    - Both systems were measuring "closeness" which created confusion and potential conflicts
+    - Example: Algorithm places someone in Layer 5 (distant), user marks as "Inner Circle" → disconnect
+  - **New Mental Model**:
+    - **Dunbar Layer** = Behavioral reality (calculated from interaction data) - "How close are you?"
+    - **Connection Origin** = Relationship context (user-selected) - "How did you meet?"
+    - These dimensions are orthogonal and complementary, not competing
+  - **Solves "Work Friend" Problem**: Can now distinguish:
+    - Work colleague (BUSINESS type) vs friend met through work (FRIEND type, WORK origin)
+    - School teammate (FRIEND type, SCHOOL origin) vs sports teammate (FRIEND type, HOBBY_SPORTS origin)
+
+#### Connection Origin Selection UI
+- Updated all friend subcategory selectors across the app:
+  - **RelationshipTypeSelector**: New 6-bucket connection origin picker
+  - **QuickSortModal (Tend Garden)**: Updated flow with connection origins
+  - **ContactDetailModal**: Edit modal with connection origin selector
+  - **LayerDetailScreen**: Badge display showing connection context
+  - **ContactSearch**: Search results with connection origin badges
+- Connection origins: Family Friend, Neighbor, School, Hobby, Work, Other
+- Labels changed from "Hobby/Sports" to "Hobby" with description "Sports, music, activities, shared interests"
+- Removed emojis from connection origin buttons for cleaner, consistent design
+- Badge display now shows single 🤝 emoji for all friends with connection origin label
+
+#### Layer Descriptors
+- Added consistent layer descriptors across dashboard and Tend Garden:
+  - **L0 (Loved Ones)**: Cherish
+  - **L1 (Inner Circle)**: Love
+  - **L2 (Clan)**: Respect
+  - **L3 (Tribe)**: Like
+  - **L4 (Acquaintances)**: Know
+  - **L5 (Social Nebula)**: Aware
+- Ensures unified language when categorizing relationships
+
+### Migration Notes
+- **Data Impact**: Existing contacts with `friendTier` data will lose that field
+- **User Action**: Users will need to re-classify friends using the new connection origin system
+- **Benefit**: Clearer separation between behavioral reality and relationship context
+
 ## [0.3.2] - 2025-11-01
 
 ### Added
