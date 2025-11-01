@@ -145,14 +145,24 @@ export async function calculateDunbarLayers(contacts: Contact[]): Promise<Contac
     interactionScore: calculateInteractionScore(contact),
   }));
   
-  // Step 2: Sort by score (highest first)
-  scoredContacts.sort((a, b) => (b.interactionScore || 0) - (a.interactionScore || 0));
+  // Step 2: Separate nuclear family from others
+  const nuclearFamily = scoredContacts.filter(c => c.isFamily && c.familyTier === 'NUCLEAR');
+  const nonNuclearContacts = scoredContacts.filter(c => !(c.isFamily && c.familyTier === 'NUCLEAR'));
   
-  // Step 3: Filter out zero-interaction contacts (they go to Social Nebula)
-  const activeContacts = scoredContacts.filter(c => (c.interactionScore || 0) > 0);
-  const zeroInteractionContacts = scoredContacts.filter(c => (c.interactionScore || 0) === 0);
+  // Step 3: Sort both groups by score (highest first)
+  nuclearFamily.sort((a, b) => (b.interactionScore || 0) - (a.interactionScore || 0));
+  nonNuclearContacts.sort((a, b) => (b.interactionScore || 0) - (a.interactionScore || 0));
   
-  // Step 4: Use PERCENTILE-BASED distribution (inspired by Dunbar research)
+  // Step 4: Merge with nuclear family first (prioritize for intimate layers)
+  const sortedContacts = [...nuclearFamily, ...nonNuclearContacts];
+  
+  console.log(`👨‍👩‍👧‍👦 Prioritizing ${nuclearFamily.length} nuclear family members for intimate layers`);
+  
+  // Step 5: Filter out zero-interaction contacts (they go to Social Nebula)
+  const activeContacts = sortedContacts.filter(c => (c.interactionScore || 0) > 0);
+  const zeroInteractionContacts = sortedContacts.filter(c => (c.interactionScore || 0) === 0);
+  
+  // Step 6: Use PERCENTILE-BASED distribution (inspired by Dunbar research)
   // These percentages represent the natural distribution of relationship intimacy
   const layerPercentages = [
     { layer: 0, percentage: 0.03, name: 'Intimate Core' },      // Top 3% (1-5 people)
@@ -167,7 +177,7 @@ export async function calculateDunbarLayers(contacts: Contact[]): Promise<Contac
   let currentIndex = 0;
   const layerCounts = [0, 0, 0, 0, 0, 0];
   
-  // Step 5: Assign layers based on percentiles
+  // Step 7: Assign layers based on percentiles
   const layeredActiveContacts = activeContacts.map((contact, index) => {
     let assignedLayer = 5; // Default
     
@@ -212,7 +222,7 @@ export async function calculateDunbarLayers(contacts: Contact[]): Promise<Contac
     };
   });
   
-  // Step 6: Assign zero-interaction contacts to Social Nebula
+  // Step 8: Assign zero-interaction contacts to Social Nebula
   const layeredZeroContacts = zeroInteractionContacts.map(contact => ({
     ...contact,
     dunbarLayer: 5, // Social Nebula
@@ -220,7 +230,7 @@ export async function calculateDunbarLayers(contacts: Contact[]): Promise<Contac
   
   layerCounts[5] += zeroInteractionContacts.length;
   
-  // Step 7: Combine and sort by layer
+  // Step 9: Combine and sort by layer
   const allLayeredContacts = [...layeredActiveContacts, ...layeredZeroContacts];
   allLayeredContacts.sort((a, b) => {
     if (a.dunbarLayer !== b.dunbarLayer) {
