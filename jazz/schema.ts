@@ -60,7 +60,6 @@ export const Contact = co.map({
   lockedLayer: z.number().optional(), // User-locked layer (ignores algorithm)
   
   // Manual Tracking & Quality Signals
-  isFavorite: z.boolean().optional(), // Manual "VIP" tag
   qualityRating: z.number().min(1).max(5).optional(), // Average quality of recent interactions
   manuallyPinned: z.boolean().optional(), // Force into a specific layer regardless of data
   lastManualInteraction: z.string().optional(), // ISO date of last manual log
