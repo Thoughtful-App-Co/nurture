@@ -74,16 +74,30 @@ export function DataMiningScreen({ onComplete, savedFamilyNames }: Props) {
     setProgress(0);
 
     try {
-      // Simulate progress updates (more realistic timing)
-      const progressInterval = setInterval(() => {
-        setProgress(prev => Math.min(prev + 5, 90));
-      }, 300);
+      // Simulate progress updates with more realistic timing
+      const progressSteps = [
+        { progress: 20, delay: 500 },
+        { progress: 40, delay: 800 },
+        { progress: 60, delay: 1000 },
+        { progress: 80, delay: 1200 },
+        { progress: 95, delay: 500 },
+      ];
+
+      let currentStep = 0;
+      const updateProgress = () => {
+        if (currentStep < progressSteps.length) {
+          setProgress(progressSteps[currentStep].progress);
+          currentStep++;
+          setTimeout(updateProgress, progressSteps[currentStep - 1]?.delay || 500);
+        }
+      };
+      
+      updateProgress();
 
       // Run the actual analysis
       console.log('Running analysis with family names:', familyNames);
       const contacts = await aggregateContactsWithMetrics(familyNames);
 
-      clearInterval(progressInterval);
       setProgress(100);
 
       console.log(`Analysis complete: ${contacts.length} contacts processed`);
@@ -123,7 +137,7 @@ export function DataMiningScreen({ onComplete, savedFamilyNames }: Props) {
     return (
       <View className="flex-1 bg-black justify-center px-8">
         <View className="mb-8">
-          <Text className="text-4xl text-primary mb-4" style={{ fontFamily: 'Montserrat_600SemiBold' }}>
+          <Text className="text-4xl text-primary mb-4 font-bold tracking-wide">
             Let's Look at Your Garden
           </Text>
           <Text className="text-base text-white leading-relaxed">
