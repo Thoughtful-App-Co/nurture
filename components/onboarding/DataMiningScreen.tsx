@@ -32,7 +32,6 @@ interface Props {
 export function DataMiningScreen({ onComplete, savedFamilyNames }: Props) {
   const [step, setStep] = useState<Step>('intro');
   const [familyNames, setFamilyNames] = useState<FamilyNames>(savedFamilyNames || {});
-  const [progress, setProgress] = useState(0);
   const [analysisResults, setAnalysisResults] = useState<{
     contacts: ContactWithMetrics[];
     hasCallData: boolean;
@@ -71,34 +70,11 @@ export function DataMiningScreen({ onComplete, savedFamilyNames }: Props) {
 
     // Start analysis
     setStep('analyzing');
-    setProgress(0);
 
     try {
-      // Simulate progress updates with more realistic timing
-      const progressSteps = [
-        { progress: 20, delay: 500 },
-        { progress: 40, delay: 800 },
-        { progress: 60, delay: 1000 },
-        { progress: 80, delay: 1200 },
-        { progress: 95, delay: 500 },
-      ];
-
-      let currentStep = 0;
-      const updateProgress = () => {
-        if (currentStep < progressSteps.length) {
-          setProgress(progressSteps[currentStep].progress);
-          currentStep++;
-          setTimeout(updateProgress, progressSteps[currentStep - 1]?.delay || 500);
-        }
-      };
-      
-      updateProgress();
-
       // Run the actual analysis
       console.log('Running analysis with family names:', familyNames);
       const contacts = await aggregateContactsWithMetrics(familyNames);
-
-      setProgress(100);
 
       console.log(`Analysis complete: ${contacts.length} contacts processed`);
       
@@ -335,42 +311,14 @@ export function DataMiningScreen({ onComplete, savedFamilyNames }: Props) {
     );
   }
 
-  // Step 3: Analyzing (with progress)
+  // Step 3: Analyzing (no progress bar, just animation)
   if (step === 'analyzing') {
-    const getAnalysisMessage = () => {
-      if (progress < 30) return "Reading your contacts...";
-      if (progress < 60) return "Analyzing call patterns...";
-      if (progress < 90) return "Calculating relationship layers...";
-      return "Almost done...";
-    };
-
-    const getSubmessage = () => {
-      if (progress < 30) return "Importing contact data from your device";
-      if (progress < 60) return "Processing call logs and SMS history for behavioral insights";
-      if (progress < 90) return "Organizing relationships into Dunbar layers";
-      return "Finalizing your garden...";
-    };
-
     return (
       <View className="flex-1 bg-black justify-center px-8">
         <LoadingAnimation 
-          message={getAnalysisMessage()}
-          submessage={getSubmessage()}
+          message="Analyzing Your Relationships"
+          submessage="Reading contacts, call logs, and messages to understand your social garden"
         />
-        
-        {/* Progress bar */}
-        <View className="mt-12 mb-4">
-          <View className="h-1 bg-zinc-900">
-            <View 
-              className="h-full bg-primary transition-all"
-              style={{ width: `${progress}%` }}
-            />
-          </View>
-        </View>
-
-        <Text className="text-center text-primary text-sm font-medium">
-          {progress}%
-        </Text>
       </View>
     );
   }
