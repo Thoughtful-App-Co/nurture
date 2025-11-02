@@ -15,7 +15,6 @@
   "dependencies": {
     "@azure/core-asynciterator-polyfill": "^1.0.2",
     "@bacons/text-decoder": "^0.0.0",
-    "@clerk/clerk-expo": "^2.17.1",
     "@expo-google-fonts/montserrat": "^0.4.2",
     "@expo/vector-icons": "^15.0.3",
     "@passwordless-id/webauthn": "^2.3.1",
