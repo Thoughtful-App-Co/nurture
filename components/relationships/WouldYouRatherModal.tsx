@@ -32,6 +32,8 @@ import {
   RankingSessionList,
   Comparison,
   ComparisonList,
+  Contact,
+  ContactList,
 } from "@/jazz/schema";
 import { 
   initializeRanking,
@@ -55,6 +57,7 @@ const SCREEN_WIDTH = Dimensions.get("window").width;
 interface WouldYouRatherModalProps {
   visible: boolean;
   onClose: () => void;
+  onRefresh?: () => void; // Callback to refresh dashboard after contact updates
   contacts: any[]; // Contacts in violated layer
   violatedLayer: number;
   violatedLayerName: string;
@@ -64,6 +67,7 @@ interface WouldYouRatherModalProps {
 export function WouldYouRatherModal({
   visible,
   onClose,
+  onRefresh,
   contacts,
   violatedLayer,
   violatedLayerName,
@@ -335,7 +339,125 @@ export function WouldYouRatherModal({
       jazzSession.phase = "completed";
     }
     
-    // TODO: Apply reallocation updates to contacts in Jazz
+    // Apply reallocation updates to contacts in Jazz
+    console.log('');
+    console.log('=' .repeat(60));
+    console.log('💾 APPLYING REALLOCATION UPDATES TO JAZZ');
+    console.log('=' .repeat(60));
+    console.log(`Contacts staying in Layer ${violatedLayer}:`, reallocationResult.staying.length);
+    console.log(`Contacts moving to Layer ${violatedLayer + 1}:`, reallocationResult.movingDown.length);
+    
+    if (me) {
+      const root = me.root as any;
+      const allContactsArray = Array.from(root?.contacts || []);
+      
+      let stayingUpdated = 0;
+      let movingUpdated = 0;
+      
+      const updatedContactsList = allContactsArray.map((c: any) => {
+        const contactId = c.id || c.sourceId;
+        
+        // Check if contact is moving down to next layer
+        if (reallocationResult.movingDown.includes(contactId)) {
+          console.log(`  ↓ Moving: ${c.name} (Layer ${violatedLayer} → Layer ${violatedLayer + 1})`);
+          movingUpdated++;
+          
+          return Contact.create({
+            sourceId: c.sourceId,
+            name: c.name,
+            phoneNumber: c.phoneNumber,
+            email: c.email,
+            photoUrl: c.photoUrl,
+            dunbarLayer: violatedLayer + 1, // Move to next layer down
+            interactionScore: c.interactionScore,
+            lastInteraction: c.lastInteraction,
+            interactionFrequency: c.interactionFrequency,
+            reciprocityScore: c.reciprocityScore,
+            contactInitiationRatio: c.contactInitiationRatio,
+            averageResponseTime: c.averageResponseTime,
+            callCount: c.callCount,
+            smsCount: c.smsCount,
+            totalDuration: c.totalDuration,
+            relationshipType: c.relationshipType,
+            isFamily: c.isFamily,
+            familyTier: c.familyTier,
+            familyRole: c.familyRole,
+            connectionOrigin: c.connectionOrigin,
+            businessTier: c.businessTier,
+            targetLayer: c.targetLayer,
+            cultivationGoal: c.cultivationGoal,
+            notes: c.notes,
+            manualLayerOverride: c.manualLayerOverride,
+            lockedLayer: c.lockedLayer,
+            qualityRating: c.qualityRating,
+            manuallyPinned: c.manuallyPinned,
+            lastManualInteraction: c.lastManualInteraction,
+            vertical: c.vertical,
+            tags: c.tags,
+            quickSortStatus: "sorted", // Mark as sorted to prevent re-sorting
+            quickSortedAt: new Date().toISOString(),
+            createdAt: c.createdAt,
+          }, me);
+        }
+        
+        // Check if contact is staying in current layer
+        if (reallocationResult.staying.includes(contactId)) {
+          console.log(`  ✓ Staying: ${c.name} (Layer ${violatedLayer})`);
+          stayingUpdated++;
+          
+          return Contact.create({
+            sourceId: c.sourceId,
+            name: c.name,
+            phoneNumber: c.phoneNumber,
+            email: c.email,
+            photoUrl: c.photoUrl,
+            dunbarLayer: c.dunbarLayer, // Keep in current layer
+            interactionScore: c.interactionScore,
+            lastInteraction: c.lastInteraction,
+            interactionFrequency: c.interactionFrequency,
+            reciprocityScore: c.reciprocityScore,
+            contactInitiationRatio: c.contactInitiationRatio,
+            averageResponseTime: c.averageResponseTime,
+            callCount: c.callCount,
+            smsCount: c.smsCount,
+            totalDuration: c.totalDuration,
+            relationshipType: c.relationshipType,
+            isFamily: c.isFamily,
+            familyTier: c.familyTier,
+            familyRole: c.familyRole,
+            connectionOrigin: c.connectionOrigin,
+            businessTier: c.businessTier,
+            targetLayer: c.targetLayer,
+            cultivationGoal: c.cultivationGoal,
+            notes: c.notes,
+            manualLayerOverride: c.manualLayerOverride,
+            lockedLayer: c.lockedLayer,
+            qualityRating: c.qualityRating,
+            manuallyPinned: c.manuallyPinned,
+            lastManualInteraction: c.lastManualInteraction,
+            vertical: c.vertical,
+            tags: c.tags,
+            quickSortStatus: "sorted", // Mark as sorted to prevent re-sorting
+            quickSortedAt: new Date().toISOString(),
+            createdAt: c.createdAt,
+          }, me);
+        }
+        
+        // Contact not involved in this ranking session - return unchanged
+        return c;
+      });
+      
+      // Save all contacts back to Jazz
+      const newContacts = ContactList.create(updatedContactsList, me);
+      root.$jazz.set('contacts', newContacts);
+      
+      console.log('');
+      console.log(`✅ Successfully updated ${stayingUpdated + movingUpdated} contacts in Jazz`);
+      console.log(`   - ${stayingUpdated} staying in Layer ${violatedLayer}`);
+      console.log(`   - ${movingUpdated} moving to Layer ${violatedLayer + 1}`);
+      console.log('=' .repeat(60));
+      console.log('');
+    }
     
     setIsComplete(true);
   };
@@ -369,6 +491,12 @@ export function WouldYouRatherModal({
     scaleLeft.setValue(1);
     scaleRight.setValue(1);
     onClose();
+    
+    // Trigger dashboard refresh to show updated layers
+    if (onRefresh) {
+      console.log('🔄 Triggering dashboard refresh after ranking completion');
+      onRefresh();
+    }
   };
   
   if (!visible) return null;
