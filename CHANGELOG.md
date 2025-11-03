@@ -1,5 +1,45 @@
 # Changelog
 
+## 2025-11-02 - Hero Card UX Improvements
+
+### Fixed
+- **Hero card swipe not working**
+  - Removed broken horizontal ScrollView implementation
+  - Replaced with pagination dots (iOS/Android standard pattern)
+  - Single hero card shown at a time with tap-to-switch dots
+  - Much more reliable and familiar UX
+  
+- **Violation detection improvements**
+  - Only count contacts in active layers 0-4 (exclude hidden layer 5)
+  - Added comprehensive logging to debug detection issues
+  - Log each layer's count vs capacity with violation indicators
+  - Better error detection for "layer is already balanced" false negatives
+
+### Changed
+- **Button text simplified**
+  - Changed "PRIORITIZE NOW (5 min)" to concise "Decide Who"
+  - Time estimate removed (unnecessary and could be inaccurate)
+  - More direct call-to-action
+  
+- **Pagination dots replace swipe instructions**
+  - Removed "⬅️ SWIPE TO SEE ALL (X ALERTS)" text
+  - Standard pagination dots indicate active card and count
+  - Tappable dots allow direct navigation between violations
+  - Cleaner, more professional appearance
+
+### Technical Details
+- **Files Modified:**
+  - `components/relationships/DunbarViolationHeroCard.tsx`
+    - Updated button text
+    - Added layer boundary checking (0-4 only)
+    - Added detailed console logging
+  - `app/(tabs)/dashboard.tsx`
+    - Replaced ScrollView with single card + pagination dots
+    - Added `currentHeroIndex` state for tracking active violation
+    - Removed confusing swipe instruction text
+
+---
+
 ## 2025-11-02 - CRITICAL FIX: Sorting Systems Database Updates
 
 ### Fixed
