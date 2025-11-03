@@ -633,42 +633,97 @@ export default function Dashboard() {
           />
         </View>
 
-        {/* Dunbar Violation Hero Card - HIGHEST PRIORITY (Priority: 5) */}
+        {/* Hero Cards - Horizontally Scrollable if multiple exist */}
         {(() => {
           const root = me?.root as any;
           const contacts = root?.contacts || [];
           const allContacts = Array.from(contacts);
           
-          // Detect violations
+          // Detect violations and unsorted contacts
           const violations = detectDunbarViolations(allContacts);
+          const unsortedCount = allContacts.filter(
+            (c: any) => c?.quickSortStatus === "not_sorted" || !c?.quickSortStatus
+          ).length;
           
-          // Show highest priority violation (Layer 0 first)
-          if (violations.length > 0) {
-            const topViolation = violations[0];
+          // Count total hero cards
+          const hasViolations = violations.length > 0;
+          const hasTendGarden = unsortedCount > 0;
+          const totalHeros = violations.length + (hasTendGarden ? 1 : 0);
+          
+          if (totalHeros === 0) return null;
+          
+          // Single hero: show without scroll
+          if (totalHeros === 1 && hasViolations) {
+            const violation = violations[0];
+            const layerContacts = allContacts.filter(
+              (c: any) => c?.dunbarLayer === violation.layer
+            );
             
             return (
-              <DunbarViolationHeroCard
-                violation={topViolation}
-                onStart={() => {
-                  // Get contacts in violated layer
-                  const layerContacts = allContacts.filter(
-                    (c: any) => c?.dunbarLayer === topViolation.layer
-                  );
-                  
-                  setDunbarViolation({
-                    ...topViolation,
-                    contacts: layerContacts,
-                  });
-                  setShowWouldYouRather(true);
-                }}
-              />
+              <View className="mb-8">
+                <DunbarViolationHeroCard
+                  violation={violation}
+                  onStart={() => {
+                    setDunbarViolation({
+                      ...violation,
+                      contacts: layerContacts,
+                    });
+                    setShowWouldYouRather(true);
+                  }}
+                />
+              </View>
+            );
+          }
+          
+          // Multiple heroes: show scroll indicator
+          if (totalHeros > 1) {
+            return (
+              <View className="mb-8">
+                <Text className="text-zinc-500 text-xs uppercase tracking-wider mb-3 px-6">
+                  ⬅️ SWIPE TO SEE ALL ({totalHeros} ALERTS)
+                </Text>
+                <ScrollView 
+                  horizontal 
+                  showsHorizontalScrollIndicator={false}
+                  snapToInterval={Dimensions.get('window').width - 48}
+                  decelerationRate="fast"
+                  contentContainerStyle={{ paddingHorizontal: 24 }}
+                >
+                  {violations.map((violation, index) => {
+                    const layerContacts = allContacts.filter(
+                      (c: any) => c?.dunbarLayer === violation.layer
+                    );
+                    
+                    return (
+                      <View 
+                        key={`violation-${violation.layer}`}
+                        style={{ 
+                          width: Dimensions.get('window').width - 96, 
+                          marginRight: index < violations.length - 1 ? 16 : 0 
+                        }}
+                      >
+                        <DunbarViolationHeroCard
+                          violation={violation}
+                          onStart={() => {
+                            setDunbarViolation({
+                              ...violation,
+                              contacts: layerContacts,
+                            });
+                            setShowWouldYouRather(true);
+                          }}
+                        />
+                      </View>
+                    );
+                  })}
+                </ScrollView>
+              </View>
             );
           }
           
           return null;
         })()}
 
-        {/* Tend Garden - Prime Real Estate (Von Restorff Effect - Priority: 10) */}
+        {/* Tend Garden - Only show if NO Dunbar violations */}
         {(() => {
           const root = me?.root as any;
           const contacts = root?.contacts || [];
@@ -676,8 +731,9 @@ export default function Dashboard() {
             (c: any) => c?.quickSortStatus === "not_sorted" || !c?.quickSortStatus
           ).length;
           
-          // Only show if there are unsorted contacts AND no Dunbar violations
           const violations = detectDunbarViolations(Array.from(contacts));
+          
+          // Only show if no violations (violations have priority)
           if (unsortedCount === 0 || violations.length > 0) return null;
           
           return (
