@@ -90,8 +90,10 @@ export function WouldYouRatherModal({
   const scaleLeft = useRef(new Animated.Value(1)).current;
   const scaleRight = useRef(new Animated.Value(1)).current;
   
-  // Jazz session (persisted to database)
-  const [jazzSession, setJazzSession] = useState<any>(null);
+  // Session tracking (local state - will save to Jazz at end)
+  const [skipCount, setSkipCount] = useState(0);
+  const [contradictionCount, setContradictionCount] = useState(0);
+  const [sessionId, setSessionId] = useState<string>("");
   
   // Timeout state
   const [initializationTimeout, setInitializationTimeout] = useState(false);
@@ -139,8 +141,8 @@ export function WouldYouRatherModal({
       setSessionStartTime(Date.now());
       setComparisonStartTime(Date.now());
       
-      // Create Jazz session for persistence
-      createJazzSession(state);
+      // Initialize session tracking
+      initializeSession(state);
       
       // Get first question
       const question = getRotatedQuestion(0, Date.now(), []);
@@ -153,46 +155,14 @@ export function WouldYouRatherModal({
     }
   }, [visible, contacts, violatedLayer, layerCapacity, violatedLayerName]);
   
-  // Create persistent Jazz session
-  const createJazzSession = (state: RankingState) => {
-    if (!me) return;
+  // Initialize session tracking
+  const initializeSession = (state: RankingState) => {
+    const id = `ranking_${Date.now()}_${violatedLayer}`;
+    setSessionId(id);
+    setSkipCount(0);
+    setContradictionCount(0);
     
-    const sessionId = `ranking_${Date.now()}_${violatedLayer}`;
-    const now = new Date().toISOString();
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(); // 7 days
-    
-    const session = RankingSession.create({
-      sessionId,
-      createdAt: now,
-      lastUpdatedAt: now,
-      expiresAt,
-      violatedLayer,
-      violatedLayerName,
-      currentCapacity: contacts.length,
-      maxCapacity: layerCapacity,
-      overageCount: contacts.length - layerCapacity,
-      algorithm: state.algorithm,
-      phase: state.phase,
-      contactIds: state.contactIds,
-      currentPairIndex: 0,
-      totalComparisonsNeeded: state.totalComparisonsNeeded,
-      completedComparisons: 0,
-      comparisonIds: [],
-      questionBankSeed: Date.now(),
-      skipCount: 0,
-      contradictionCount: 0,
-      status: "active",
-    }, me);
-    
-    setJazzSession(session);
-    
-    // Add to user's ranking sessions
-    const root = me.root as any;
-    const sessions = root?.rankingSessions || [];
-    const newSessions = RankingSessionList.create([...sessions, session], me);
-    root.$jazz.set("rankingSessions", newSessions);
-    
-    console.log(`✅ Created Jazz session: ${sessionId}`);
+    console.log(`✅ Created session: ${id}`);
   };
   
   // Get current pair
@@ -250,10 +220,8 @@ export function WouldYouRatherModal({
         ]
       );
       
-      // Update contradiction count
-      if (jazzSession) {
-        jazzSession.contradictionCount = (jazzSession.contradictionCount || 0) + 1;
-      }
+      // Track contradiction count in local state
+      setContradictionCount(prev => prev + 1);
     } else {
       await processComparison(chosenId, false);
     }
@@ -280,7 +248,7 @@ export function WouldYouRatherModal({
     );
     
     // Save comparison to Jazz
-    if (me && jazzSession) {
+    if (me) {
       const comparison = Comparison.create({
         contactAId: currentPair.contactA.id!,
         contactBId: currentPair.contactB.id!,
@@ -300,12 +268,9 @@ export function WouldYouRatherModal({
       const newComparisons = ComparisonList.create([...comparisons, comparison], me);
       root.$jazz.set("comparisons", newComparisons);
       
-      // Update session
-      jazzSession.completedComparisons = rankingState.completedComparisons;
-      jazzSession.currentPairIndex = rankingState.currentPairIndex + 1;
-      jazzSession.lastUpdatedAt = new Date().toISOString();
+      // Update skip count in local state
       if (wasSkipped) {
-        jazzSession.skipCount = (jazzSession.skipCount || 0) + 1;
+        setSkipCount(prev => prev + 1);
       }
     }
     
@@ -325,7 +290,7 @@ export function WouldYouRatherModal({
         // Get next question
         const question = getRotatedQuestion(
           rankingState.completedComparisons,
-          jazzSession?.questionBankSeed || Date.now(),
+          Date.now(),
           []
         );
         setCurrentQuestion(question.text);
@@ -360,23 +325,52 @@ export function WouldYouRatherModal({
     // Track analytics
     const sessionDuration = Date.now() - sessionStartTime;
     trackLayerReallocation(
-      jazzSession?.sessionId || "unknown",
+      sessionId || "unknown",
       reallocationResult,
       sessionDuration,
       rankingState.completedComparisons,
-      jazzSession?.skipCount || 0,
-      jazzSession?.contradictionCount || 0
+      skipCount,
+      contradictionCount
     );
     
-    // Update Jazz session
-    if (jazzSession) {
-      jazzSession.status = "completed";
-      jazzSession.completedAt = new Date().toISOString();
-      jazzSession.finalRanking = finalRanking;
-      jazzSession.contactsStaying = reallocationResult.staying;
-      jazzSession.contactsMovingDown = reallocationResult.movingDown;
-      jazzSession.totalDurationMs = sessionDuration;
-      jazzSession.phase = "completed";
+    // Save final session to Jazz
+    if (me) {
+      const now = new Date().toISOString();
+      const session = RankingSession.create({
+        sessionId: sessionId || `ranking_${Date.now()}`,
+        createdAt: now,
+        lastUpdatedAt: now,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        violatedLayer,
+        violatedLayerName,
+        currentCapacity: contacts.length,
+        maxCapacity: layerCapacity,
+        overageCount: contacts.length - layerCapacity,
+        algorithm: rankingState.algorithm,
+        phase: "completed",
+        contactIds: rankingState.contactIds,
+        currentPairIndex: rankingState.completedComparisons,
+        totalComparisonsNeeded: rankingState.totalComparisonsNeeded,
+        completedComparisons: rankingState.completedComparisons,
+        comparisonIds: [],
+        finalRanking,
+        contactsStaying: reallocationResult.staying,
+        contactsMovingDown: reallocationResult.movingDown,
+        questionBankSeed: Date.now(),
+        skipCount,
+        contradictionCount,
+        status: "completed",
+        completedAt: now,
+        totalDurationMs: sessionDuration,
+      }, me);
+      
+      // Add to user's ranking sessions
+      const root = me.root as any;
+      const existingSessions = root.rankingSessions || [];
+      const newSessions = RankingSessionList.create([...existingSessions, session], me);
+      root.$jazz.set('rankingSessions', newSessions);
+      
+      console.log(`✅ Saved completed session to Jazz: ${sessionId}`);
     }
     
     // Apply reallocation updates to contacts in Jazz
@@ -572,7 +566,7 @@ export function WouldYouRatherModal({
                 • {rankingState.completedComparisons} comparisons
               </Text>
               <Text className="text-xs text-zinc-300">
-                • {jazzSession?.skipCount || 0} skipped ({((jazzSession?.skipCount || 0) / rankingState.completedComparisons * 100).toFixed(1)}%)
+                • {skipCount} skipped ({((skipCount) / rankingState.completedComparisons * 100).toFixed(1)}%)
               </Text>
               <Text className="text-xs text-zinc-300">
                 • {Math.round((Date.now() - sessionStartTime) / 1000 / 60)} minutes
