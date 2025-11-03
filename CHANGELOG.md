@@ -1,5 +1,136 @@
 # Changelog
 
+## 2025-11-02 - Jazz Inspector Enhancement
+
+### Enhanced
+- **Jazz Inspector Dev Tool - Comprehensive Data Analytics**
+  - Added collapsible sections for improved UX and reduced clutter
+  - Added Dunbar layer distribution statistics (contacts per layer 0-5)
+  - Added relationship type breakdown (FAMILY, FRIEND, BUSINESS)
+  - Added contact samples with detailed metrics (first 5 contacts)
+    - Shows phone, layer, type, last interaction, call/SMS counts, interaction score
+  - Added interaction samples (first 5 interactions)
+    - Shows contact name, type, date, quality, source, notes
+  - Added goal samples (first 3 goals)
+    - Shows status, category, progress percentage, description
+  - Added ranking session samples (first 3 sessions)
+    - Shows status, algorithm, layer, progress, contact count
+  - Added comparison analytics
+    - Total comparisons, skipped count, average response time
+  - Added comprehensive statistics
+    - Family members count, quick sorted vs hidden contacts
+    - Manual vs automatic interaction breakdown
+    - Active vs completed goals and ranking sessions
+  - Enhanced raw JSON viewer with full root data preview
+  - Added data sharing consent details display
+
+## 2025-11-02 - Would You Rather Ranking System Fixes
+
+### Fixed
+- **CRITICAL: Infinite "Preparing..." loading screen**
+  - Fixed contact ID extraction in ranking algorithm (P0)
+  - Changed from `c.id` to `c.id || c.sourceId` fallback pattern
+  - Added validation to ensure contact IDs exist before ranking
+  - Added 5-second timeout with error message if initialization fails
+  - Comprehensive logging shows extracted contact count
+  
+- **CRITICAL: Jazz CoMap mutation errors**
+  - Replaced direct Jazz CoMap mutations with local state (P0)
+  - Jazz CoMaps are immutable - cannot use `jazzSession.field = value`
+  - Track skipCount, contradictionCount in local React state
+  - Save complete session to Jazz only when ranking completes
+  - Better performance: single Jazz write instead of write per comparison
+  
+- **Same contacts appearing repeatedly**
+  - Fixed ID lookups in `detectContradiction()` function
+  - Use `(c.id || c.sourceId) === winnerId` pattern
+  - Prevents same pair from showing multiple times
+  - Next comparison now shows different contacts correctly
+  
+- **Contradiction messages show same name twice**
+  - Fixed contact lookups in contradiction detection
+  - Now correctly finds winnerContact and loserContact
+  - Shows proper names: "Earlier you chose Alice over Bob"
+  - No more "Earlier you chose Alice over Alice"
+  
+- **No changes applied after ranking completes**
+  - Fixed missing contact IDs in `processComparison()`
+  - Extract contactAId/contactBId with id || sourceId fallback
+  - Add validation to catch missing IDs early
+  - Contacts now properly moved between layers
+  - Database updates confirmed in console logs
+
+### Added
+- **Comprehensive ranking process logging**
+  - Log each comparison as it happens (who vs who, chosen, skipped)
+  - Log comparison graph state after each decision
+  - Log final ranking results with full graph
+  - Show WHO stays vs WHO moves between layers
+  - Complete visibility into ranking decisions
+  
+- **Error handling and validation**
+  - 5-second timeout for initialization
+  - Helpful error messages with debugging guidance
+  - Validation checks for missing contact IDs
+  - Console error logs for troubleshooting
+
+### Technical Details
+- **Files Modified:**
+  - `services/rankingAlgorithm.ts`
+    - Fix initializeRanking() ID extraction with fallback
+    - Fix selectSmartPivot() contact filtering
+    - Fix getNextPairQuickSort() pivot ID handling
+    - Fix createTiers() finalRanking mapping
+    - Fix detectContradiction() contact lookups
+    - Add ContactType.sourceId to interface
+  - `components/relationships/WouldYouRatherModal.tsx`
+    - Replace jazzSession state with local tracking
+    - Add skipCount, contradictionCount, sessionId state
+    - Fix processComparison() ID extraction
+    - Fix contradiction detection ID extraction
+    - Add comprehensive logging throughout
+    - Save session to Jazz only at completion
+    - Add timeout handling
+
+### Impact
+- **Severity:** P0 - Critical bugs blocking core feature
+- **Users Affected:** All users attempting to use ranking system
+- **Resolution:** Complete - All ranking flows now work correctly
+
+---
+
+## 2025-11-02 - Testing and Performance Improvements
+
+### Added
+- **DemoAuth feature flag for testing**
+  - Optional flag to enable DemoAuth for testing scenarios
+  - Controlled via `EXPO_PUBLIC_USE_DEMO_AUTH` environment variable
+  - Default: false (uses anonymous auth with persistent data)
+  - When true: Creates new demo account on every restart
+  - Use cases:
+    - Testing onboarding flow repeatedly
+    - Testing data mining with different contact sets
+    - QA testing fresh install experience
+  - Safety features:
+    - Disabled by default
+    - Console warnings when enabled
+    - Warning banner in dev mode
+  - Documentation:
+    - `.env.example` with clear usage instructions
+    - `DEMO_AUTH_QUICK_REFERENCE.md` - Quick start
+    - `docs/features/DEMO_AUTH_FEATURE_FLAG.md` - Full docs
+    - `docs/implementation/DEMOAUTH_REMOVAL.md` - Implementation
+
+### Performance
+- **Dashboard violation detection optimization**
+  - Calculate `detectDunbarViolations()` only once
+  - Previously: called separately for hero cards and Tend Garden
+  - Now: single calculation used for both
+  - Better performance with same functionality
+  - Clearer code structure with proper priority handling
+
+---
+
 ## 2025-11-02 - Hero Card UX Improvements
 
 ### Fixed
