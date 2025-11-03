@@ -73,74 +73,38 @@ export function DunbarViolationHeroCard({
   const message = getLayerMessage();
   
   return (
-    <Card className="mx-6 mb-6 border-2 border-red-500 bg-red-950/30">
-      <View className="p-6">
-        {/* Title */}
-        <Text className="text-red-400 text-xl font-bold mb-3">
-          {message.title}
+    <View className="bg-gradient-to-br from-red-500/20 to-red-500/5 border-3 border-red-500 p-6 shadow-lg">
+      {/* Attention-grabbing header */}
+      <View className="flex-row items-center mb-3">
+        <View className="bg-red-500 w-2 h-2 rounded-full mr-2 animate-pulse" />
+        <Text className="text-red-400 text-xs font-bold uppercase tracking-widest">
+          🚨 LAYER {layer} OVERFLOWING
         </Text>
-        
-        {/* Description */}
-        <Text className="text-white text-base leading-relaxed mb-3">
-          {message.description}
-        </Text>
-        
-        {/* Warning */}
-        <View className="bg-red-900/30 border border-red-500/30 p-3 rounded mb-4">
-          <Text className="text-red-300 text-sm">
-            ⚠️ {message.warning}
-          </Text>
-        </View>
-        
-        {/* Stats */}
-        <View className="flex-row justify-between mb-4 bg-black/50 p-3 rounded">
-          <View>
-            <Text className="text-zinc-500 text-xs uppercase">Current</Text>
-            <Text className="text-red-400 text-2xl font-bold">{current}</Text>
-          </View>
-          <View className="items-center justify-center">
-            <Text className="text-zinc-500 text-2xl">→</Text>
-          </View>
-          <View>
-            <Text className="text-zinc-500 text-xs uppercase">Target</Text>
-            <Text className="text-primary text-2xl font-bold">{max}</Text>
-          </View>
-          <View>
-            <Text className="text-zinc-500 text-xs uppercase">Moving</Text>
-            <Text className="text-yellow-400 text-2xl font-bold">{overage}</Text>
-          </View>
-        </View>
-        
-        {/* CTA */}
-        <Pressable
-          onPress={onStart}
-          className="bg-primary py-4 px-6 rounded mb-3"
-        >
-          <Text className="text-center text-lg font-bold text-black">
-            Help Me Prioritize (5 min)
-          </Text>
-        </Pressable>
-        
-        {/* Dismiss option (if provided) */}
-        {onDismiss && (
-          <Pressable
-            onPress={onDismiss}
-            className="py-2"
-          >
-            <Text className="text-center text-sm text-zinc-500">
-              Maybe Later
-            </Text>
-          </Pressable>
-        )}
-        
-        {/* Explainer */}
-        <View className="mt-4 pt-4 border-t border-zinc-800">
-          <Text className="text-zinc-500 text-xs leading-relaxed">
-            💡 We'll ask you to choose between pairs of people. This helps you clarify who you genuinely want to prioritize. No one is being removed—we're just being honest about closeness.
-          </Text>
-        </View>
       </View>
-    </Card>
+      
+      <Text className="text-white text-2xl font-bold mb-2 tracking-tight">
+        Your {layerName} Needs Attention
+      </Text>
+      
+      <Text className="text-zinc-300 text-base leading-relaxed mb-4">
+        You have <Text className="text-red-400 font-bold">{current}</Text> people in this layer, but the healthy limit is <Text className="text-primary font-bold">{max}</Text>. Let's prioritize who matters most.
+      </Text>
+      
+      <Pressable
+        onPress={onStart}
+        className="bg-primary py-4 px-6 border-2 border-primary shadow-xl"
+        accessibilityLabel="Start prioritizing relationships"
+        accessibilityRole="button"
+        style={({ pressed }) => ({ 
+          opacity: pressed ? 0.9 : 1,
+          transform: [{ scale: pressed ? 0.98 : 1 }],
+        })}
+      >
+        <Text className="text-center text-lg font-bold text-black tracking-wide">
+          PRIORITIZE NOW (5 min)
+        </Text>
+      </Pressable>
+    </View>
   );
 }
 
