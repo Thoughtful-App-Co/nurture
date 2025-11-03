@@ -6,8 +6,7 @@
  */
 
 import { Text, View, ActivityIndicator, AppState as RNAppState } from "react-native";
-import { useAccount } from "jazz-tools/expo";
-import { useDemoAuth } from "jazz-tools/expo";
+import { useAccount, useDemoAuth } from "jazz-tools/expo";
 import { OnboardingFlow } from "@/components/auth/onboarding-flow";
 import { BiometricLock } from "@/components/auth/BiometricLock";
 import { DataMiningScreen } from "@/components/onboarding/DataMiningScreen";
@@ -16,6 +15,7 @@ import { useState, useEffect, useRef } from "react";
 import { calculateDunbarLayers } from "@/services/dunbarCalculator";
 import type { ContactWithMetrics } from "@/services/dataMining";
 import { Redirect } from "expo-router";
+import { FeatureFlags } from "@/config/featureFlags";
 
 type AppFlow = 'loading' | 'onboarding' | 'data-mining' | 'locked' | 'ready';
 
@@ -24,7 +24,15 @@ export default function Index() {
   const [flow, setFlow] = useState<AppFlow>('loading');
   const [onboardingData, setOnboardingData] = useState<any>(null);
   const appState = useRef(RNAppState.currentState);
-  const auth = useDemoAuth();
+  
+  // FEATURE FLAG: Use DemoAuth for testing (creates new accounts on every restart)
+  // Set EXPO_PUBLIC_USE_DEMO_AUTH=true in .env to enable
+  // WARNING: This will reset your data on every app restart!
+  if (FeatureFlags.USE_DEMO_AUTH) {
+    useDemoAuth();
+    console.warn('⚠️ DEMO AUTH ENABLED - Data will reset on app restart!');
+    console.warn('⚠️ Set EXPO_PUBLIC_USE_DEMO_AUTH=false in .env to disable');
+  }
 
   // Check if user needs onboarding (hasCompletedOnboarding flag) or contact analysis
   useEffect(() => {
@@ -277,4 +285,28 @@ export default function Index() {
   }
 
   return null;
+}
+
+/**
+ * DemoAuthWarningBanner
+ * 
+ * Visual indicator that DemoAuth is enabled
+ * Only shows in development when USE_DEMO_AUTH flag is true
+ */
+function DemoAuthWarningBanner() {
+  if (!FeatureFlags.USE_DEMO_AUTH || !__DEV__) return null;
+  
+  return (
+    <View 
+      className="absolute top-0 left-0 right-0 bg-yellow-500 py-2 px-4 z-50"
+      style={{ paddingTop: 50 }} // Account for status bar
+    >
+      <Text className="text-black text-xs font-bold text-center">
+        ⚠️ DEMO AUTH ENABLED - Data resets on restart!
+      </Text>
+      <Text className="text-black text-xs text-center">
+        Set EXPO_PUBLIC_USE_DEMO_AUTH=false in .env to disable
+      </Text>
+    </View>
+  );
 }

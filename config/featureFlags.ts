@@ -11,6 +11,21 @@ export const FeatureFlags = {
   // ============================================================================
   
   /**
+   * Use DemoAuth instead of Anonymous Authentication
+   * 
+   * WARNING: DemoAuth creates NEW accounts on every app restart!
+   * This is ONLY for testing scenarios where you want to simulate first-time users.
+   * 
+   * Use cases:
+   * - Testing onboarding flow repeatedly
+   * - Testing data mining with different contact sets
+   * - Simulating fresh user experience
+   * 
+   * Set in .env: EXPO_PUBLIC_USE_DEMO_AUTH=true
+   */
+  USE_DEMO_AUTH: process.env.EXPO_PUBLIC_USE_DEMO_AUTH === 'true',
+  
+  /**
    * Show floating dev tools menu button
    * Provides quick access to diagnostics, debug tools, and feature toggles
    */
