@@ -919,23 +919,18 @@ export default function Dashboard() {
         {layerStats.map((layerStat, index) => {
           const layer = LAYERS[index];
           
-          // Parse expected range to get min and max
-          const rangeMatch = layer.range.match(/\d+/g);
-          let minExpected = 0;
-          let maxExpected = 5;
+          // IMPORTANT: Layers are NESTED/INCLUSIVE, not additive
+          // These capacities match the dunbarCalculator.ts LAYER_THRESHOLDS
+          const LAYER_CAPACITIES = [
+            5,    // Layer 0: 5 people max (Loved Ones)
+            10,   // Layer 1: 10 additional people (15 total including Layer 0)
+            35,   // Layer 2: 35 additional people (50 total including Layers 0-1)
+            100,  // Layer 3: 100 additional people (150 total including Layers 0-2)
+            350,  // Layer 4: 350 additional people (500 total including Layers 0-3)
+            1000, // Layer 5: 1000 additional people (1500 total)
+          ];
           
-          if (rangeMatch) {
-            if (rangeMatch.length === 2) {
-              // Range like "0-5" or "15-50"
-              minExpected = parseInt(rangeMatch[0]);
-              maxExpected = parseInt(rangeMatch[1]);
-            }
-          }
-          
-          // Calculate the layer's capacity
-          // For ranges like "0-5", capacity is 5 (maxExpected)
-          // For ranges like "5-15", capacity is 15 (maxExpected) 
-          const layerCapacity = maxExpected;
+          const layerCapacity = LAYER_CAPACITIES[index];
           
           // Calculate percentage based on layer capacity
           const percentage = (layerStat.count / layerCapacity) * 100;
