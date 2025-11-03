@@ -93,6 +93,30 @@ export function WouldYouRatherModal({
   // Jazz session (persisted to database)
   const [jazzSession, setJazzSession] = useState<any>(null);
   
+  // Timeout state
+  const [initializationTimeout, setInitializationTimeout] = useState(false);
+  
+  // Timeout for initialization (5 seconds)
+  useEffect(() => {
+    if (visible && !rankingState && !initializationTimeout) {
+      const timer = setTimeout(() => {
+        console.error('❌ TIMEOUT: Ranking initialization took >5 seconds');
+        console.error('Contacts:', contacts);
+        console.error('This likely means contact IDs are missing or invalid');
+        setInitializationTimeout(true);
+      }, 5000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [visible, rankingState, contacts, initializationTimeout]);
+  
+  // Reset timeout when modal closes
+  useEffect(() => {
+    if (!visible) {
+      setInitializationTimeout(false);
+    }
+  }, [visible]);
+  
   // Initialize ranking session when modal opens
   useEffect(() => {
     if (visible && contacts.length > 0 && !rankingState) {
@@ -566,6 +590,31 @@ export function WouldYouRatherModal({
   
   // Loading state while initializing
   if (!currentPair || !rankingState) {
+    // Show timeout error if initialization takes too long
+    if (initializationTimeout) {
+      return (
+        <Modal visible={visible} animationType="slide" transparent>
+          <View className="flex-1 bg-black/95 justify-center items-center px-6">
+            <View className="bg-zinc-900 border border-red-800 p-8 w-full max-w-md">
+              <Text className="text-red-400 text-xl font-bold text-center mb-4">
+                ⚠️ Initialization Failed
+              </Text>
+              <Text className="text-zinc-400 text-center mb-6">
+                Unable to start ranking session. This may be due to missing contact data.
+              </Text>
+              <Text className="text-zinc-500 text-xs text-center mb-6">
+                Check console logs for details. Contact IDs may be missing.
+              </Text>
+              <Button variant="primary" onPress={handleClose}>
+                Close
+              </Button>
+            </View>
+          </View>
+        </Modal>
+      );
+    }
+    
+    // Normal loading state
     return (
       <Modal visible={visible} animationType="slide" transparent>
         <View className="flex-1 bg-black/95 justify-center items-center px-6">

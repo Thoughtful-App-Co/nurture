@@ -14,7 +14,8 @@
 
 // Contact type inference from Jazz schema
 type ContactType = {
-  id?: string;
+  id?: string; // Jazz internal ID
+  sourceId?: string; // Device contact ID
   name: string;
   interactionScore?: number;
   dunbarLayer?: number;
@@ -57,7 +58,20 @@ export function initializeRanking(
   violatedLayer: number,
   layerCapacity: number
 ): RankingState {
-  const contactIds = contacts.map(c => c.id!).filter(Boolean);
+  // Use c.id (Jazz internal) or c.sourceId (device contact ID)
+  const contactIds = contacts
+    .map(c => c.id || c.sourceId)
+    .filter((id): id is string => Boolean(id));
+  
+  // Validation: ensure we have contacts to rank
+  if (contactIds.length === 0) {
+    console.error('❌ CRITICAL: No valid contact IDs found!');
+    console.error('Contacts received:', contacts);
+    throw new Error('Cannot initialize ranking: no valid contact IDs');
+  }
+  
+  console.log(`✅ Extracted ${contactIds.length} valid contact IDs`);
+  
   const algorithm = contacts.length > 50 ? 'swiss-tournament' : 'quicksort';
   
   // Estimate comparisons needed
@@ -112,13 +126,19 @@ function getNextPairQuickSort(state: RankingState): { contactA: ContactType; con
   
   // Select smart pivot using interactionScore
   const pivot = selectSmartPivot(state.allContacts, unrankedIds);
+  const pivotId = pivot.id || pivot.sourceId;
+  
+  if (!pivotId) {
+    console.error('❌ Pivot has no valid ID:', pivot);
+    return null;
+  }
   
   // Find next contact to compare against pivot
   const toCompare = unrankedIds.find(id => {
-    if (id === pivot.id) return false;
+    if (id === pivotId) return false;
     
     // Check if already compared (transitive inference)
-    const alreadyCompared = hasTransitiveResult(state, pivot.id!, id);
+    const alreadyCompared = hasTransitiveResult(state, pivotId, id);
     return !alreadyCompared;
   });
   
@@ -127,8 +147,8 @@ function getNextPairQuickSort(state: RankingState): { contactA: ContactType; con
     return null;
   }
   
-  const contactA = state.allContacts.find(c => c.id === pivot.id)!;
-  const contactB = state.allContacts.find(c => c.id === toCompare)!;
+  const contactA = state.allContacts.find(c => (c.id || c.sourceId) === pivotId)!;
+  const contactB = state.allContacts.find(c => (c.id || c.sourceId) === toCompare)!;
   
   return { contactA, contactB };
 }
@@ -161,7 +181,9 @@ function createTiers(state: RankingState): void {
   
   // For now, we'll keep it simple and just sort by score
   // The QuickSort phase will handle fine-tuning
-  state.finalRanking = sorted.map(c => c.id!).filter(Boolean);
+  state.finalRanking = sorted
+    .map(c => c.id || c.sourceId)
+    .filter((id): id is string => Boolean(id));
 }
 
 /**
@@ -170,7 +192,10 @@ function createTiers(state: RankingState): void {
  */
 function selectSmartPivot(allContacts: ContactType[], unrankedIds: string[]): ContactType {
   // Get unranked contacts
-  const unranked = allContacts.filter(c => unrankedIds.includes(c.id!));
+  const unranked = allContacts.filter(c => {
+    const contactId = c.id || c.sourceId;
+    return contactId && unrankedIds.includes(contactId);
+  });
   
   // Sort by interactionScore (existing behavioral data)
   const sorted = [...unranked].sort(
