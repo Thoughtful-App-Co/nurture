@@ -339,8 +339,8 @@ export function detectContradiction(
   
   // Check for direct contradiction
   if (state.comparisonGraph.get(loserId)?.has(winnerId)) {
-    const winnerContact = state.allContacts.find(c => c.id === winnerId);
-    const loserContact = state.allContacts.find(c => c.id === loserId);
+    const winnerContact = state.allContacts.find(c => (c.id || c.sourceId) === winnerId);
+    const loserContact = state.allContacts.find(c => (c.id || c.sourceId) === loserId);
     
     return {
       hasContradiction: true,

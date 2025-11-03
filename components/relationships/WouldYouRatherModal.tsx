@@ -192,10 +192,18 @@ export function WouldYouRatherModal({
     ]).start();
     
     // Check for contradictions
+    const contactAId = currentPair.contactA.id || currentPair.contactA.sourceId;
+    const contactBId = currentPair.contactB.id || currentPair.contactB.sourceId;
+    
+    if (!contactAId || !contactBId) {
+      console.error('❌ Missing contact IDs for contradiction check');
+      return;
+    }
+    
     const contradiction = detectContradiction(
       rankingState,
-      currentPair.contactA.id!,
-      currentPair.contactB.id!,
+      contactAId,
+      contactBId,
       chosenId
     );
     
@@ -233,6 +241,22 @@ export function WouldYouRatherModal({
     
     const responseTime = Date.now() - comparisonStartTime;
     
+    // Get contact IDs (use id or sourceId fallback)
+    const contactAId = currentPair.contactA.id || currentPair.contactA.sourceId;
+    const contactBId = currentPair.contactB.id || currentPair.contactB.sourceId;
+    
+    if (!contactAId || !contactBId) {
+      console.error('❌ Missing contact IDs in comparison:', { contactAId, contactBId });
+      return;
+    }
+    
+    console.log('');
+    console.log('📊 PROCESSING COMPARISON');
+    console.log(`  ${currentPair.contactA.name} vs ${currentPair.contactB.name}`);
+    console.log(`  Chosen: ${chosenId === contactAId ? currentPair.contactA.name : currentPair.contactB.name}`);
+    console.log(`  Skipped: ${wasSkipped}`);
+    console.log(`  Comparisons completed: ${rankingState.completedComparisons + 1}/${rankingState.totalComparisonsNeeded}`);
+    
     // Record comparison
     const result: ComparisonResult = {
       chosenId,
@@ -242,16 +266,16 @@ export function WouldYouRatherModal({
     
     recordComparison(
       rankingState,
-      currentPair.contactA.id!,
-      currentPair.contactB.id!,
+      contactAId,
+      contactBId,
       result
     );
     
     // Save comparison to Jazz
     if (me) {
       const comparison = Comparison.create({
-        contactAId: currentPair.contactA.id!,
-        contactBId: currentPair.contactB.id!,
+        contactAId,
+        contactBId,
         contactAName: currentPair.contactA.name,
         contactBName: currentPair.contactB.name,
         chosenId,
@@ -283,6 +307,9 @@ export function WouldYouRatherModal({
       // Check if ranking is complete
       const nextPair = getNextPair(rankingState);
       
+      console.log(`\n🔄 Getting next pair... ${nextPair ? `${nextPair.contactA.name} vs ${nextPair.contactB.name}` : 'None (ranking complete)'}`);
+      console.log(`   Comparisons: ${rankingState.completedComparisons}/${rankingState.totalComparisonsNeeded}\n`);
+      
       if (!nextPair || rankingState.completedComparisons >= rankingState.totalComparisonsNeeded) {
         // Ranking complete!
         completeRanking();
@@ -309,7 +336,21 @@ export function WouldYouRatherModal({
   const completeRanking = () => {
     if (!rankingState) return;
     
-    console.log("🎉 Ranking complete! Finalizing...");
+    console.log('');
+    console.log('=' .repeat(60));
+    console.log("🎉 RANKING COMPLETE - FINALIZING");
+    console.log('=' .repeat(60));
+    console.log(`Total comparisons made: ${rankingState.completedComparisons}`);
+    console.log(`Comparison graph size: ${rankingState.comparisonGraph.size}`);
+    console.log('Comparison graph entries:');
+    rankingState.comparisonGraph.forEach((beaten, winner) => {
+      const winnerContact = rankingState.allContacts.find(c => (c.id || c.sourceId) === winner);
+      console.log(`  ${winnerContact?.name} beat:`, Array.from(beaten).map(id => {
+        const c = rankingState.allContacts.find(contact => (contact.id || contact.sourceId) === id);
+        return c?.name;
+      }));
+    });
+    console.log('=' .repeat(60));
     
     const finalRanking = finalizeRanking(rankingState);
     
