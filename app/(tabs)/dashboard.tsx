@@ -6,7 +6,7 @@
  */
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import { View, Text, ScrollView, Pressable, ActivityIndicator, Platform } from "react-native";
+import { View, Text, ScrollView, Pressable, ActivityIndicator, Platform, Dimensions } from "react-native";
 import { useAccount } from "jazz-tools/expo";
 import { useNavigation } from "expo-router";
 import { calculateDunbarLayers } from "@/services/dunbarCalculator";
