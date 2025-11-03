@@ -20,7 +20,9 @@ import { SearchBar } from "@/components/relationships/SearchBar";
 import { QuickSortModal } from "@/components/relationships/QuickSortModal";
 import { WouldYouRatherModal } from "@/components/relationships/WouldYouRatherModal";
 import { DunbarViolationHeroCard, detectDunbarViolations } from "@/components/relationships/DunbarViolationHeroCard";
+import { GraveyardScreen } from "@/components/relationships/GraveyardScreen";
 import { Card, Button } from "@/components/ui";
+import Animated, { useSharedValue, useAnimatedStyle, interpolate, Extrapolate } from 'react-native-reanimated';
 
 // Layer definitions based on Dunbar's research
 const LAYERS = [
@@ -65,12 +67,17 @@ export default function Dashboard() {
   const [showQuickSort, setShowQuickSort] = useState(false);
   const [showWouldYouRather, setShowWouldYouRather] = useState(false);
   const [dunbarViolation, setDunbarViolation] = useState<any>(null);
+  const [showGraveyard, setShowGraveyard] = useState(false);
   
   // Track if we've already analyzed to prevent loops
   const hasAnalyzed = useRef(false);
   
   // Track previous tab bar visibility state to reduce log spam
   const previousTabBarVisible = useRef<boolean | null>(null);
+  
+  // Graveyard reveal animation
+  const scrollY = useSharedValue(0);
+  const GRAVEYARD_REVEAL_THRESHOLD = -80; // Pull down 80px to reveal
 
   useEffect(() => {
     if (!me) return;
@@ -82,9 +89,9 @@ export default function Dashboard() {
     }
   }, [me]);
 
-  // Hide tab bar when showing data mining, layer details, search, or quick sort
+  // Hide tab bar when showing data mining, layer details, search, quick sort, or graveyard
   useEffect(() => {
-    const shouldHideTabBar = needsDataMining || showDataMining || selectedLayerId !== null || showSearch || searchSelectedContact !== null || showQuickSort || showWouldYouRather;
+    const shouldHideTabBar = needsDataMining || showDataMining || selectedLayerId !== null || showSearch || searchSelectedContact !== null || showQuickSort || showWouldYouRather || showGraveyard;
     
     const defaultTabBarStyle = {
       backgroundColor: 'transparent',
@@ -599,6 +606,26 @@ export default function Dashboard() {
     }
   }
 
+  // Show graveyard screen if opened
+  if (showGraveyard) {
+    const root = me?.root as any;
+    const contacts = root?.contacts || [];
+    const hiddenContacts = Array.from(contacts).filter((c: any) => c?.quickSortStatus === "hidden");
+    
+    return (
+      <GraveyardScreen
+        onBack={() => setShowGraveyard(false)}
+        hiddenContacts={hiddenContacts}
+        onContactUpdate={() => {
+          // Reset analyzed flag to refresh dashboard
+          hasAnalyzed.current = false;
+          setShowGraveyard(false);
+          analyzeRelationships();
+        }}
+      />
+    );
+  }
+
   const withinDunbar = layerStats.slice(0, 4).reduce((sum, layer) => sum + layer.count, 0);
   const dunbarHealth = withinDunbar <= 150 ? "healthy" : "overextended";
 
@@ -614,24 +641,109 @@ export default function Dashboard() {
     );
   }
 
+  // Animated style for graveyard reveal
+  const graveyardAnimatedStyle = useAnimatedStyle(() => {
+    const translateY = interpolate(
+      scrollY.value,
+      [GRAVEYARD_REVEAL_THRESHOLD, 0],
+      [0, -100],
+      Extrapolate.CLAMP
+    );
+    
+    const opacity = interpolate(
+      scrollY.value,
+      [GRAVEYARD_REVEAL_THRESHOLD, -20, 0],
+      [1, 0.5, 0],
+      Extrapolate.CLAMP
+    );
+    
+    return {
+      transform: [{ translateY }],
+      opacity,
+    };
+  });
+
+  // Handle scroll event
+  const handleScroll = (event: any) => {
+    const offsetY = event.nativeEvent.contentOffset.y;
+    scrollY.value = offsetY;
+  };
+
+  // Get hidden contacts count
+  const graveyardRoot = me?.root as any;
+  const graveyardAllContacts = graveyardRoot?.contacts || [];
+  const hiddenContactsCount = Array.from(graveyardAllContacts).filter((c: any) => c?.quickSortStatus === "hidden").length;
+
   return (
-    <ScrollView className="flex-1 bg-black">
-      <View className="px-6 py-8">
-        {/* Header */}
-        <View className="mb-6">
-          <Text className="text-4xl text-primary mb-2 font-bold tracking-wide">
-            Your Garden
-          </Text>
-          <Text className="text-base text-zinc-400 mb-4">
-            {totalContacts} relationships cultivated
-          </Text>
-          
-          {/* Search Bar */}
-          <SearchBar 
-            totalContacts={totalContacts}
-            onPress={() => setShowSearch(true)}
-          />
-        </View>
+    <View className="flex-1 bg-black">
+      {/* Graveyard Reveal Card - Shows on overscroll */}
+      {hiddenContactsCount > 0 && (
+        <Animated.View
+          style={[
+            {
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              zIndex: 10,
+              paddingHorizontal: 24,
+              paddingTop: 60,
+            },
+            graveyardAnimatedStyle,
+          ]}
+        >
+          <Pressable
+            onPress={() => setShowGraveyard(true)}
+            className="bg-zinc-950 border-2 border-zinc-700 p-4"
+            style={{
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.5,
+              shadowRadius: 12,
+            }}
+            accessibilityLabel="Open graveyard"
+            accessibilityRole="button"
+          >
+            <View className="flex-row items-center justify-between">
+              <View className="flex-row items-center">
+                <Text className="text-4xl mr-3">🪦</Text>
+                <View>
+                  <Text className="text-zinc-400 text-lg font-bold">
+                    Graveyard
+                  </Text>
+                  <Text className="text-zinc-600 text-xs">
+                    {hiddenContactsCount} hidden {hiddenContactsCount === 1 ? 'contact' : 'contacts'}
+                  </Text>
+                </View>
+              </View>
+              <Text className="text-zinc-600 text-sm">Tap to dig up →</Text>
+            </View>
+          </Pressable>
+        </Animated.View>
+      )}
+      
+      <ScrollView 
+        className="flex-1"
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        bounces={true}
+      >
+        <View className="px-6 py-8">
+          {/* Header */}
+          <View className="mb-6">
+            <Text className="text-4xl text-primary mb-2 font-bold tracking-wide">
+              Your Garden
+            </Text>
+            <Text className="text-base text-zinc-400 mb-4">
+              {totalContacts} relationships cultivated
+            </Text>
+            
+            {/* Search Bar */}
+            <SearchBar 
+              totalContacts={totalContacts}
+              onPress={() => setShowSearch(true)}
+            />
+          </View>
 
         {/* Hero Cards - Horizontally Scrollable if multiple exist */}
         {(() => {
@@ -950,6 +1062,7 @@ export default function Dashboard() {
           layerCapacity={dunbarViolation.max}
         />
       )}
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
