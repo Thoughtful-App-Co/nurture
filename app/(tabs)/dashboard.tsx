@@ -67,12 +67,39 @@ export default function Dashboard() {
   const [showQuickSort, setShowQuickSort] = useState(false);
   const [showWouldYouRather, setShowWouldYouRather] = useState(false);
   const [dunbarViolation, setDunbarViolation] = useState<any>(null);
+  const [showGraveyard, setShowGraveyard] = useState(false);
   
   // Track if we've already analyzed to prevent loops
   const hasAnalyzed = useRef(false);
   
   // Track previous tab bar visibility state to reduce log spam
   const previousTabBarVisible = useRef<boolean | null>(null);
+  
+  // Graveyard reveal animation - MUST be at top level, not conditional
+  const scrollY = useSharedValue(0);
+  const GRAVEYARD_REVEAL_THRESHOLD = -80; // Pull down 80px to reveal
+  
+  // Calculate graveyard animation style
+  const graveyardAnimatedStyle = useAnimatedStyle(() => {
+    const translateY = interpolate(
+      scrollY.value,
+      [GRAVEYARD_REVEAL_THRESHOLD, 0],
+      [0, -100],
+      Extrapolate.CLAMP
+    );
+    
+    const opacity = interpolate(
+      scrollY.value,
+      [GRAVEYARD_REVEAL_THRESHOLD, -20, 0],
+      [1, 0.5, 0],
+      Extrapolate.CLAMP
+    );
+    
+    return {
+      transform: [{ translateY }],
+      opacity,
+    };
+  });
 
   useEffect(() => {
     if (!me) return;
@@ -84,9 +111,9 @@ export default function Dashboard() {
     }
   }, [me]);
 
-  // Hide tab bar when showing data mining, layer details, search, quick sort, or would you rather
+  // Hide tab bar when showing data mining, layer details, search, quick sort, would you rather, or graveyard
   useEffect(() => {
-    const shouldHideTabBar = needsDataMining || showDataMining || selectedLayerId !== null || showSearch || searchSelectedContact !== null || showQuickSort || showWouldYouRather;
+    const shouldHideTabBar = needsDataMining || showDataMining || selectedLayerId !== null || showSearch || searchSelectedContact !== null || showQuickSort || showWouldYouRather || showGraveyard;
     
     const defaultTabBarStyle = {
       backgroundColor: 'transparent',
@@ -601,11 +628,57 @@ export default function Dashboard() {
     }
   }
 
+  // Show graveyard screen if opened
+  if (showGraveyard) {
+    const root = me?.root as any;
+    const contacts = root?.contacts || [];
+    const hiddenContacts = Array.from(contacts).filter((c: any) => c?.quickSortStatus === "hidden");
+    
+    return (
+      <GraveyardScreen
+        onBack={() => setShowGraveyard(false)}
+        hiddenContacts={hiddenContacts}
+        onContactUpdate={() => {
+          // Reset analyzed flag to refresh dashboard
+          hasAnalyzed.current = false;
+          setShowGraveyard(false);
+          analyzeRelationships();
+        }}
+      />
+    );
+  }
+
+  // Handle scroll event for graveyard reveal
+  const handleScroll = (event: any) => {
+    scrollY.value = event.nativeEvent.contentOffset.y;
+  };
+
+  // Get hidden contacts count for graveyard card
+  const root = me?.root as any;
+  const allContactsForGraveyard = root?.contacts || [];
+  const hiddenContactsCount = Array.from(allContactsForGraveyard).filter((c: any) => c?.quickSortStatus === "hidden").length;
+
   const withinDunbar = layerStats.slice(0, 4).reduce((sum, layer) => sum + layer.count, 0);
   const dunbarHealth = withinDunbar <= 150 ? "healthy" : "overextended";
 
   return (
-    <ScrollView className="flex-1 bg-black">
+    <View className="flex-1 bg-black">
+      {/* Graveyard Reveal Card - Shows on overscroll */}
+      {hiddenContactsCount > 0 && (
+        <Animated.View
+          style={[
+            {
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              zIndex: 10,
+              paddingHorizontal: 24,
+              paddingTop: 60,
+            },
+            graveyardAnimatedStyle,
+          ]}
+        >
           <Pressable
             onPress={() => setShowGraveyard(true)}
             className="bg-zinc-950 border-2 border-zinc-700 p-4"
