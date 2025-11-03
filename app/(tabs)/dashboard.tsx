@@ -1058,6 +1058,9 @@ export default function Dashboard() {
         visible={showQuickSort}
         onClose={() => {
           setShowQuickSort(false);
+          // Refresh dashboard after Tend Garden completes
+          hasAnalyzed.current = false;
+          analyzeRelationships();
         }}
         contacts={layerStats.flatMap(layer => layer.contacts)}
       />
@@ -1069,6 +1072,11 @@ export default function Dashboard() {
           onClose={() => {
             setShowWouldYouRather(false);
             setDunbarViolation(null);
+          }}
+          onRefresh={() => {
+            // Reset analyzed flag and refresh dashboard after ranking completes
+            hasAnalyzed.current = false;
+            analyzeRelationships();
           }}
           contacts={dunbarViolation.contacts || []}
           violatedLayer={dunbarViolation.layer}
