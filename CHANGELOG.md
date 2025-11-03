@@ -2,6 +2,14 @@
 
 ## 2025-11-02 - Graveyard Feature & UI Polish
 
+### Fixed
+- **React Hooks Order Violation** - Graveyard feature implementation
+  - Moved all hooks (useSharedValue, useAnimatedStyle) to component top level
+  - Ensured hooks are called before any conditional returns
+  - Removed duplicate Animated import
+  - Proper hook ordering prevents "change in order of Hooks" error
+  - Graveyard animations now work correctly at 60fps
+
 ### Added
 - **🪦 Graveyard for Hidden Contacts** - Elastic overscroll reveal for managing buried connections
   - Access: Pull down from top of Dashboard (~80px overscroll)
