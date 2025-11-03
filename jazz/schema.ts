@@ -163,6 +163,89 @@ export const DataSharingConsent = co.map({
   lastUpdated: z.string().optional(), // ISO date
 });
 
+// ============================================================================
+// Cultivation Ranking System (Would You Rather - STORY-016)
+// ============================================================================
+
+/**
+ * Represents a single pairwise comparison decision
+ * Part of the "Would You Rather" gamified ranking system
+ */
+export const Comparison = co.map({
+  contactAId: z.string(),
+  contactBId: z.string(),
+  contactAName: z.string(), // For display and debugging
+  contactBName: z.string(),
+  chosenId: z.string(), // ID of chosen contact
+  questionId: z.string(), // Which question from bank
+  questionText: z.string(), // Store text for analytics
+  timestamp: z.string(), // ISO date
+  responseTimeMs: z.number(), // Decision time in milliseconds
+  wasSkipped: z.boolean(), // True if user skipped (counts as tie)
+});
+
+/**
+ * List of all comparisons
+ */
+export const ComparisonList = co.list(Comparison);
+
+/**
+ * Represents an active ranking session for Dunbar violation resolution
+ * 
+ * Resumable - user can exit and return later
+ * Persistent - saves after each comparison to Jazz
+ * 
+ * Algorithm: QuickSort (<50 contacts) or Swiss Tournament (>50 contacts)
+ */
+export const RankingSession = co.map({
+  sessionId: z.string(),
+  createdAt: z.string(), // ISO date
+  lastUpdatedAt: z.string(), // ISO date
+  expiresAt: z.string(), // ISO date (7 days max, prevents stale sessions)
+  
+  // Context - Which layer violation triggered this session
+  violatedLayer: z.number(), // 0-4 (which layer is over capacity)
+  violatedLayerName: z.string(), // "Loved Ones", "Inner Circle", "Clan", "Tribe", "Acquaintances"
+  currentCapacity: z.number(), // How many people currently in layer
+  maxCapacity: z.number(), // Layer's max capacity from LAYER_THRESHOLDS
+  overageCount: z.number(), // How many need to be moved down
+  
+  // Algorithm state
+  algorithm: z.enum(["quicksort", "swiss-tournament"]), // Swiss for >50 contacts
+  phase: z.enum(["tiering", "ranking", "completed"]), // Swiss has tiering phase first
+  
+  // Contacts being ranked (array of contact IDs)
+  contactIds: z.array(z.string()), // All contacts in this ranking session
+  
+  // Current progress
+  currentPairIndex: z.number(), // Which comparison we're on (0-indexed)
+  totalComparisonsNeeded: z.number(), // Estimated total (O(n log n) for QuickSort)
+  completedComparisons: z.number(), // How many comparisons completed so far
+  
+  // Comparison history (array of Comparison IDs)
+  comparisonIds: z.array(z.string()), // References to Comparison objects
+  
+  // Results (populated after completion)
+  finalRanking: z.array(z.string()).optional(), // Ordered contact IDs (best to worst)
+  contactsStaying: z.array(z.string()).optional(), // IDs staying in current layer
+  contactsMovingDown: z.array(z.string()).optional(), // IDs moving to next layer down
+  
+  // User experience
+  questionBankSeed: z.number(), // Random seed for consistent question rotation
+  skipCount: z.number(), // How many comparisons skipped (target: <5%)
+  contradictionCount: z.number(), // How many contradictions detected (confirmation bias)
+  
+  // Session metadata
+  status: z.enum(["active", "paused", "completed", "abandoned"]),
+  completedAt: z.string().optional(), // ISO date
+  totalDurationMs: z.number().optional(), // Total time spent in session
+});
+
+/**
+ * List of all ranking sessions for the user
+ */
+export const RankingSessionList = co.list(RankingSession);
+
 /**
  * Main user profile with all data
  */
@@ -178,6 +261,8 @@ export const UserProfile = co.map({
   goals: GoalList,
   settings: UserSettings,
   familyNames: FamilyNames.optional(),
+  rankingSessions: RankingSessionList.optional(), // Cultivation ranking sessions
+  comparisons: ComparisonList.optional(), // All pairwise comparisons
   createdAt: z.string(), // ISO date
   lastActive: z.string(), // ISO date
 });
