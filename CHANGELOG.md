@@ -1,5 +1,36 @@
 # Changelog
 
+## 2025-01-XX - Critical Dunbar Fixes & Null Safety
+
+### Fixed
+- **CRITICAL: Dunbar layer capacity bug** - Layers are now correctly nested/inclusive
+  - Previous: Additive counts allowed 220 contacts in layers 0-3 (should be 150)
+  - Fixed: Layer 0 = 5 total, Layer 1 = 15 total (adds 10), Layer 2 = 50 total (adds 35)
+  - Layer 3 = 150 total (adds 100), Layer 4 = 500 total (adds 350), Layer 5 = 1500 total (adds 1000)
+  - This aligns with Dunbar's actual research on nested social layers
+
+- **Family override enhancement** - Family members now prioritized regardless of interaction score
+  - Previously only bumped family with zero interaction data
+  - Now ensures all family members reach minimum scores:
+    - Nuclear family (current/spouse last name): minimum score 85 → Layer 0-1
+    - Secondary family (birth last name): minimum score 60 → Layer 2
+    - Tertiary family (partial matches): minimum score 40 → Layer 3
+  - Resolves issue where parents/siblings with low interaction weren't elevated appropriately
+
+- **Android crash fix** - Resolved NullPointerException in view rendering
+  - Removed `Animated` components from react-native-reanimated causing null reference errors
+  - Added comprehensive null safety checks for contact rendering
+  - Filter null contacts, add fallback names, use explicit ternary operators
+  - Error: "Attempt to read from field 'int android.view.View.mViewFlags' on a null object reference"
+
+### Technical Details
+- **Modified Files:**
+  - `services/dunbarCalculator.ts` - Fixed LAYER_THRESHOLDS capacities, enhanced family bump logic
+  - `app/(tabs)/dashboard.tsx` - Removed Animated.ScrollView, added null checks
+  - `components/relationships/LayerDetailScreen.tsx` - Added null filtering and safe rendering
+
+---
+
 ## 2025-01-XX - Bump Algorithm & Favorites Removal
 
 ### Added
