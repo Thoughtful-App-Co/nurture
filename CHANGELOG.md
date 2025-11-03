@@ -1,5 +1,36 @@
 # Changelog
 
+## 2025-11-02 - Graveyard Feature & UI Polish
+
+### Added
+- **🪦 Graveyard for Hidden Contacts** - Elastic overscroll reveal for managing buried connections
+  - Access: Pull down from top of Dashboard (~80px overscroll)
+  - Graveyard card reveals showing count of hidden contacts
+  - Full GraveyardScreen with rich contact metadata
+  - View hidden date, last interaction, relationship type, call/SMS stats
+  - **Unhide action**: Restore contacts to "not_sorted" for re-categorization
+  - **Delete action**: Permanently remove contacts (with confirmation)
+  - Beautiful empty state when no contacts hidden
+  - Smooth animations using Reanimated (60fps native driver)
+  - Metaphor: "Digging beneath the surface" to see what's buried
+  - Self-reflection: Understand patterns in who you hide
+  - Documentation: `/docs/features/GRAVEYARD.md`
+
+### Changed
+- **DunbarViolationHeroCard** - Finalized simplified design
+  - Removed verbose Card wrapper for direct View styling
+  - Matches Tend Garden aesthetic (gradient borders, animated pulse)
+  - Consolidated messaging: alert indicator + clear CTA
+  - Removed stats breakdown and explainer text
+  - Unified hero card design system
+
+### Performance
+- **Graveyard Reveal**
+  - Zero performance impact when not scrolling
+  - Native driver animations (60fps)
+  - Smooth interpolation with Extrapolate.CLAMP
+  - Optimized scroll event throttling (16ms)
+
 ## 2025-11-02 - Cultivation Ranking System (Would You Rather)
 
 ### Added
