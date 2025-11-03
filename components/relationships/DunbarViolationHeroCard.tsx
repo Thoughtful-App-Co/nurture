@@ -114,12 +114,13 @@ export function DunbarViolationHeroCard({
  */
 export function detectDunbarViolations(contacts: any[]): DunbarViolation[] {
   // Layer capacities (matching dunbarCalculator.ts LAYER_THRESHOLDS)
+  // These are PER-LAYER capacities (how many people can fit in each individual layer)
   const LAYER_CAPACITIES = [
     { layer: 0, name: "Loved Ones", max: 5 },
-    { layer: 1, name: "Inner Circle", max: 15 },
-    { layer: 2, name: "Clan", max: 50 },
-    { layer: 3, name: "Tribe", max: 150 },
-    { layer: 4, name: "Acquaintances", max: 500 },
+    { layer: 1, name: "Inner Circle", max: 10 },
+    { layer: 2, name: "Clan", max: 35 },
+    { layer: 3, name: "Tribe", max: 100 },
+    { layer: 4, name: "Acquaintances", max: 350 },
   ];
   
   // Count contacts per layer
