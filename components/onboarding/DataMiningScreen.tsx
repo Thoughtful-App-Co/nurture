@@ -93,12 +93,24 @@ export function DataMiningScreen({ onComplete, savedFamilyNames }: Props) {
       const hasCallData = contacts.some(c => c.metrics.callFrequency > 0);
       const hasSMSData = contacts.some(c => c.metrics.smsFrequency > 0);
       
-      // Store results and show limitations screen
+      // Store results
       setAnalysisResults({ contacts, hasCallData, hasSMSData });
       
-      // Small delay to show 100%, then show limitations
+      // Only show limitations screen if:
+      // 1. No interaction data on Android (suggests native modules not built)
+      // 2. iOS (expected limitation - no call/SMS access)
+      const shouldShowLimitations = 
+        (Platform.OS === 'android' && !hasCallData && !hasSMSData) ||
+        Platform.OS === 'ios';
+      
+      // Small delay to show 100%, then either show limitations or complete
       setTimeout(() => {
-        setStep('limitations');
+        if (shouldShowLimitations) {
+          setStep('limitations');
+        } else {
+          setStep('complete');
+          onComplete(contacts, familyNames);
+        }
       }, 500);
 
     } catch (error) {

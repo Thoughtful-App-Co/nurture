@@ -96,8 +96,19 @@ export function WouldYouRatherModal({
   // Initialize ranking session when modal opens
   useEffect(() => {
     if (visible && contacts.length > 0 && !rankingState) {
-      console.log(`🎯 Starting Would You Rather for Layer ${violatedLayer}`);
-      console.log(`📊 ${contacts.length} contacts, capacity: ${layerCapacity}`);
+      console.log('');
+      console.log('=' .repeat(60));
+      console.log('🎯 WOULD YOU RATHER - INITIALIZATION');
+      console.log('=' .repeat(60));
+      console.log(`Layer: ${violatedLayer} (${violatedLayerName})`);
+      console.log(`Capacity: ${layerCapacity}`);
+      console.log(`Contacts received: ${contacts.length}`);
+      console.log('Contact details:');
+      contacts.forEach((c, i) => {
+        console.log(`  ${i + 1}. ${c.name} (ID: ${c.id || c.sourceId}, Layer: ${c.dunbarLayer}, Status: ${c.quickSortStatus})`);
+      });
+      console.log('=' .repeat(60));
+      console.log('');
       
       const state = initializeRanking(contacts, violatedLayer, layerCapacity);
       setRankingState(state);
@@ -110,8 +121,13 @@ export function WouldYouRatherModal({
       // Get first question
       const question = getRotatedQuestion(0, Date.now(), []);
       setCurrentQuestion(question.text);
+      
+      console.log('✅ Ranking session initialized');
+      console.log(`Algorithm: ${state.algorithm}`);
+      console.log(`Total comparisons needed: ${state.totalComparisonsNeeded}`);
+      console.log('');
     }
-  }, [visible, contacts, violatedLayer, layerCapacity]);
+  }, [visible, contacts, violatedLayer, layerCapacity, violatedLayerName]);
   
   // Create persistent Jazz session
   const createJazzSession = (state: RankingState) => {
@@ -548,28 +564,25 @@ export function WouldYouRatherModal({
     );
   }
   
-  // No contacts to rank
-  if (!currentPair) {
+  // Loading state while initializing
+  if (!currentPair || !rankingState) {
     return (
       <Modal visible={visible} animationType="slide" transparent>
         <View className="flex-1 bg-black/95 justify-center items-center px-6">
           <View className="bg-zinc-900 border border-zinc-800 p-8 w-full max-w-md">
             <Text className="text-white text-xl font-bold text-center mb-4">
-              No Ranking Needed
+              Preparing...
             </Text>
             <Text className="text-zinc-400 text-center mb-6">
-              This layer is already balanced!
+              Setting up your ranking session
             </Text>
-            <Button variant="primary" onPress={handleClose}>
-              Close
-            </Button>
           </View>
         </View>
       </Modal>
     );
   }
   
-  const progress = rankingState ? calculateProgress(rankingState) : 0;
+  const progress = calculateProgress(rankingState);
   
   return (
     <Modal visible={visible} animationType="slide" transparent>

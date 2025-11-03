@@ -21,18 +21,20 @@ export function DataLimitationsScreen({ onContinue, hasCallData, hasSMSData, con
 
   return (
     <View className="flex-1 bg-black">
-      <ScrollView className="flex-1" contentContainerClassName="px-6 py-8">
+      <ScrollView className="flex-1" contentContainerClassName="px-8 py-16">
         {/* Header */}
-        <Text className="text-3xl text-white font-bold mb-2">
-          Your Behavioral Reality
-        </Text>
-        <Text className="text-lg text-secondary mb-8">
-          Not wishful thinking - what the data shows
-        </Text>
+        <View className="mb-8">
+          <Text className="text-3xl text-white font-bold mb-4">
+            Your Real-World Reality
+          </Text>
+          <Text className="text-base text-zinc-400 leading-relaxed">
+            What the data shows — not wishful thinking
+          </Text>
+        </View>
 
         {/* Combined Status */}
-        <View className="mb-6 p-4 border border-zinc-700 bg-zinc-900">
-          <Text className="text-sm text-secondary font-medium mb-3">
+        <View className="mb-8 p-4 border-2 border-zinc-800 bg-zinc-900">
+          <Text className="text-xs text-zinc-400 font-semibold uppercase tracking-wider mb-3">
             WHAT WE FOUND
           </Text>
           
@@ -77,9 +79,16 @@ export function DataLimitationsScreen({ onContinue, hasCallData, hasSMSData, con
             )}
             
             <View className="flex-row items-start">
-              <Text className="text-orange-400 mr-2">❌</Text>
+              <Text className="text-zinc-500 mr-2">⚪</Text>
               <Text className="text-zinc-400 flex-1">
-                WhatsApp, Instagram, Telegram, in-person meetings
+                In-person meetings (requires manual logging)
+              </Text>
+            </View>
+            
+            <View className="flex-row items-start">
+              <Text className="text-zinc-600 mr-2">—</Text>
+              <Text className="text-zinc-500 flex-1 text-xs">
+                Social media & messaging apps (intentionally excluded)
               </Text>
             </View>
           </View>
@@ -100,47 +109,53 @@ export function DataLimitationsScreen({ onContinue, hasCallData, hasSMSData, con
         </View>
 
         {/* The Gap & The Solution */}
-        <View className="mb-6 p-4 border border-primary bg-green-950/30">
-          <Text className="text-sm text-primary font-medium mb-3">
-            💡 HERE'S THE REALITY
+        <View className="mb-8 p-4 border-2 border-primary bg-green-950/30">
+          <Text className="text-xs text-primary font-semibold uppercase tracking-wider mb-3">
+            💡 OUR PHILOSOPHY
           </Text>
           
           <Text className="text-white text-base mb-3 leading-relaxed">
-            Most of your relationships happen on WhatsApp, Instagram, and in-person. 
-            {!hasAnyInteractionData && ' Without call/SMS data, we have almost nothing to analyze.'}
+            We focus on real-world behavioral signals — calls, texts, and in-person time. 
+            {!hasAnyInteractionData && ' Without call/SMS data, we have limited signals to analyze.'}
           </Text>
           
           <Text className="text-white text-base mb-4 leading-relaxed">
-            <Text className="font-semibold">That's where you come in.</Text> We've built quick logging tools so you can teach the app who matters to you through gamified ranking.
+            <Text className="font-semibold">Your cyberspace is yours to explore.</Text> We don't track social media or messaging apps because those spaces allow unlimited connection without real-world constraints. Here, we help you cultivate your real-world social garden.
           </Text>
           
           <View className="bg-black/50 p-3 border border-primary/30">
             <Text className="text-xs text-zinc-300 leading-relaxed">
-              <Text className="text-primary font-semibold">Log interactions</Text> → <Text className="text-primary font-semibold">Rate quality</Text> → <Text className="text-primary font-semibold">Mark favorites</Text>
+              <Text className="text-primary font-semibold">Log interactions</Text> → <Text className="text-primary font-semibold">Rate quality</Text> → <Text className="text-primary font-semibold">Cultivate intentionally</Text>
               {'\n\n'}
-              Over time, you'll discover who you actually enjoy spending time with vs. who drains you. Behavioral reality, not wishful thinking.
+              Discover who you actually enjoy spending time with in the real world. Behavioral reality, not digital illusions.
             </Text>
           </View>
         </View>
 
         {/* Honesty Statement */}
-        <View className="mb-8 p-4 border border-zinc-700 bg-zinc-900">
+        <View className="mb-12 p-4 border-2 border-zinc-800 bg-zinc-900">
           <Text className="text-xs text-zinc-400 leading-relaxed">
-            <Text className="text-white font-semibold">Our Philosophy:</Text> We show you behavioral reality, not wishful thinking. 
-            {!hasAnyInteractionData && ' With zero interaction data, your layers are basically random. '}
-            Use the manual tools to build an accurate picture of your relationships.
+            <Text className="text-white font-semibold">Note:</Text> We show you behavioral reality, not wishful thinking. 
+            {!hasAnyInteractionData && ' With limited interaction data, your initial layers may be less accurate. '}
+            Use the manual logging tools to build a complete picture of your real-world relationships.
           </Text>
         </View>
       </ScrollView>
 
       {/* Continue Button */}
-      <View className="px-6 py-4 border-t border-zinc-800 bg-zinc-950">
+      <View className="px-8 py-4 border-t border-zinc-800 bg-zinc-950">
         <Pressable
           onPress={onContinue}
-          className="bg-primary py-4 px-6"
+          className="bg-primary py-4 px-6 border-2 border-primary min-h-[52px] justify-center"
+          accessibilityLabel="Continue to Dashboard"
+          accessibilityRole="button"
+          style={({ pressed }) => ({ 
+            opacity: pressed ? 0.9 : 1,
+            transform: [{ scale: pressed ? 0.98 : 1 }],
+          })}
         >
           <Text className="text-center text-lg font-bold text-black">
-            I Understand - Continue to Dashboard
+            CONTINUE TO DASHBOARD
           </Text>
         </Pressable>
       </View>
