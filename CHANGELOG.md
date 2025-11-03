@@ -1,5 +1,70 @@
 # Changelog
 
+## 2025-11-02 - CRITICAL FIX: Sorting Systems Database Updates
+
+### Fixed
+- **CRITICAL: Would You Rather contacts not appearing in layers** (P0 Bug)
+  - Implemented missing contact update logic in WouldYouRatherModal
+  - Contacts are now properly updated in Jazz database after ranking completes
+  - Fixed `dunbarLayer` not being updated for contacts moving to next layer
+  - Fixed `quickSortStatus` not being set to "sorted" after ranking
+  - Contacts now appear in correct layers immediately after ranking
+  - Prevents re-sorting of already ranked contacts
+  
+- **Dashboard refresh after sorting**
+  - Added `onRefresh` callback to WouldYouRatherModal
+  - Dashboard now automatically refreshes after ranking session completes
+  - Applied same refresh pattern to QuickSortModal for consistency
+  - Users see updated layer counts immediately
+  
+- **Data integrity and synchronization**
+  - Both sorting systems (Tend Garden & Would You Rather) now update same fields
+  - Consistent database update pattern across both systems
+  - Prevents contacts from appearing in Tend Garden after being ranked
+  - All sorted contacts properly marked with `quickSortStatus: "sorted"`
+
+### Added
+- **Comprehensive sorting systems documentation**
+  - Created `docs/features/SORTING_SYSTEMS.md` (500+ lines)
+    - Complete architecture documentation for both sorting systems
+    - Data flow diagrams and integration points
+    - Testing checklist and debugging guide
+    - Maintenance guidelines for future development
+  - Created `docs/implementation/SORTING_SYSTEMS_FIX.md` (450+ lines)
+    - Detailed root cause analysis
+    - Before/after code comparisons
+    - Verification and logging details
+    - Prevention measures and lessons learned
+  - Created `docs/QUICK_REFERENCE_SORTING.md`
+    - Quick reference for developers
+    - Correct update patterns
+    - Common mistakes to avoid
+    - Debugging commands
+
+### Technical Details
+- **Files Modified:**
+  - `components/relationships/WouldYouRatherModal.tsx` - 130+ lines added
+    - Added Contact and ContactList imports
+    - Implemented complete contact update logic in `completeRanking()`
+    - Added comprehensive logging for debugging
+    - Added `onRefresh` callback support
+  - `app/(tabs)/dashboard.tsx` - 8 lines added
+    - Added `onRefresh` to WouldYouRatherModal with dashboard refresh
+    - Added refresh logic to QuickSortModal for consistency
+
+### Root Cause
+- Original implementation had TODO comment: "Apply reallocation updates to contacts in Jazz"
+- Reallocation was calculated but never applied to database
+- Contacts remained in old layers with "not_sorted" status
+- Dashboard showed stale data and contacts appeared in Tend Garden repeatedly
+
+### Impact
+- **Severity:** P0 - Critical bug blocking core feature
+- **Users Affected:** All users using "Would You Rather" ranking system
+- **Resolution:** Complete - All contacts now update correctly
+
+---
+
 ## 2025-11-02 - Graveyard Feature & UI Polish
 
 ### Fixed
