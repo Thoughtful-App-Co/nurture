@@ -101,7 +101,7 @@ export function DunbarViolationHeroCard({
         })}
       >
         <Text className="text-center text-lg font-bold text-black tracking-wide">
-          PRIORITIZE NOW (5 min)
+          Decide Who
         </Text>
       </Pressable>
     </View>
@@ -125,15 +125,24 @@ export function detectDunbarViolations(contacts: any[]): DunbarViolation[] {
   // Count contacts per layer
   const layerCounts = new Map<number, number>();
   for (const contact of contacts) {
-    const layer = contact.dunbarLayer ?? 5;
-    layerCounts.set(layer, (layerCounts.get(layer) || 0) + 1);
+    const layer = contact?.dunbarLayer ?? 5;
+    if (layer >= 0 && layer <= 4) {
+      layerCounts.set(layer, (layerCounts.get(layer) || 0) + 1);
+    }
   }
+  
+  console.log('');
+  console.log('🚨 DUNBAR VIOLATION DETECTION');
+  console.log('Total contacts:', contacts.length);
+  console.log('Layer counts:', Array.from(layerCounts.entries()));
   
   // Find violations
   const violations: DunbarViolation[] = [];
   
   for (const { layer, name, max } of LAYER_CAPACITIES) {
     const current = layerCounts.get(layer) || 0;
+    
+    console.log(`Layer ${layer} (${name}): ${current}/${max} ${current > max ? '⚠️ VIOLATION' : '✅'}`);
     
     if (current > max) {
       violations.push({
@@ -145,6 +154,12 @@ export function detectDunbarViolations(contacts: any[]): DunbarViolation[] {
       });
     }
   }
+  
+  console.log('Violations found:', violations.length);
+  violations.forEach(v => {
+    console.log(`  - Layer ${v.layer} (${v.layerName}): ${v.current}/${v.max} (+${v.overage})`);
+  });
+  console.log('');
   
   // Sort by priority (Layer 0 violations are most critical)
   violations.sort((a, b) => a.layer - b.layer);

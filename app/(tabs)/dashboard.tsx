@@ -68,6 +68,7 @@ export default function Dashboard() {
   const [showWouldYouRather, setShowWouldYouRather] = useState(false);
   const [dunbarViolation, setDunbarViolation] = useState<any>(null);
   const [showGraveyard, setShowGraveyard] = useState(false);
+  const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
   
   // Track if we've already analyzed to prevent loops
   const hasAnalyzed = useRef(false);
@@ -759,94 +760,59 @@ export default function Dashboard() {
             )}
           </View>
 
-        {/* Hero Cards - Horizontally Scrollable if multiple exist */}
+        {/* Hero Cards - Single card with pagination dots */}
         {(() => {
           const root = me?.root as any;
           const contacts = root?.contacts || [];
           const allContacts = Array.from(contacts);
           
-          // Detect violations and unsorted contacts
+          // Detect violations
           const violations = detectDunbarViolations(allContacts);
-          const unsortedCount = allContacts.filter(
-            (c: any) => c?.quickSortStatus === "not_sorted" || !c?.quickSortStatus
-          ).length;
           
-          // Count total hero cards
-          const hasViolations = violations.length > 0;
-          const hasTendGarden = unsortedCount > 0;
-          const totalHeros = violations.length + (hasTendGarden ? 1 : 0);
+          if (violations.length === 0) return null;
           
-          if (totalHeros === 0) return null;
+          // Use currentHeroIndex to show the active violation
+          const activeIndex = Math.min(currentHeroIndex, violations.length - 1);
+          const violation = violations[activeIndex];
+          const layerContacts = allContacts.filter(
+            (c: any) => c?.dunbarLayer === violation.layer
+          );
           
-          // Single hero: show without scroll
-          if (totalHeros === 1 && hasViolations) {
-            const violation = violations[0];
-            const layerContacts = allContacts.filter(
-              (c: any) => c?.dunbarLayer === violation.layer
-            );
-            
-            return (
-              <View className="mb-8">
-                <DunbarViolationHeroCard
-                  violation={violation}
-                  onStart={() => {
-                    setDunbarViolation({
-                      ...violation,
-                      contacts: layerContacts,
-                    });
-                    setShowWouldYouRather(true);
-                  }}
-                />
-              </View>
-            );
-          }
-          
-          // Multiple heroes: show scroll indicator
-          if (totalHeros > 1) {
-            return (
-              <View className="mb-8">
-                <Text className="text-zinc-500 text-xs uppercase tracking-wider mb-3 px-6">
-                  ⬅️ SWIPE TO SEE ALL ({totalHeros} ALERTS)
-                </Text>
-                <ScrollView 
-                  horizontal 
-                  showsHorizontalScrollIndicator={false}
-                  snapToInterval={Dimensions.get('window').width - 48}
-                  decelerationRate="fast"
-                  contentContainerStyle={{ paddingHorizontal: 24 }}
-                >
-                  {violations.map((violation, index) => {
-                    const layerContacts = allContacts.filter(
-                      (c: any) => c?.dunbarLayer === violation.layer
-                    );
-                    
-                    return (
-                      <View 
-                        key={`violation-${violation.layer}`}
-                        style={{ 
-                          width: Dimensions.get('window').width - 96, 
-                          marginRight: index < violations.length - 1 ? 16 : 0 
-                        }}
-                      >
-                        <DunbarViolationHeroCard
-                          violation={violation}
-                          onStart={() => {
-                            setDunbarViolation({
-                              ...violation,
-                              contacts: layerContacts,
-                            });
-                            setShowWouldYouRather(true);
-                          }}
-                        />
-                      </View>
-                    );
-                  })}
-                </ScrollView>
-              </View>
-            );
-          }
-          
-          return null;
+          return (
+            <View className="mb-8">
+              {/* Hero Card */}
+              <DunbarViolationHeroCard
+                violation={violation}
+                onStart={() => {
+                  setDunbarViolation({
+                    ...violation,
+                    contacts: layerContacts,
+                  });
+                  setShowWouldYouRather(true);
+                }}
+              />
+              
+              {/* Pagination Dots - Only show if multiple violations */}
+              {violations.length > 1 && (
+                <View className="flex-row justify-center items-center mt-4 gap-2">
+                  {violations.map((_, index) => (
+                    <Pressable
+                      key={index}
+                      onPress={() => setCurrentHeroIndex(index)}
+                      accessibilityLabel={`View violation ${index + 1} of ${violations.length}`}
+                      accessibilityRole="button"
+                    >
+                      <View
+                        className={`w-2 h-2 rounded-full ${
+                          index === activeIndex ? 'bg-red-500' : 'bg-zinc-600'
+                        }`}
+                      />
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+            </View>
+          );
         })()}
 
         {/* Tend Garden - Only show if NO Dunbar violations */}
