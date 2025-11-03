@@ -18,6 +18,8 @@ import { LoadingAnimation } from "@/components/LoadingAnimation";
 import { ContactSearch } from "@/components/relationships/ContactSearch";
 import { SearchBar } from "@/components/relationships/SearchBar";
 import { QuickSortModal } from "@/components/relationships/QuickSortModal";
+import { WouldYouRatherModal } from "@/components/relationships/WouldYouRatherModal";
+import { DunbarViolationHeroCard, detectDunbarViolations } from "@/components/relationships/DunbarViolationHeroCard";
 import { Card, Button } from "@/components/ui";
 
 // Layer definitions based on Dunbar's research
@@ -61,6 +63,8 @@ export default function Dashboard() {
   const [showSearch, setShowSearch] = useState(false);
   const [searchSelectedContact, setSearchSelectedContact] = useState<any | null>(null);
   const [showQuickSort, setShowQuickSort] = useState(false);
+  const [showWouldYouRather, setShowWouldYouRather] = useState(false);
+  const [dunbarViolation, setDunbarViolation] = useState<any>(null);
   
   // Track if we've already analyzed to prevent loops
   const hasAnalyzed = useRef(false);
@@ -80,7 +84,7 @@ export default function Dashboard() {
 
   // Hide tab bar when showing data mining, layer details, search, or quick sort
   useEffect(() => {
-    const shouldHideTabBar = needsDataMining || showDataMining || selectedLayerId !== null || showSearch || searchSelectedContact !== null || showQuickSort;
+    const shouldHideTabBar = needsDataMining || showDataMining || selectedLayerId !== null || showSearch || searchSelectedContact !== null || showQuickSort || showWouldYouRather;
     
     const defaultTabBarStyle = {
       backgroundColor: 'transparent',
@@ -107,7 +111,7 @@ export default function Dashboard() {
     navigation.setOptions({
       tabBarStyle: shouldHideTabBar ? { display: 'none' } : defaultTabBarStyle,
     });
-  }, [needsDataMining, showDataMining, selectedLayerId, showSearch, searchSelectedContact, showQuickSort, navigation]);
+  }, [needsDataMining, showDataMining, selectedLayerId, showSearch, searchSelectedContact, showQuickSort, showWouldYouRather, navigation]);
 
   const analyzeRelationships = useCallback(async () => {
     try {
@@ -629,7 +633,42 @@ export default function Dashboard() {
           />
         </View>
 
-        {/* Tend Garden - Prime Real Estate (Von Restorff Effect) */}
+        {/* Dunbar Violation Hero Card - HIGHEST PRIORITY (Priority: 5) */}
+        {(() => {
+          const root = me?.root as any;
+          const contacts = root?.contacts || [];
+          const allContacts = Array.from(contacts);
+          
+          // Detect violations
+          const violations = detectDunbarViolations(allContacts);
+          
+          // Show highest priority violation (Layer 0 first)
+          if (violations.length > 0) {
+            const topViolation = violations[0];
+            
+            return (
+              <DunbarViolationHeroCard
+                violation={topViolation}
+                onStart={() => {
+                  // Get contacts in violated layer
+                  const layerContacts = allContacts.filter(
+                    (c: any) => c?.dunbarLayer === topViolation.layer
+                  );
+                  
+                  setDunbarViolation({
+                    ...topViolation,
+                    contacts: layerContacts,
+                  });
+                  setShowWouldYouRather(true);
+                }}
+              />
+            );
+          }
+          
+          return null;
+        })()}
+
+        {/* Tend Garden - Prime Real Estate (Von Restorff Effect - Priority: 10) */}
         {(() => {
           const root = me?.root as any;
           const contacts = root?.contacts || [];
@@ -637,8 +676,9 @@ export default function Dashboard() {
             (c: any) => c?.quickSortStatus === "not_sorted" || !c?.quickSortStatus
           ).length;
           
-          // Only show if there are unsorted contacts
-          if (unsortedCount === 0) return null;
+          // Only show if there are unsorted contacts AND no Dunbar violations
+          const violations = detectDunbarViolations(Array.from(contacts));
+          if (unsortedCount === 0 || violations.length > 0) return null;
           
           return (
             <View className="mb-8">
@@ -834,14 +874,26 @@ export default function Dashboard() {
       {/* Tend Garden Modal */}
       <QuickSortModal
         visible={showQuickSort}
-        contacts={layerStats.flatMap(layer => layer.contacts)}
         onClose={() => {
           setShowQuickSort(false);
-          // Reset analyzed flag to refresh dashboard with new layer assignments
-          hasAnalyzed.current = false;
-          analyzeRelationships();
         }}
+        contacts={layerStats.flatMap(layer => layer.contacts)}
       />
+      
+      {/* Would You Rather Modal - Dunbar Violation Resolution */}
+      {dunbarViolation && (
+        <WouldYouRatherModal
+          visible={showWouldYouRather}
+          onClose={() => {
+            setShowWouldYouRather(false);
+            setDunbarViolation(null);
+          }}
+          contacts={dunbarViolation.contacts || []}
+          violatedLayer={dunbarViolation.layer}
+          violatedLayerName={dunbarViolation.layerName}
+          layerCapacity={dunbarViolation.max}
+        />
+      )}
     </ScrollView>
   );
 }
