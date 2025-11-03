@@ -650,13 +650,28 @@ export default function Dashboard() {
 
   // Handle scroll event for graveyard reveal
   const handleScroll = (event: any) => {
-    scrollY.value = event.nativeEvent.contentOffset.y;
+    const offsetY = event.nativeEvent.contentOffset.y;
+    scrollY.value = offsetY;
+    
+    // Debug: Log when user is pulling to reveal
+    if (offsetY < -20) {
+      console.log('🪦 Pulling to reveal graveyard, offset:', offsetY, 'threshold:', GRAVEYARD_REVEAL_THRESHOLD);
+    }
   };
 
   // Get hidden contacts count for graveyard card
   const root = me?.root as any;
   const allContactsForGraveyard = root?.contacts || [];
   const hiddenContactsCount = Array.from(allContactsForGraveyard).filter((c: any) => c?.quickSortStatus === "hidden").length;
+  
+  // Debug logging
+  console.log('🪦 Graveyard Debug:', {
+    totalContacts: Array.from(allContactsForGraveyard).length,
+    hiddenCount: hiddenContactsCount,
+    hiddenContacts: Array.from(allContactsForGraveyard)
+      .filter((c: any) => c?.quickSortStatus === "hidden")
+      .map((c: any) => ({ name: c?.name, status: c?.quickSortStatus }))
+  });
 
   const withinDunbar = layerStats.slice(0, 4).reduce((sum, layer) => sum + layer.count, 0);
   const dunbarHealth = withinDunbar <= 150 ? "healthy" : "overextended";
@@ -730,6 +745,18 @@ export default function Dashboard() {
               totalContacts={totalContacts}
               onPress={() => setShowSearch(true)}
             />
+            
+            {/* DEBUG: Manual Graveyard Button */}
+            {hiddenContactsCount > 0 && (
+              <Pressable
+                onPress={() => setShowGraveyard(true)}
+                className="bg-zinc-800 p-4 mt-4 border-2 border-zinc-600"
+              >
+                <Text className="text-white text-center">
+                  🪦 DEBUG: Open Graveyard ({hiddenContactsCount} hidden)
+                </Text>
+              </Pressable>
+            )}
           </View>
 
         {/* Hero Cards - Horizontally Scrollable if multiple exist */}
