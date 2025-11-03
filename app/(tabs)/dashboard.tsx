@@ -19,7 +19,6 @@ import { ContactSearch } from "@/components/relationships/ContactSearch";
 import { SearchBar } from "@/components/relationships/SearchBar";
 import { QuickSortModal } from "@/components/relationships/QuickSortModal";
 import { Card, Button } from "@/components/ui";
-import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 // Layer definitions based on Dunbar's research
 const LAYERS = [
@@ -612,11 +611,7 @@ export default function Dashboard() {
   }
 
   return (
-    <Animated.ScrollView 
-      className="flex-1 bg-black"
-      entering={FadeIn.duration(300)}
-      exiting={FadeOut.duration(200)}
-    >
+    <ScrollView className="flex-1 bg-black">
       <View className="px-6 py-8">
         {/* Header */}
         <View className="mb-6">
@@ -646,10 +641,7 @@ export default function Dashboard() {
           if (unsortedCount === 0) return null;
           
           return (
-            <Animated.View 
-              entering={FadeIn.duration(400)}
-              className="mb-8"
-            >
+            <View className="mb-8">
               <View className="bg-gradient-to-br from-primary/20 to-primary/5 border-3 border-primary p-6 shadow-lg">
                 {/* Attention-grabbing header */}
                 <View className="flex-row items-center mb-3">
@@ -689,7 +681,7 @@ export default function Dashboard() {
                   </Text>
                 </View>
               </View>
-            </Animated.View>
+            </View>
           );
         })()}
         
@@ -804,12 +796,12 @@ export default function Dashboard() {
                 </View>
 
                 {/* Sample Names */}
-                {!isEmpty && (
+                {!isEmpty && layerStat.contacts && layerStat.contacts.length > 0 ? (
                   <Text className="text-zinc-400 text-xs mt-3" numberOfLines={1}>
-                    {layerStat.contacts.slice(0, 3).map(c => c.name).join(", ")}
+                    {layerStat.contacts.slice(0, 3).map(c => c?.name || 'Unknown').join(", ")}
                     {layerStat.contacts.length > 3 && ` +${layerStat.contacts.length - 3} more`}
                   </Text>
-                )}
+                ) : null}
               </View>
             </Pressable>
           );
@@ -850,6 +842,6 @@ export default function Dashboard() {
           analyzeRelationships();
         }}
       />
-    </Animated.ScrollView>
+    </ScrollView>
   );
 }

@@ -220,12 +220,12 @@ export function LayerDetailScreen({ layer, contacts, onBack, onContactUpdate, on
               </Text>
             </View>
           ) : (
-            contacts.map((contact, index) => {
+            contacts.filter(c => c != null).map((contact, index) => {
               const relationshipBadge = getRelationshipBadge(contact);
               
               return (
               <Pressable
-                key={contact.id || index}
+                key={contact.id || `contact-${index}`}
                 onPress={() => handlePress(contact)}
                 onPressIn={() => handleLongPressStart(contact)}
                 onPressOut={handlePressEnd}
@@ -235,29 +235,29 @@ export function LayerDetailScreen({ layer, contacts, onBack, onContactUpdate, on
                 <View className="flex-row justify-between items-start mb-2">
                   <View className="flex-1">
                     <Text className="text-white text-lg font-medium mb-1">
-                      {contact.name}
+                      {contact.name || 'Unknown'}
                     </Text>
                     
-                    {relationshipBadge && (
+                    {relationshipBadge ? (
                       <View className="flex-row items-center mb-1 self-start">
                         <Text className={`text-xs font-medium ${relationshipBadge.color}`}>
                           {relationshipBadge.emoji} {relationshipBadge.label.toUpperCase()}
                         </Text>
                       </View>
-                    )}
+                    ) : null}
                     
                     <Text className="text-secondary text-sm">
                       Last contact: {formatLastInteraction(contact.lastInteraction)}
                     </Text>
                   </View>
                   
-                  {contact.interactionScore !== undefined && (
+                  {contact.interactionScore !== undefined ? (
                     <View className="bg-zinc-800 px-3 py-1 rounded-full">
                       <Text className="text-primary text-xs font-medium">
                         {Math.round(contact.interactionScore)}
                       </Text>
                     </View>
-                  )}
+                  ) : null}
                 </View>
 
                 {/* Quick Stats */}
