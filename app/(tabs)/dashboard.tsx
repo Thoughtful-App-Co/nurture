@@ -67,17 +67,12 @@ export default function Dashboard() {
   const [showQuickSort, setShowQuickSort] = useState(false);
   const [showWouldYouRather, setShowWouldYouRather] = useState(false);
   const [dunbarViolation, setDunbarViolation] = useState<any>(null);
-  const [showGraveyard, setShowGraveyard] = useState(false);
   
   // Track if we've already analyzed to prevent loops
   const hasAnalyzed = useRef(false);
   
   // Track previous tab bar visibility state to reduce log spam
   const previousTabBarVisible = useRef<boolean | null>(null);
-  
-  // Graveyard reveal animation
-  const scrollY = useSharedValue(0);
-  const GRAVEYARD_REVEAL_THRESHOLD = -80; // Pull down 80px to reveal
 
   useEffect(() => {
     if (!me) return;
@@ -89,9 +84,9 @@ export default function Dashboard() {
     }
   }, [me]);
 
-  // Hide tab bar when showing data mining, layer details, search, quick sort, or graveyard
+  // Hide tab bar when showing data mining, layer details, search, quick sort, or would you rather
   useEffect(() => {
-    const shouldHideTabBar = needsDataMining || showDataMining || selectedLayerId !== null || showSearch || searchSelectedContact !== null || showQuickSort || showWouldYouRather || showGraveyard;
+    const shouldHideTabBar = needsDataMining || showDataMining || selectedLayerId !== null || showSearch || searchSelectedContact !== null || showQuickSort || showWouldYouRather;
     
     const defaultTabBarStyle = {
       backgroundColor: 'transparent',
@@ -606,92 +601,11 @@ export default function Dashboard() {
     }
   }
 
-  // Show graveyard screen if opened
-  if (showGraveyard) {
-    const root = me?.root as any;
-    const contacts = root?.contacts || [];
-    const hiddenContacts = Array.from(contacts).filter((c: any) => c?.quickSortStatus === "hidden");
-    
-    return (
-      <GraveyardScreen
-        onBack={() => setShowGraveyard(false)}
-        hiddenContacts={hiddenContacts}
-        onContactUpdate={() => {
-          // Reset analyzed flag to refresh dashboard
-          hasAnalyzed.current = false;
-          setShowGraveyard(false);
-          analyzeRelationships();
-        }}
-      />
-    );
-  }
-
   const withinDunbar = layerStats.slice(0, 4).reduce((sum, layer) => sum + layer.count, 0);
   const dunbarHealth = withinDunbar <= 150 ? "healthy" : "overextended";
 
-  // Show loading animation while analyzing
-  if (isAnalyzing && !needsDataMining) {
-    return (
-      <View className="flex-1 bg-black justify-center items-center">
-        <LoadingAnimation 
-          message="Loading Your Garden..."
-          submessage="Organizing your relationships into layers"
-        />
-      </View>
-    );
-  }
-
-  // Animated style for graveyard reveal
-  const graveyardAnimatedStyle = useAnimatedStyle(() => {
-    const translateY = interpolate(
-      scrollY.value,
-      [GRAVEYARD_REVEAL_THRESHOLD, 0],
-      [0, -100],
-      Extrapolate.CLAMP
-    );
-    
-    const opacity = interpolate(
-      scrollY.value,
-      [GRAVEYARD_REVEAL_THRESHOLD, -20, 0],
-      [1, 0.5, 0],
-      Extrapolate.CLAMP
-    );
-    
-    return {
-      transform: [{ translateY }],
-      opacity,
-    };
-  });
-
-  // Handle scroll event
-  const handleScroll = (event: any) => {
-    const offsetY = event.nativeEvent.contentOffset.y;
-    scrollY.value = offsetY;
-  };
-
-  // Get hidden contacts count
-  const graveyardRoot = me?.root as any;
-  const graveyardAllContacts = graveyardRoot?.contacts || [];
-  const hiddenContactsCount = Array.from(graveyardAllContacts).filter((c: any) => c?.quickSortStatus === "hidden").length;
-
   return (
-    <View className="flex-1 bg-black">
-      {/* Graveyard Reveal Card - Shows on overscroll */}
-      {hiddenContactsCount > 0 && (
-        <Animated.View
-          style={[
-            {
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              zIndex: 10,
-              paddingHorizontal: 24,
-              paddingTop: 60,
-            },
-            graveyardAnimatedStyle,
-          ]}
-        >
+    <ScrollView className="flex-1 bg-black">
           <Pressable
             onPress={() => setShowGraveyard(true)}
             className="bg-zinc-950 border-2 border-zinc-700 p-4"
