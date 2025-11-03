@@ -760,73 +760,68 @@ export default function Dashboard() {
             )}
           </View>
 
-        {/* Hero Cards - Single card with pagination dots */}
+        {/* Hero Cards & Tend Garden - Calculate violations once */}
         {(() => {
           const root = me?.root as any;
           const contacts = root?.contacts || [];
           const allContacts = Array.from(contacts);
           
-          // Detect violations
+          // Detect violations ONCE for both hero cards and tend garden
           const violations = detectDunbarViolations(allContacts);
           
-          if (violations.length === 0) return null;
+          // Show Hero Cards if violations exist
+          if (violations.length > 0) {
+            // Use currentHeroIndex to show the active violation
+            const activeIndex = Math.min(currentHeroIndex, violations.length - 1);
+            const violation = violations[activeIndex];
+            const layerContacts = allContacts.filter(
+              (c: any) => c?.dunbarLayer === violation.layer
+            );
+            
+            return (
+              <View className="mb-8">
+                {/* Hero Card */}
+                <DunbarViolationHeroCard
+                  violation={violation}
+                  onStart={() => {
+                    setDunbarViolation({
+                      ...violation,
+                      contacts: layerContacts,
+                    });
+                    setShowWouldYouRather(true);
+                  }}
+                />
+                
+                {/* Pagination Dots - Only show if multiple violations */}
+                {violations.length > 1 && (
+                  <View className="flex-row justify-center items-center mt-4 gap-2">
+                    {violations.map((_, index) => (
+                      <Pressable
+                        key={index}
+                        onPress={() => setCurrentHeroIndex(index)}
+                        accessibilityLabel={`View violation ${index + 1} of ${violations.length}`}
+                        accessibilityRole="button"
+                      >
+                        <View
+                          className={`w-2 h-2 rounded-full ${
+                            index === activeIndex ? 'bg-red-500' : 'bg-zinc-600'
+                          }`}
+                        />
+                      </Pressable>
+                    ))}
+                  </View>
+                )}
+              </View>
+            );
+          }
           
-          // Use currentHeroIndex to show the active violation
-          const activeIndex = Math.min(currentHeroIndex, violations.length - 1);
-          const violation = violations[activeIndex];
-          const layerContacts = allContacts.filter(
-            (c: any) => c?.dunbarLayer === violation.layer
-          );
-          
-          return (
-            <View className="mb-8">
-              {/* Hero Card */}
-              <DunbarViolationHeroCard
-                violation={violation}
-                onStart={() => {
-                  setDunbarViolation({
-                    ...violation,
-                    contacts: layerContacts,
-                  });
-                  setShowWouldYouRather(true);
-                }}
-              />
-              
-              {/* Pagination Dots - Only show if multiple violations */}
-              {violations.length > 1 && (
-                <View className="flex-row justify-center items-center mt-4 gap-2">
-                  {violations.map((_, index) => (
-                    <Pressable
-                      key={index}
-                      onPress={() => setCurrentHeroIndex(index)}
-                      accessibilityLabel={`View violation ${index + 1} of ${violations.length}`}
-                      accessibilityRole="button"
-                    >
-                      <View
-                        className={`w-2 h-2 rounded-full ${
-                          index === activeIndex ? 'bg-red-500' : 'bg-zinc-600'
-                        }`}
-                      />
-                    </Pressable>
-                  ))}
-                </View>
-              )}
-            </View>
-          );
-        })()}
-
-        {/* Tend Garden - Only show if NO Dunbar violations */}
-        {(() => {
-          const root = me?.root as any;
-          const contacts = root?.contacts || [];
-          const unsortedCount = Array.from(contacts).filter(
+          // Show Tend Garden if NO violations
+          const unsortedCount = allContacts.filter(
             (c: any) => c?.quickSortStatus === "not_sorted" || !c?.quickSortStatus
           ).length;
           
-          const violations = detectDunbarViolations(Array.from(contacts));
-          
           // Only show if no violations (violations have priority)
-          if (unsortedCount === 0 || violations.length > 0) return null;
+          if (unsortedCount === 0) return null;
           
           return (
             <View className="mb-8">
