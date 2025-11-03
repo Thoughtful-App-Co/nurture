@@ -45,13 +45,15 @@ interface LayerThreshold {
 }
 
 // Dunbar layer thresholds based on Dunbar's research
+// IMPORTANT: Layers are INCLUSIVE/NESTED, not additive
+// Layer 0 = 5 total, Layer 1 = 15 total (including Layer 0), etc.
 const LAYER_THRESHOLDS: LayerThreshold[] = [
-  { layer: 0, minScore: 90, maxCount: 5 },     // Loved Ones (0-5)
-  { layer: 1, minScore: 70, maxCount: 15 },    // Inner Circle (5-15)
-  { layer: 2, minScore: 50, maxCount: 50 },    // Clan (15-50)
-  { layer: 3, minScore: 30, maxCount: 150 },   // Tribe (50-150)
-  { layer: 4, minScore: 10, maxCount: 500 },   // Acquaintances (150-500)
-  { layer: 5, minScore: 0, maxCount: 1500 },   // Social Nebula (500-1500)
+  { layer: 0, minScore: 90, maxCount: 5 },      // Loved Ones (1-5 total)
+  { layer: 1, minScore: 70, maxCount: 10 },     // Inner Circle (6-15 total, adds 10)
+  { layer: 2, minScore: 50, maxCount: 35 },     // Clan (16-50 total, adds 35)
+  { layer: 3, minScore: 30, maxCount: 100 },    // Tribe (51-150 total, adds 100)
+  { layer: 4, minScore: 10, maxCount: 350 },    // Acquaintances (151-500 total, adds 350)
+  { layer: 5, minScore: 0, maxCount: 1000 },    // Social Nebula (501-1500 total, adds 1000)
 ];
 
 /**
@@ -158,17 +160,30 @@ export async function calculateDunbarLayers(contacts: Contact[]): Promise<Contac
     let bumpedScore = contact.interactionScore || 0;
     const bumps: string[] = [];
     
-    // BUMP #1: Family members with zero data get minimum layer 2 (Clan) score
-    if (contact.isFamily && bumpedScore === 0) {
+    // BUMP #1: Family members ALWAYS get bumped to their tier minimum (OVERRIDE)
+    // This ensures family members are placed appropriately even with low interaction data
+    if (contact.isFamily) {
       if (contact.familyTier === 'NUCLEAR') {
-        bumpedScore = 85; // Layer 0/1 range
-        bumps.push('Nuclear family (no data) -> Layer 0-1');
+        // Nuclear family = Layer 0/1 range (85-100 score)
+        const minNuclearScore = 85;
+        if (bumpedScore < minNuclearScore) {
+          bumpedScore = Math.max(bumpedScore, minNuclearScore);
+          bumps.push(`Nuclear family (score ${contact.interactionScore}) -> Layer 0-1 minimum`);
+        }
       } else if (contact.familyTier === 'SECONDARY') {
-        bumpedScore = 60; // Layer 2 range
-        bumps.push('Secondary family (no data) -> Layer 2');
+        // Secondary family = Layer 2 range (60-70 score)
+        const minSecondaryScore = 60;
+        if (bumpedScore < minSecondaryScore) {
+          bumpedScore = Math.max(bumpedScore, minSecondaryScore);
+          bumps.push(`Secondary family (score ${contact.interactionScore}) -> Layer 2 minimum`);
+        }
       } else {
-        bumpedScore = 40; // Layer 3 range
-        bumps.push('Extended family (no data) -> Layer 3');
+        // Tertiary/Extended family = Layer 3 range (40-50 score)
+        const minTertiaryScore = 40;
+        if (bumpedScore < minTertiaryScore) {
+          bumpedScore = Math.max(bumpedScore, minTertiaryScore);
+          bumps.push(`Extended family (score ${contact.interactionScore}) -> Layer 3 minimum`);
+        }
       }
     }
     
