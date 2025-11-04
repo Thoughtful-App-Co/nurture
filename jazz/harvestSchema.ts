@@ -82,21 +82,120 @@ export const HarvestNotificationSettings = co.map({
 });
 
 /**
- * User's Harvest profile - all algorithm and notification settings
+ * Quest Types - Different categories of relationship quests
+ */
+export type QuestType = 
+  | "RANKING"       // Builds intuitiveRank data
+  | "MAINTENANCE"   // Relationship actions
+  | "QUALITY"       // Data enrichment
+  | "DISCOVERY";    // Feature exploration
+
+/**
+ * Quest - User-configurable goals that enable daily tasks
+ * Quests act as "feature flags" that turn on specific daily prompts
+ */
+export const Quest = co.map({
+  id: z.string(),
+  type: z.string(),  // QuestType
+  
+  // Metadata
+  name: z.string(),
+  description: z.string(),
+  emoji: z.string(),
+  
+  // Configuration
+  isActive: z.boolean(),
+  startedAt: z.string().optional(),
+  completedAt: z.string().optional(),
+  pausedAt: z.string().optional(),
+  
+  // Progress Tracking
+  dailyTarget: z.number(),           // How many tasks per day
+  totalTarget: z.number().optional(), // Total goal (if applicable)
+  currentProgress: z.number(),
+  
+  // Streak
+  streakCount: z.number(),
+  longestStreak: z.number(),
+  lastCompletedDate: z.string().optional(),
+  
+  // Rewards
+  badgeId: z.string().optional(),
+  rewardDescription: z.string().optional(),
+  
+  // Feature Flag Configuration
+  enableDailyModal: z.boolean(),
+  modalType: z.string().optional(),           // "RANKING" | "CONTACT" | "RATE"
+  targetLayer: z.number().optional(),         // For layer-specific quests
+  contactFilter: z.string().optional(),       // "LAPSED" | "FREQUENT" | "ALL"
+});
+
+/**
+ * Badge Categories
+ */
+export type BadgeCategory = 
+  | "COMPLETION"    // Milestone achievements
+  | "STREAK"        // Consistency
+  | "ACTION"        // Relationship actions
+  | "QUALITY";      // Data quality
+
+/**
+ * Badge - Achievements earned through quest completion
+ */
+export const Badge = co.map({
+  id: z.string(),
+  name: z.string(),
+  description: z.string(),
+  emoji: z.string(),
+  
+  // Category
+  category: z.string(), // BadgeCategory
+  
+  // Requirements
+  requirementType: z.string(),        // "COUNT" | "STREAK" | "COMPLETE_ALL"
+  requirementTarget: z.number().optional(),
+  questId: z.string().optional(),     // Which quest unlocks this
+  
+  // Status
+  isUnlocked: z.boolean(),
+  unlockedAt: z.string().optional(),
+  progress: z.number().optional(),    // For locked badges
+  
+  // Rewards
+  unlocks: z.array(z.string()).optional(), // Feature IDs this unlocks
+});
+
+/**
+ * User's Harvest profile - all quest and badge data
  */
 export const HarvestProfile = co.map({
-  lastGeneratedAt: z.string().optional(),   // When suggestions were last generated
-  totalActionsCompleted: z.number(),        // Gamification metric
-  currentStreak: z.number(),                // Days in a row with completed actions
-  longestStreak: z.number(),                // Best streak ever
+  // Legacy fields (keep for backward compatibility)
+  lastGeneratedAt: z.string().optional(),
+  totalActionsCompleted: z.number(),
+  currentStreak: z.number(),
+  longestStreak: z.number(),
   notificationEnabled: z.boolean(),
   notificationFrequency: z.string(),
   notificationTime: z.string(),
+  
+  // Quest System fields
+  totalQuestsCompleted: z.number(),
+  totalBadgesEarned: z.number(),
+  lastDailyCompletionDate: z.string().optional(),
+  todayTasksCompleted: z.number(),
+  todayTasksTotal: z.number(),
+  
+  // Settings
+  preferredReminderTime: z.string(),  // "08:00"
+  quietHoursStart: z.string().optional(),
+  quietHoursEnd: z.string().optional(),
 });
 
-// Store algorithms and suggestions as lists on the root
+// Store data as lists on the root
 export const HarvestAlgorithmList = co.list(HarvestAlgorithm);
 export const HarvestSuggestionList = co.list(HarvestSuggestion);
+export const QuestList = co.list(Quest);
+export const BadgeList = co.list(Badge);
 
 /**
  * Algorithm Presets - Pre-configured for different relationship goals
@@ -237,3 +336,248 @@ export const ACTION_TYPES = {
     typicalDuration: 30,
   },
 } as const;
+
+/**
+ * Quest Presets - Pre-configured quests for different goals
+ */
+export interface QuestConfig {
+  id: string;
+  type: QuestType;
+  name: string;
+  description: string;
+  emoji: string;
+  dailyTarget: number;
+  totalTarget?: number;
+  badgeId?: string;
+  rewardDescription?: string;
+  enableDailyModal: boolean;
+  modalType?: "RANKING" | "CONTACT" | "RATE";
+  targetLayer?: number;
+  contactFilter?: "LAPSED" | "FREQUENT" | "ALL";
+}
+
+export const QUEST_PRESETS: Record<string, QuestConfig> = {
+  KNOW_YOUR_CIRCLE: {
+    id: "KNOW_YOUR_CIRCLE",
+    type: "RANKING",
+    name: "Know Your Circle",
+    description: "Answer 2-3 comparison questions daily to understand your true priorities",
+    emoji: "🎯",
+    dailyTarget: 2,
+    totalTarget: 100,
+    badgeId: "CIRCLE_CLARITY",
+    rewardDescription: "Unlock Circle Clarity badge + advanced reports",
+    enableDailyModal: true,
+    modalType: "RANKING",
+  },
+  
+  COMPLETE_TRIBE_RANKING: {
+    id: "COMPLETE_TRIBE_RANKING",
+    type: "RANKING",
+    name: "Complete Your Tribe",
+    description: "Rank all contacts in your Tribe layer",
+    emoji: "👥",
+    dailyTarget: 5,
+    badgeId: "TRIBE_RANKER",
+    rewardDescription: "Unlock Tribe Ranker badge + layer insights",
+    enableDailyModal: true,
+    modalType: "RANKING",
+    targetLayer: 2,
+  },
+  
+  WEEKLY_CHECKIN: {
+    id: "WEEKLY_CHECKIN",
+    type: "MAINTENANCE",
+    name: "Weekly Check-In Streak",
+    description: "Reach out to someone every week for 4 weeks",
+    emoji: "💬",
+    dailyTarget: 1,
+    totalTarget: 28,
+    badgeId: "STEADY_GARDENER",
+    rewardDescription: "Unlock Steady Gardener badge",
+    enableDailyModal: true,
+    modalType: "CONTACT",
+    contactFilter: "FREQUENT",
+  },
+  
+  REKINDLE_CONNECTIONS: {
+    id: "REKINDLE_CONNECTIONS",
+    type: "MAINTENANCE",
+    name: "Rekindle Old Connections",
+    description: "Reconnect with 5 people you haven't talked to in 90+ days",
+    emoji: "🔥",
+    dailyTarget: 1,
+    totalTarget: 5,
+    badgeId: "REKINDLER",
+    rewardDescription: "Unlock Rekindler badge",
+    enableDailyModal: true,
+    modalType: "CONTACT",
+    contactFilter: "LAPSED",
+  },
+  
+  RATE_INTERACTIONS: {
+    id: "RATE_INTERACTIONS",
+    type: "QUALITY",
+    name: "Rate Your Interactions",
+    description: "Add quality ratings to your last 20 interactions",
+    emoji: "⭐",
+    dailyTarget: 2,
+    totalTarget: 20,
+    badgeId: "REFLECTIVE",
+    rewardDescription: "Unlock Reflective badge + better personalization",
+    enableDailyModal: true,
+    modalType: "RATE",
+  },
+  
+  EXPLORE_GARDEN: {
+    id: "EXPLORE_GARDEN",
+    type: "DISCOVERY",
+    name: "Explore Your Garden",
+    description: "Learn about each Dunbar layer",
+    emoji: "🌱",
+    dailyTarget: 1,
+    totalTarget: 6,
+    badgeId: "GARDENER",
+    rewardDescription: "Unlock Gardener badge",
+    enableDailyModal: false,
+  },
+};
+
+/**
+ * Badge Definitions
+ */
+export interface BadgeConfig {
+  id: string;
+  name: string;
+  description: string;
+  emoji: string;
+  category: BadgeCategory;
+  requirementType: "COUNT" | "STREAK" | "COMPLETE_ALL";
+  requirementTarget?: number;
+  questId?: string;
+  unlocks?: string[];
+}
+
+export const BADGE_DEFINITIONS: Record<string, BadgeConfig> = {
+  // Completion Badges
+  CIRCLE_CLARITY: {
+    id: "CIRCLE_CLARITY",
+    name: "Circle Clarity",
+    description: "You know where you stand with people",
+    emoji: "🎯",
+    category: "COMPLETION",
+    requirementType: "COUNT",
+    requirementTarget: 100,
+    questId: "KNOW_YOUR_CIRCLE",
+    unlocks: ["RANKING_REPORT"],
+  },
+  
+  TRIBE_RANKER: {
+    id: "TRIBE_RANKER",
+    name: "Tribe Ranker",
+    description: "Master of your Tribe relationships",
+    emoji: "👥",
+    category: "COMPLETION",
+    requirementType: "COMPLETE_ALL",
+    questId: "COMPLETE_TRIBE_RANKING",
+    unlocks: ["TRIBE_INSIGHTS"],
+  },
+  
+  FULL_GARDEN_RANKER: {
+    id: "FULL_GARDEN_RANKER",
+    name: "Full Garden Ranker",
+    description: "You've ranked every relationship in your life",
+    emoji: "🏆",
+    category: "COMPLETION",
+    requirementType: "COMPLETE_ALL",
+    unlocks: ["MASTER_THEME", "ADVANCED_ANALYTICS"],
+  },
+  
+  // Streak Badges
+  WEEK_WARRIOR: {
+    id: "WEEK_WARRIOR",
+    name: "Week Warrior",
+    description: "Completed quests 7 days in a row",
+    emoji: "🔥",
+    category: "STREAK",
+    requirementType: "STREAK",
+    requirementTarget: 7,
+  },
+  
+  MONTH_MASTER: {
+    id: "MONTH_MASTER",
+    name: "Month Master",
+    description: "Completed quests 30 days in a row",
+    emoji: "💎",
+    category: "STREAK",
+    requirementType: "STREAK",
+    requirementTarget: 30,
+  },
+  
+  YEAR_GARDENER: {
+    id: "YEAR_GARDENER",
+    name: "Year Gardener",
+    description: "A full year of relationship cultivation",
+    emoji: "🌳",
+    category: "STREAK",
+    requirementType: "STREAK",
+    requirementTarget: 365,
+  },
+  
+  // Action Badges
+  STEADY_GARDENER: {
+    id: "STEADY_GARDENER",
+    name: "Steady Gardener",
+    description: "Consistent relationship maintenance",
+    emoji: "🌿",
+    category: "ACTION",
+    requirementType: "COUNT",
+    requirementTarget: 28,
+    questId: "WEEKLY_CHECKIN",
+  },
+  
+  REKINDLER: {
+    id: "REKINDLER",
+    name: "Rekindler",
+    description: "You brought old friendships back to life",
+    emoji: "✨",
+    category: "ACTION",
+    requirementType: "COUNT",
+    requirementTarget: 5,
+    questId: "REKINDLE_CONNECTIONS",
+  },
+  
+  SOCIAL_BUTTERFLY: {
+    id: "SOCIAL_BUTTERFLY",
+    name: "Social Butterfly",
+    description: "You've nurtured connections across your entire garden",
+    emoji: "🦋",
+    category: "ACTION",
+    requirementType: "COUNT",
+    requirementTarget: 100,
+  },
+  
+  // Quality Badges
+  REFLECTIVE: {
+    id: "REFLECTIVE",
+    name: "Reflective",
+    description: "You think deeply about your relationships",
+    emoji: "💭",
+    category: "QUALITY",
+    requirementType: "COUNT",
+    requirementTarget: 20,
+    questId: "RATE_INTERACTIONS",
+    unlocks: ["QUALITY_INSIGHTS"],
+  },
+  
+  GARDENER: {
+    id: "GARDENER",
+    name: "Gardener",
+    description: "You understand all layers of your social garden",
+    emoji: "🌱",
+    category: "QUALITY",
+    requirementType: "COUNT",
+    requirementTarget: 6,
+    questId: "EXPLORE_GARDEN",
+  },
+};

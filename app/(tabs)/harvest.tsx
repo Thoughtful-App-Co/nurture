@@ -1,53 +1,66 @@
 /**
- * Harvest Screen - Proactive Relationship Nurturing
+ * Harvest Screen - Quest-Based Relationship Cultivation
  * 
- * The Harvest module pushes users to maintain relationships based on
- * selected algorithms that align with their relationship goals.
+ * The Harvest module transforms relationship maintenance into an engaging
+ * quest system with daily tasks, streaks, and badge rewards.
  * 
- * Algorithms available:
- * - Tend & Befriend: Nurture close relationships
- * - Plant & Prune: Strategic social energy allocation
- * - Cultivate: Balanced maintenance
- * - Inner Circle: Focus on intimate core
- * - Expand Horizons: Meet new people
- * - Rekindle: Reconnect with past friends
- * - Balance: Maintain equilibrium
+ * Quest Types:
+ * - Ranking: Build intuitive ranking data through daily comparisons
+ * - Maintenance: Proactive relationship nurturing actions
+ * - Quality: Enrich data quality through reflection
+ * - Discovery: Explore app features and layers
  */
 
-import React, { useState, useEffect } from "react";
-import { View, Text, ScrollView } from "react-native";
-import { useAccount } from "jazz-tools/expo";
-import { ALGORITHM_PRESETS, type AlgorithmType } from "@/jazz/harvestSchema";
+import React, { useState } from "react";
+import { View, Text, TouchableOpacity } from "react-native";
+import { QUEST_PRESETS, BADGE_DEFINITIONS } from "@/jazz/harvestSchema";
 import { Card, Button, SectionHeader } from "@/components/ui";
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
+// Mock active quests for now (will be replaced with Jazz data)
+const MOCK_ACTIVE_QUESTS = [
+  {
+    ...QUEST_PRESETS.KNOW_YOUR_CIRCLE,
+    isActive: true,
+    currentProgress: 47,
+    streakCount: 16,
+    todayCompleted: 2,
+    todayTarget: 2,
+  },
+  {
+    ...QUEST_PRESETS.WEEKLY_CHECKIN,
+    isActive: true,
+    currentProgress: 14,
+    streakCount: 8,
+    todayCompleted: 0,
+    todayTarget: 1,
+  },
+];
+
 export default function HarvestScreen() {
-  const { me } = useAccount();
-  const [activeAlgorithms, setActiveAlgorithms] = useState<AlgorithmType[]>([]);
-  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [activeQuests] = useState(MOCK_ACTIVE_QUESTS);
 
-  // Get algorithm color based on type
-  const getAlgorithmColor = (type: AlgorithmType): string => {
-    const colors: Record<AlgorithmType, string> = {
-      TEND_AND_BEFRIEND: "#ef4444",
-      PLANT_AND_PRUNE: "#f97316",
-      CULTIVATE: "#22c55e",
-      INNER_CIRCLE: "#ec4899",
-      EXPAND_HORIZONS: "#3b82f6",
-      REKINDLE: "#a855f7",
-      BALANCE: "#14b8a6",
+  // Get quest type color
+  const getQuestColor = (type: string): string => {
+    const colors: Record<string, string> = {
+      RANKING: "#3b82f6",
+      MAINTENANCE: "#22c55e",
+      QUALITY: "#a855f7",
+      DISCOVERY: "#f97316",
     };
-    return colors[type];
+    return colors[type] || "#71717a";
   };
 
-  // Toggle algorithm on/off
-  const toggleAlgorithm = (type: AlgorithmType) => {
-    if (activeAlgorithms.includes(type)) {
-      setActiveAlgorithms(activeAlgorithms.filter((a) => a !== type));
-    } else {
-      setActiveAlgorithms([...activeAlgorithms, type]);
-    }
-  };
+  // Calculate total stats
+  const totalBadgesEarned = 5; // Mock data
+  const currentStreak = Math.max(...activeQuests.map(q => q.streakCount));
+  const todayCompleted = activeQuests.reduce((sum, q) => sum + q.todayCompleted, 0);
+  const todayTotal = activeQuests.reduce((sum, q) => sum + q.todayTarget, 0);
+
+  // Available quests (not yet started)
+  const availableQuests = Object.values(QUEST_PRESETS).filter(
+    preset => !activeQuests.find(q => q.id === preset.id)
+  );
 
   return (
     <Animated.ScrollView 
@@ -56,172 +69,251 @@ export default function HarvestScreen() {
       exiting={FadeOut.duration(200)}
     >
       {/* Header */}
-      <View className="px-6 pt-16 pb-8">
+      <View className="px-6 pt-16 pb-6">
         <Text className="text-4xl font-bold tracking-wide text-primary mb-2">Harvest</Text>
         <Text className="text-base text-zinc-400 leading-relaxed">
-          Set your relationship goals. We'll guide you to tend your garden.
+          Complete daily quests to cultivate your relationships and earn badges.
         </Text>
       </View>
 
-      {/* Active Algorithms Section */}
-      {activeAlgorithms.length > 0 && (
-        <View className="px-6 mb-8">
-          <SectionHeader>Active Goals</SectionHeader>
-          <View className="space-y-3">
-            {activeAlgorithms.map((type) => {
-              const preset = ALGORITHM_PRESETS[type];
-              return (
-                <Card
-                  key={type}
-                  variant="accent"
-                  accentColor={getAlgorithmColor(type)}
-                >
-                  <View className="flex-row items-center justify-between mb-2">
-                    <Text className="text-white font-medium text-lg">
-                      {preset.name}
-                    </Text>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onPress={() => toggleAlgorithm(type)}
-                      accessibilityLabel={`Disable ${preset.name}`}
-                    >
-                      <Text className="text-xs text-zinc-400">Disable</Text>
-                    </Button>
-                  </View>
-                  <Text className="text-sm text-zinc-400 leading-relaxed">
-                    {preset.description}
-                  </Text>
-                  <View className="mt-3 flex-row items-center">
-                    <Text className="text-xs text-zinc-500">
-                      Layers: {preset.targetLayers.join(", ")} • Checks every {preset.checkFrequency}d
-                    </Text>
-                  </View>
-                </Card>
-              );
-            })}
-          </View>
-        </View>
-      )}
-
-      {/* Suggestions Section */}
-      {suggestions.length > 0 && (
-        <View className="px-6 mb-8">
-          <SectionHeader>Today's Suggestions</SectionHeader>
-          <View className="space-y-3">
-            {suggestions.map((suggestion, index) => (
-              <Card key={index}>
-                <View className="flex-row items-start justify-between mb-2">
-                  <View className="flex-1">
-                    <Text className="text-white font-semibold text-base mb-1">
-                      {suggestion.actionType} {suggestion.contactName}
-                    </Text>
-                    <Text className="text-sm text-zinc-400">
-                      {suggestion.reason}
-                    </Text>
-                  </View>
-                  <View
-                    className="px-2 py-1"
-                    style={{ backgroundColor: getAlgorithmColor(suggestion.algorithmType) + "20" }}
-                  >
-                    <Text className="text-xs" style={{ color: getAlgorithmColor(suggestion.algorithmType) }}>
-                      {ALGORITHM_PRESETS[suggestion.algorithmType as AlgorithmType]?.name}
-                    </Text>
-                  </View>
-                </View>
-                <View className="flex-row gap-2 mt-3">
-                  <Button variant="primary" className="flex-1">
-                    Complete
-                  </Button>
-                  <Button variant="secondary" className="px-4">
-                    Snooze
-                  </Button>
-                </View>
-              </Card>
-            ))}
-          </View>
-        </View>
-      )}
-
-      {/* Algorithm Selection */}
-      <View className="px-6 mb-8">
-        <SectionHeader>Available Algorithms</SectionHeader>
-        <Text className="text-sm text-zinc-400 mb-4 leading-relaxed">
-          Choose the approaches that match your relationship goals. You can enable multiple algorithms.
-        </Text>
-        <View className="space-y-3">
-          {(Object.keys(ALGORITHM_PRESETS) as AlgorithmType[]).map((type) => {
-            const preset = ALGORITHM_PRESETS[type];
-            const isActive = activeAlgorithms.includes(type);
-            
-            return (
-              <Card
-                key={type}
-                onPress={() => toggleAlgorithm(type)}
-                className={isActive ? "border-2 border-primary" : "bg-black border-2"}
-                variant={isActive ? "accent" : "default"}
-                accentColor={isActive ? getAlgorithmColor(type) : "#27272a"}
-                accessibilityLabel={`${preset.name}, ${isActive ? 'active' : 'inactive'}`}
-                accessibilityRole="button"
-              >
-                <View className="flex-row items-center justify-between mb-2">
-                  <Text className={`font-medium text-lg ${isActive ? "text-primary" : "text-white"}`}>
-                    {preset.name}
-                  </Text>
-                  <View
-                    className={`w-6 h-6 rounded-full border-2 ${
-                      isActive ? "bg-primary border-primary" : "border-zinc-700"
-                    } items-center justify-center`}
-                  >
-                    {isActive && <Text className="text-black text-xs font-bold">✓</Text>}
-                  </View>
-                </View>
-                <Text className="text-sm text-zinc-400 mb-3 leading-relaxed">
-                  {preset.description}
-                </Text>
-                <View className="flex-row flex-wrap gap-2">
-                  <View className="px-2 py-1 bg-zinc-800">
-                    <Text className="text-xs text-zinc-400">
-                      Layers: {preset.targetLayers.join(", ")}
-                    </Text>
-                  </View>
-                  <View className="px-2 py-1 bg-zinc-800">
-                    <Text className="text-xs text-zinc-400">
-                      Every {preset.checkFrequency} days
-                    </Text>
-                  </View>
-                  <View className="px-2 py-1 bg-zinc-800">
-                    <Text className="text-xs text-zinc-400">
-                      {preset.actionThreshold}d threshold
-                    </Text>
-                  </View>
-                </View>
-              </Card>
-            );
-          })}
-        </View>
-      </View>
-
-      {/* Streak/Stats Section */}
-      <View className="px-6 mb-20">
-        <Card className="p-6 border-2">
-          <Text className="text-xs text-zinc-400 font-semibold uppercase tracking-wider mb-4">Your Progress</Text>
-          <View className="flex-row justify-between">
-            <View>
-              <Text className="text-3xl font-bold text-primary">0</Text>
-              <Text className="text-xs text-zinc-500 mt-2">Current Streak</Text>
+      {/* Stats Overview */}
+      <View className="px-6 mb-6">
+        <Card className="bg-zinc-900 border-zinc-800">
+          <View className="flex-row justify-between items-center">
+            <View className="items-center">
+              <Text className="text-2xl font-bold text-primary">{currentStreak}</Text>
+              <Text className="text-xs text-zinc-500 mt-1">Day Streak</Text>
             </View>
-            <View>
-              <Text className="text-3xl font-bold text-white">0</Text>
-              <Text className="text-xs text-zinc-500 mt-2">Actions Completed</Text>
+            <View className="items-center">
+              <Text className="text-2xl font-bold text-white">{totalBadgesEarned}</Text>
+              <Text className="text-xs text-zinc-500 mt-1">Badges</Text>
             </View>
-            <View>
-              <Text className="text-3xl font-bold text-zinc-400">0</Text>
-              <Text className="text-xs text-zinc-500 mt-2">Best Streak</Text>
+            <View className="items-center">
+              <Text className="text-2xl font-bold text-zinc-400">
+                {todayCompleted}/{todayTotal}
+              </Text>
+              <Text className="text-xs text-zinc-500 mt-1">Today</Text>
             </View>
           </View>
         </Card>
       </View>
+
+      {/* Active Quests Section */}
+      {activeQuests.length > 0 && (
+        <View className="px-6 mb-8">
+          <SectionHeader>Active Quests</SectionHeader>
+          <View className="space-y-3">
+            {activeQuests.map((quest) => {
+              const isComplete = quest.todayCompleted >= quest.todayTarget;
+              const progressPercent = quest.totalTarget 
+                ? Math.round((quest.currentProgress / quest.totalTarget) * 100)
+                : 0;
+              
+              return (
+                <Card 
+                  key={quest.id}
+                  className="bg-zinc-900 border-zinc-800"
+                >
+                    <View className="flex-row items-start justify-between mb-3">
+                      <View className="flex-1">
+                        <View className="flex-row items-center mb-2">
+                          <Text className="text-2xl mr-2">{quest.emoji}</Text>
+                          <Text className="text-white font-semibold text-lg flex-1">
+                            {quest.name}
+                          </Text>
+                          {isComplete && (
+                            <View className="bg-green-500/20 px-2 py-1 rounded">
+                              <Text className="text-green-500 text-xs font-bold">✓ Today</Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text className="text-sm text-zinc-400 mb-3 leading-relaxed">
+                          {quest.description}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Progress Bar */}
+                    {quest.totalTarget && (
+                      <View className="mb-3">
+                        <View className="h-2 bg-zinc-800 rounded-full overflow-hidden">
+                          <View 
+                            className="h-full bg-primary rounded-full"
+                            style={{ width: `${progressPercent}%` }}
+                          />
+                        </View>
+                        <Text className="text-xs text-zinc-500 mt-1">
+                          {quest.currentProgress} / {quest.totalTarget} ({progressPercent}%)
+                        </Text>
+                      </View>
+                    )}
+
+                    {/* Stats Row */}
+                    <View className="flex-row items-center justify-between">
+                      <View className="flex-row items-center gap-4">
+                        <View>
+                          <Text className="text-xs text-zinc-500">Today</Text>
+                          <Text className="text-sm text-white font-medium">
+                            {quest.todayCompleted}/{quest.todayTarget}
+                          </Text>
+                        </View>
+                        <View>
+                          <Text className="text-xs text-zinc-500">Streak</Text>
+                          <Text className="text-sm text-white font-medium">
+                            {quest.streakCount} days 🔥
+                          </Text>
+                        </View>
+                      </View>
+                      <View 
+                        className="px-3 py-1 rounded"
+                        style={{ backgroundColor: getQuestColor(quest.type) + "20" }}
+                      >
+                        <Text 
+                          className="text-xs font-medium"
+                          style={{ color: getQuestColor(quest.type) }}
+                        >
+                          {quest.type}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {!isComplete && (
+                      <Button 
+                        variant="primary" 
+                        className="mt-3"
+                        onPress={() => {
+                          // TODO: Open quest modal
+                          console.log('Start quest:', quest.id);
+                        }}
+                      >
+                        <Text className="text-black font-semibold">Start Task</Text>
+                      </Button>
+                    )}
+                  </Card>
+                );
+              })}
+          </View>
+        </View>
+      )}
+
+      {/* Badges Section */}
+      <View className="px-6 mb-8">
+        <View className="flex-row items-center justify-between mb-4">
+          <SectionHeader>Your Badges</SectionHeader>
+          <TouchableOpacity>
+            <Text className="text-primary text-sm font-medium">View All →</Text>
+          </TouchableOpacity>
+        </View>
+        <View className="flex-row flex-wrap gap-3">
+          {/* Show first 4 earned badges */}
+          {Object.values(BADGE_DEFINITIONS).slice(0, 4).map((badge) => (
+            <View 
+              key={badge.id}
+              className="items-center bg-zinc-900 border-2 border-zinc-800 rounded-lg p-3"
+              style={{ width: '22%' }}
+            >
+              <Text className="text-3xl mb-1">{badge.emoji}</Text>
+              <Text className="text-xs text-white text-center" numberOfLines={2}>
+                {badge.name}
+              </Text>
+            </View>
+          ))}
+        </View>
+      </View>
+
+      {/* Available Quests */}
+      <View className="px-6 mb-8">
+        <SectionHeader>Available Quests</SectionHeader>
+        <Text className="text-sm text-zinc-400 mb-4 leading-relaxed">
+          Start new quests to unlock badges and improve your relationship cultivation skills.
+        </Text>
+        <View className="space-y-3">
+          {availableQuests.map((quest) => (
+            <Card
+              key={quest.id}
+              className="bg-zinc-900 border-zinc-800"
+            >
+              <View className="flex-row items-start mb-3">
+                <Text className="text-3xl mr-3">{quest.emoji}</Text>
+                <View className="flex-1">
+                  <Text className="text-white font-semibold text-base mb-1">
+                    {quest.name}
+                  </Text>
+                  <Text className="text-sm text-zinc-400 leading-relaxed">
+                    {quest.description}
+                  </Text>
+                </View>
+              </View>
+
+              <View className="flex-row items-center justify-between mb-3">
+                <View className="flex-row items-center gap-3">
+                  <View>
+                    <Text className="text-xs text-zinc-500">Daily</Text>
+                    <Text className="text-sm text-white">{quest.dailyTarget} tasks</Text>
+                  </View>
+                  {quest.totalTarget && (
+                    <View>
+                      <Text className="text-xs text-zinc-500">Goal</Text>
+                      <Text className="text-sm text-white">{quest.totalTarget} total</Text>
+                    </View>
+                  )}
+                </View>
+                <View 
+                  className="px-3 py-1 rounded"
+                  style={{ backgroundColor: getQuestColor(quest.type) + "20" }}
+                >
+                  <Text 
+                    className="text-xs font-medium"
+                    style={{ color: getQuestColor(quest.type) }}
+                  >
+                    {quest.type}
+                  </Text>
+                </View>
+              </View>
+
+              {quest.badgeId && BADGE_DEFINITIONS[quest.badgeId] && (
+                <View className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-3 mb-3">
+                  <View className="flex-row items-center">
+                    <Text className="text-xl mr-2">
+                      {BADGE_DEFINITIONS[quest.badgeId].emoji}
+                    </Text>
+                    <View className="flex-1">
+                      <Text className="text-xs text-zinc-500">Reward</Text>
+                      <Text className="text-sm text-white font-medium">
+                        {BADGE_DEFINITIONS[quest.badgeId].name}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              )}
+
+              <Button 
+                variant="secondary"
+                onPress={() => {
+                  // TODO: Start quest
+                  console.log('Start quest:', quest.id);
+                }}
+              >
+                <Text className="text-white font-semibold">Start Quest</Text>
+              </Button>
+            </Card>
+          ))}
+        </View>
+      </View>
+
+      {/* Empty State */}
+      {activeQuests.length === 0 && (
+        <View className="px-6 py-12 items-center">
+          <Text className="text-6xl mb-4">🌱</Text>
+          <Text className="text-xl text-white font-semibold mb-2">Start Your First Quest</Text>
+          <Text className="text-sm text-zinc-400 text-center leading-relaxed">
+            Choose a quest above to begin cultivating your relationships with daily tasks and earn your first badge.
+          </Text>
+        </View>
+      )}
+
+      {/* Bottom Spacing */}
+      <View className="h-20" />
     </Animated.ScrollView>
   );
 }
