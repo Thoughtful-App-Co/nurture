@@ -381,6 +381,14 @@ export function finalizeRanking(state: RankingState): string[] {
 
 /**
  * Detect contradictions (confirmation bias)
+ * 
+ * Only checks for DIRECT contradictions where the user has explicitly
+ * compared these two contacts before and chosen differently.
+ * 
+ * NOTE: We do NOT check for transitive contradictions (cycles like A>B>C>A)
+ * because circular preferences are psychologically valid even if logically
+ * inconsistent. Transitive inference is for SKIPPING questions, not detecting
+ * contradictions.
  */
 export function detectContradiction(
   state: RankingState,
@@ -391,7 +399,8 @@ export function detectContradiction(
   const winnerId = chosenId;
   const loserId = winnerId === contactAId ? contactBId : contactAId;
   
-  // Check for direct contradiction
+  // ONLY check for direct contradiction (user previously compared these exact two contacts)
+  // Direct contradiction: User previously said B > A, now saying A > B
   if (state.comparisonGraph.get(loserId)?.has(winnerId)) {
     const winnerContact = state.allContacts.find(c => (c.id || c.sourceId) === winnerId);
     const loserContact = state.allContacts.find(c => (c.id || c.sourceId) === loserId);
@@ -402,14 +411,7 @@ export function detectContradiction(
     };
   }
   
-  // Check for transitive contradiction
-  if (hasTransitiveResult(state, loserId, winnerId)) {
-    return {
-      hasContradiction: true,
-      message: 'This creates a logical contradiction with your previous choices. Are you sure?',
-    };
-  }
-  
+  // No direct contradiction found
   return { hasContradiction: false };
 }
 
