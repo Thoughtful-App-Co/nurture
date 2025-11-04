@@ -3,6 +3,17 @@
 ## 2025-11-04 - Ranking Algorithm Overhaul & UX Improvements
 
 ### Fixed
+- **Contradiction Alert Logic - Remove False Positives**
+  - Fixed overly aggressive transitive contradiction detection
+  - Was showing "This creates a logical contradiction" incorrectly
+  - Problem: Used `hasTransitiveResult()` to detect contradictions
+  - This is wrong - transitive paths (A>B>C implies A>C) are NOT contradictions
+  - Now only detects DIRECT contradictions (user previously chose B>A, now choosing A>B)
+  - Removed transitive contradiction check entirely
+  - Circular preferences (A>B>C>A) are psychologically valid and now allowed
+  - Better UX: fewer false interruptions during ranking
+  - Location: `services/rankingAlgorithm.ts:382-417`
+
 - **CRITICAL: Black screen after first question in Would You Rather**
   - Root cause: `currentPair` was recalculated on every render but state mutations didn't trigger re-renders
   - Moved `currentPair` from computed value to React state
