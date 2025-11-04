@@ -1,5 +1,89 @@
 # Changelog
 
+## 2025-11-04 - Recurring Interaction Patterns: Complete Documentation Package
+
+### Added
+- **STORY-021 Documentation - Recurring Interaction Patterns** 📚
+  - **Feature Specification** (`docs/features/RECURRING_INTERACTIONS.md` - 470+ lines)
+    - Complete product specification with problem statement and real-world impact analysis
+    - Roommates, coworkers, and regular activity groups are invisible to current tracking
+    - Dunbar calculations are wrong by 3-5 layers for physical relationships
+    - Two-tier solution: contact-level patterns + group activity scheduler
+    - 4 complete user flows with time estimates
+    - Complete RecurringPattern schema specification
+    - Algorithm integration with scoring examples
+    - UI/UX specifications with wireframes described
+  
+  - **Technical Specification** (`docs/implementation/RECURRING_PATTERNS_TECH_SPEC.md` - 850+ lines)
+    - Complete schema changes (RecurringPattern, UserProfile, Contact updates)
+    - Migration strategy for existing users
+    - Updated interaction scoring algorithm with logarithmic time scaling
+    - Data flow diagrams and performance considerations
+    - Auto-generation system for interaction logs
+    - Edge case handling and testing strategy
+    - Performance benchmarks and security considerations
+  
+  - **Implementation Roadmap** (`docs/implementation/RECURRING_PATTERNS_ROADMAP.md` - 500+ lines)
+    - 8-phase project plan (4-6 weeks total)
+    - Phase 1: Foundation (schema changes)
+    - Phase 2: Algorithm integration
+    - Phase 3: Contact-level UI
+    - Phase 4: Group activity UI
+    - Phase 5: Management UI
+    - Phase 6: Auto-generation
+    - Phase 7: Polish & testing
+    - Phase 8: Beta & iteration
+    - Task checklists, success criteria, and risk mitigation per phase
+  
+  - **Summary Document** (`docs/RECURRING_INTERACTIONS_SUMMARY.md`)
+    - Executive overview tying all documentation together
+    - Quick reference guide by role (PM, Engineer, Designer, QA)
+    - Success metrics and timeline summary
+  
+  - **Documentation Index** (`docs/RECURRING_INTERACTIONS_INDEX.md`)
+    - Navigation guide for all recurring patterns documentation
+    - Quick start guides for different team roles
+    - Documentation stats (2,000+ lines total)
+  
+  - **PRD Update** (`docs/PRD.md`)
+    - Added STORY-021 to EPIC-003 with full specification
+    - Updated MVP critical path to include recurring patterns as P0 priority
+    - Documented as critical for MVP (blocks accurate Dunbar calculations)
+
+- **InfoTooltip Component** 💡
+  - Reusable UI component for displaying helpful information
+  - Modal-based tooltip with title and detailed content
+  - Three size variants (sm, md, lg)
+  - Integrated into UI component library exports
+
+### Impact Analysis
+- **Critical Finding**: Phones track calls/texts but NOT physical presence
+- **Roommates Error**: 8 hrs/day together → Layer 5 instead of Layer 0 (5-layer error)
+- **Coworkers Error**: 40 hrs/week → Layer 4 instead of Layer 1-2 (2-3 layer error)
+- **Sports Teams Error**: 3 hrs/week → Layer 5 instead of Layer 2-3 (2-3 layer error)
+- **Core Tenet Violation**: Cannot show "behavioral reality" without tracking physical time
+
+### Solution Design
+- **Tier 1**: Contact-level standing patterns (15 seconds to create)
+  - Templates: Living Together, Work Colleagues, Regular Family Time
+  - Quick toggles with smart defaults (8 hrs/day, 40 hrs/week)
+- **Tier 2**: Group activity scheduler (60 seconds for 10 people)
+  - Bulk contact selection and multi-select search
+  - Recurring schedule builder (daily, weekly, biweekly, monthly)
+  - Auto-generate interaction logs (optional)
+
+### Success Metrics
+- **Adoption**: 60% of users create ≥1 pattern within 30 days
+- **Accuracy**: Dunbar accuracy improves 70% → 85% (user-reported)
+- **Impact**: 30% of contacts in patterns move up ≥1 layer
+- **Performance**: Create pattern (10 contacts) in <500ms
+
+### Priority Justification
+- **P0 - Critical for MVP**: Without this feature, Nurture's core promise is broken
+- **Behavioral Reality**: Current system shows "wishful thinking" not reality
+- **Trust**: Users will delete app if roommates appear as strangers
+- **Timeline**: 4-6 weeks for full implementation
+
 ## 2025-11-04 - Harvest Refactor: CRM for Social Health (Volitions System)
 
 ### Refactored
