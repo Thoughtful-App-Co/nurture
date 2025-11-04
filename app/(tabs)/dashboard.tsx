@@ -19,6 +19,7 @@ import { ContactSearch } from "@/components/relationships/ContactSearch";
 import { SearchBar } from "@/components/relationships/SearchBar";
 import { QuickSortModal } from "@/components/relationships/QuickSortModal";
 import { WouldYouRatherModal } from "@/components/relationships/WouldYouRatherModal";
+import { OverflowSelectionModal } from "@/components/relationships/OverflowSelectionModal";
 import { DunbarViolationHeroCard, detectDunbarViolations } from "@/components/relationships/DunbarViolationHeroCard";
 import { GraveyardScreen } from "@/components/relationships/GraveyardScreen";
 import { Card, Button } from "@/components/ui";
@@ -66,6 +67,7 @@ export default function Dashboard() {
   const [searchSelectedContact, setSearchSelectedContact] = useState<any | null>(null);
   const [showQuickSort, setShowQuickSort] = useState(false);
   const [showWouldYouRather, setShowWouldYouRather] = useState(false);
+  const [showOverflowSelection, setShowOverflowSelection] = useState(false);
   const [dunbarViolation, setDunbarViolation] = useState<any>(null);
   const [showGraveyard, setShowGraveyard] = useState(false);
   const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
@@ -790,6 +792,13 @@ export default function Dashboard() {
                     });
                     setShowWouldYouRather(true);
                   }}
+                  onStartQuickSelect={() => {
+                    setDunbarViolation({
+                      ...violation,
+                      contacts: layerContacts,
+                    });
+                    setShowOverflowSelection(true);
+                  }}
                 />
                 
                 {/* Pagination Dots - Only show if multiple violations */}
@@ -1031,6 +1040,26 @@ export default function Dashboard() {
           }}
           onRefresh={() => {
             // Reset analyzed flag and refresh dashboard after ranking completes
+            hasAnalyzed.current = false;
+            analyzeRelationships();
+          }}
+          contacts={dunbarViolation.contacts || []}
+          violatedLayer={dunbarViolation.layer}
+          violatedLayerName={dunbarViolation.layerName}
+          layerCapacity={dunbarViolation.max}
+        />
+      )}
+      
+      {/* Overflow Selection Modal - Quick checkbox selection for large groups */}
+      {dunbarViolation && (
+        <OverflowSelectionModal
+          visible={showOverflowSelection}
+          onClose={() => {
+            setShowOverflowSelection(false);
+            setDunbarViolation(null);
+          }}
+          onRefresh={() => {
+            // Reset analyzed flag and refresh dashboard after selection
             hasAnalyzed.current = false;
             analyzeRelationships();
           }}
