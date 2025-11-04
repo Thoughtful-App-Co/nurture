@@ -82,21 +82,21 @@ export const HarvestNotificationSettings = co.map({
 });
 
 /**
- * Quest Types - Different categories of relationship quests
+ * Volition Types - Different categories of relationship cultivation strategies
  */
-export type QuestType = 
+export type VolitionType = 
   | "RANKING"       // Builds intuitiveRank data
   | "MAINTENANCE"   // Relationship actions
   | "QUALITY"       // Data enrichment
   | "DISCOVERY";    // Feature exploration
 
 /**
- * Quest - User-configurable goals that enable daily tasks
- * Quests act as "feature flags" that turn on specific daily prompts
+ * Volition - User-selected relationship cultivation strategies
+ * Volitions are active goals that generate daily actions and track time investment
  */
-export const Quest = co.map({
+export const Volition = co.map({
   id: z.string(),
-  type: z.string(),  // QuestType
+  type: z.string(),  // VolitionType
   
   // Metadata
   name: z.string(),
@@ -126,8 +126,11 @@ export const Quest = co.map({
   // Feature Flag Configuration
   enableDailyModal: z.boolean(),
   modalType: z.string().optional(),           // "RANKING" | "CONTACT" | "RATE"
-  targetLayer: z.number().optional(),         // For layer-specific quests
+  targetLayer: z.number().optional(),         // For layer-specific volitions
   contactFilter: z.string().optional(),       // "LAPSED" | "FREQUENT" | "ALL"
+  
+  // Time Tracking
+  estimatedMinutesPerWeek: z.number(),        // Estimated weekly time investment
 });
 
 /**
@@ -140,7 +143,7 @@ export type BadgeCategory =
   | "QUALITY";      // Data quality
 
 /**
- * Badge - Achievements earned through quest completion
+ * Badge - Achievements earned through volition completion
  */
 export const Badge = co.map({
   id: z.string(),
@@ -154,7 +157,7 @@ export const Badge = co.map({
   // Requirements
   requirementType: z.string(),        // "COUNT" | "STREAK" | "COMPLETE_ALL"
   requirementTarget: z.number().optional(),
-  questId: z.string().optional(),     // Which quest unlocks this
+  volitionId: z.string().optional(),  // Which volition unlocks this
   
   // Status
   isUnlocked: z.boolean(),
@@ -178,12 +181,12 @@ export const HarvestProfile = co.map({
   notificationFrequency: z.string(),
   notificationTime: z.string(),
   
-  // Quest System fields
-  totalQuestsCompleted: z.number(),
+  // Volition System fields
+  totalVolitionsCompleted: z.number(),
   totalBadgesEarned: z.number(),
   lastDailyCompletionDate: z.string().optional(),
-  todayTasksCompleted: z.number(),
-  todayTasksTotal: z.number(),
+  todayActionsCompleted: z.number(),
+  todayActionsTotal: z.number(),
   
   // Settings
   preferredReminderTime: z.string(),  // "08:00"
@@ -194,7 +197,7 @@ export const HarvestProfile = co.map({
 // Store data as lists on the root
 export const HarvestAlgorithmList = co.list(HarvestAlgorithm);
 export const HarvestSuggestionList = co.list(HarvestSuggestion);
-export const QuestList = co.list(Quest);
+export const VolitionList = co.list(Volition);
 export const BadgeList = co.list(Badge);
 
 /**
@@ -338,11 +341,11 @@ export const ACTION_TYPES = {
 } as const;
 
 /**
- * Quest Presets - Pre-configured quests for different goals
+ * Volition Presets - Pre-configured relationship cultivation strategies
  */
-export interface QuestConfig {
+export interface VolitionConfig {
   id: string;
-  type: QuestType;
+  type: VolitionType;
   name: string;
   description: string;
   emoji: string;
@@ -354,9 +357,10 @@ export interface QuestConfig {
   modalType?: "RANKING" | "CONTACT" | "RATE";
   targetLayer?: number;
   contactFilter?: "LAPSED" | "FREQUENT" | "ALL";
+  estimatedMinutesPerWeek: number;  // Weekly time investment estimate
 }
 
-export const QUEST_PRESETS: Record<string, QuestConfig> = {
+export const VOLITION_PRESETS: Record<string, VolitionConfig> = {
   KNOW_YOUR_CIRCLE: {
     id: "KNOW_YOUR_CIRCLE",
     type: "RANKING",
@@ -369,6 +373,7 @@ export const QUEST_PRESETS: Record<string, QuestConfig> = {
     rewardDescription: "Unlock Circle Clarity badge + advanced reports",
     enableDailyModal: true,
     modalType: "RANKING",
+    estimatedMinutesPerWeek: 5, // 2 questions/day × 20 sec × 7 days ≈ 5 min
   },
   
   COMPLETE_TRIBE_RANKING: {
@@ -383,6 +388,7 @@ export const QUEST_PRESETS: Record<string, QuestConfig> = {
     enableDailyModal: true,
     modalType: "RANKING",
     targetLayer: 2,
+    estimatedMinutesPerWeek: 12, // 5 questions/day × 20 sec × 7 days ≈ 12 min
   },
   
   WEEKLY_CHECKIN: {
@@ -398,6 +404,7 @@ export const QUEST_PRESETS: Record<string, QuestConfig> = {
     enableDailyModal: true,
     modalType: "CONTACT",
     contactFilter: "FREQUENT",
+    estimatedMinutesPerWeek: 60, // ~15 min per contact × 4 contacts/week
   },
   
   REKINDLE_CONNECTIONS: {
@@ -413,6 +420,7 @@ export const QUEST_PRESETS: Record<string, QuestConfig> = {
     enableDailyModal: true,
     modalType: "CONTACT",
     contactFilter: "LAPSED",
+    estimatedMinutesPerWeek: 90, // ~20 min per rekindled contact (more thoughtful)
   },
   
   RATE_INTERACTIONS: {
@@ -427,6 +435,7 @@ export const QUEST_PRESETS: Record<string, QuestConfig> = {
     rewardDescription: "Unlock Reflective badge + better personalization",
     enableDailyModal: true,
     modalType: "RATE",
+    estimatedMinutesPerWeek: 10, // 2 ratings/day × 30 sec × 7 days ≈ 7 min
   },
   
   EXPLORE_GARDEN: {
@@ -440,6 +449,7 @@ export const QUEST_PRESETS: Record<string, QuestConfig> = {
     badgeId: "GARDENER",
     rewardDescription: "Unlock Gardener badge",
     enableDailyModal: false,
+    estimatedMinutesPerWeek: 15, // ~15 min reviewing layers/features
   },
 };
 
@@ -454,7 +464,7 @@ export interface BadgeConfig {
   category: BadgeCategory;
   requirementType: "COUNT" | "STREAK" | "COMPLETE_ALL";
   requirementTarget?: number;
-  questId?: string;
+  volitionId?: string;
   unlocks?: string[];
 }
 
@@ -468,7 +478,7 @@ export const BADGE_DEFINITIONS: Record<string, BadgeConfig> = {
     category: "COMPLETION",
     requirementType: "COUNT",
     requirementTarget: 100,
-    questId: "KNOW_YOUR_CIRCLE",
+    volitionId: "KNOW_YOUR_CIRCLE",
     unlocks: ["RANKING_REPORT"],
   },
   
@@ -479,7 +489,7 @@ export const BADGE_DEFINITIONS: Record<string, BadgeConfig> = {
     emoji: "👥",
     category: "COMPLETION",
     requirementType: "COMPLETE_ALL",
-    questId: "COMPLETE_TRIBE_RANKING",
+    volitionId: "COMPLETE_TRIBE_RANKING",
     unlocks: ["TRIBE_INSIGHTS"],
   },
   
@@ -497,7 +507,7 @@ export const BADGE_DEFINITIONS: Record<string, BadgeConfig> = {
   WEEK_WARRIOR: {
     id: "WEEK_WARRIOR",
     name: "Week Warrior",
-    description: "Completed quests 7 days in a row",
+    description: "Maintained volitions 7 days in a row",
     emoji: "🔥",
     category: "STREAK",
     requirementType: "STREAK",
@@ -507,7 +517,7 @@ export const BADGE_DEFINITIONS: Record<string, BadgeConfig> = {
   MONTH_MASTER: {
     id: "MONTH_MASTER",
     name: "Month Master",
-    description: "Completed quests 30 days in a row",
+    description: "Maintained volitions 30 days in a row",
     emoji: "💎",
     category: "STREAK",
     requirementType: "STREAK",
@@ -533,7 +543,7 @@ export const BADGE_DEFINITIONS: Record<string, BadgeConfig> = {
     category: "ACTION",
     requirementType: "COUNT",
     requirementTarget: 28,
-    questId: "WEEKLY_CHECKIN",
+    volitionId: "WEEKLY_CHECKIN",
   },
   
   REKINDLER: {
@@ -544,7 +554,7 @@ export const BADGE_DEFINITIONS: Record<string, BadgeConfig> = {
     category: "ACTION",
     requirementType: "COUNT",
     requirementTarget: 5,
-    questId: "REKINDLE_CONNECTIONS",
+    volitionId: "REKINDLE_CONNECTIONS",
   },
   
   SOCIAL_BUTTERFLY: {
@@ -566,7 +576,7 @@ export const BADGE_DEFINITIONS: Record<string, BadgeConfig> = {
     category: "QUALITY",
     requirementType: "COUNT",
     requirementTarget: 20,
-    questId: "RATE_INTERACTIONS",
+    volitionId: "RATE_INTERACTIONS",
     unlocks: ["QUALITY_INSIGHTS"],
   },
   
@@ -578,6 +588,6 @@ export const BADGE_DEFINITIONS: Record<string, BadgeConfig> = {
     category: "QUALITY",
     requirementType: "COUNT",
     requirementTarget: 6,
-    questId: "EXPLORE_GARDEN",
+    volitionId: "EXPLORE_GARDEN",
   },
 };
