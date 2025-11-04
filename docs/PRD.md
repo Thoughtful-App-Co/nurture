@@ -9,27 +9,47 @@
 
 ## Implementation Status
 
-### ✅ Completed (2025-10-27)
-- **Authentication Flow**: Login → Home page working
-- **Jazz Integration**: Provider, schema, and migration configured
-- **User Account**: DemoAuth creates persistent accounts
-- **Data Model**: CoValue schemas defined for contacts, interactions, goals
-- **UI Foundation**: Auth screen and welcome screen match design system
-- **Documentation**: Implementation guides and testing instructions complete
+### ✅ Completed (2025-11-04)
+- **Authentication Flow**: Login → Home page working (2025-10-27)
+- **Jazz Integration**: Provider, schema, and migration configured (2025-10-27)
+- **User Account**: DemoAuth creates persistent accounts (2025-10-27)
+- **Data Model**: CoValue schemas defined for contacts, interactions, goals (2025-10-27)
+- **UI Foundation**: Auth screen and welcome screen match design system (2025-10-27)
+- **Documentation**: Implementation guides and testing instructions complete (2025-10-27)
+- **Interaction Stats Detail Screen**: Comprehensive breakdown of relationship scores with objective vs subjective data separation (2025-11-04)
+  - Score breakdown with transparent calculation
+  - Communication hierarchy visualization (calls 5x > texts)
+  - Behavioral patterns (initiation ratio, response times)
+  - Data availability warnings for missing call/SMS logs
 
-### 🔄 In Progress
-- None currently - ready for next epic
+### 🔄 In Progress (2025-11-04)
+- **Interaction Timeline**: Display actual call/SMS history with timestamps (NEXT priority)
+- **Comparison View**: Layer average comparisons and relationship insights
 
 ### 📋 Next Up (Priority Order)
-1. **STORY-006**: Data Mining Onboarding Screen (permissions request)
-2. **STORY-001**: Contact Data Ingestion (read device contacts)
-3. **STORY-002**: Call & SMS Log Mining (analyze interaction patterns)
-4. **STORY-003**: Dunbar Layer Calculator (assign behavioral layers)
+
+**NOW (Active Development)**
+1. **STORY-014a**: Complete Interaction Timeline section with actual call/SMS history
+2. **Comparison View**: Add layer average comparisons ("You call Jason 3x more than your average Inner Circle contact")
+
+**NEXT (High Priority Queue)**
+3. **STORY-006**: Data Mining Onboarding Screen (permissions request)
+4. **STORY-001**: Contact Data Ingestion (read device contacts)
+5. **STORY-002**: Call & SMS Log Mining (analyze interaction patterns)
+6. **STORY-003**: Dunbar Layer Calculator (assign behavioral layers)
+
+**LATER (Future Enhancements)**
+7. **STORY-019**: Relationship Reports via Email (MOONSHOT)
+8. **STORY-020**: Voice Memo Integration (MOONSHOT)
 
 ### 🎯 MVP Goal
-Complete authentication + data mining + layer discovery for 100 beta users within 3 months.
+Complete authentication + data mining + layer discovery + interaction transparency for 100 beta users within 3 months.
 
-**Current Progress**: ~10% complete (Auth foundation laid)
+**Current Progress**: ~15% complete
+- ✅ Auth foundation (10%)
+- ✅ Interaction transparency UI (5%)
+- 🔄 Data mining pipeline (0%)
+- ⏳ Layer calculation (0%)
 
 ---
 
@@ -571,6 +591,58 @@ function reallocateContacts(rankedContacts: Contact[], layerCapacity: number) {
 - Speed: Log interaction in <5 seconds
 - Complexity: Medium
 
+**STORY-014a: Interaction Stats Detail Screen** (NOW - In Progress)
+- **Priority**: P0 (Required for MVP transparency)
+- **Description**: Comprehensive view showing interaction data breakdown and score calculation transparency
+- **Purpose**: Users need to understand WHY their relationship scores are what they are, and see the difference between objective data (calls/texts) and subjective sentiment (feelings)
+- **Features**:
+  1. **Score Breakdown Section**: 
+     - Transparent calculation showing each component's contribution to total score
+     - Frequency score, call activity bonus, duration score, reciprocity, recency, family bonus, quality rating
+     - Visual progress bars showing weight of each component
+  2. **Interaction vs Sentiment Section**:
+     - Side-by-side comparison of objective data (calls, texts, duration) vs subjective feelings (quality ratings, cultivation goals, layer assignment)
+     - Clear labeling: "What actually happened" vs "How you feel about them"
+  3. **Communication Hierarchy**:
+     - Visual weight system showing Face-to-Face (10x), Voice Call (5x), Video (4x), Text (1x), Social Media (0.5x)
+     - Explains why calls are valued more than texts
+  4. **Interaction Timeline** (NEXT):
+     - Recent interaction history grouped by type
+     - Shows calls with duration, texts with count, manual logs
+     - Temporal view of relationship activity
+  5. **Behavioral Patterns Section**:
+     - Initiation ratio (who reaches out more)
+     - Response time patterns
+     - Reciprocity balance visualization
+  6. **Data Availability Warning**:
+     - Prominent warning when call/SMS data is missing (iOS limitations, permission issues)
+     - Explains why data might be unavailable
+     - Offers re-analyze button and manual logging alternative
+- **Access**: Tap on "INTERACTION STATS" card in Contact Detail Modal
+- **UI/UX**:
+  - Full-screen modal with scrollable sections
+  - Clean data visualization with progress bars and metrics
+  - Blue/purple color coding to distinguish objective vs subjective data
+  - Manual interaction logging button at bottom
+- **Integration Points**:
+  - ContactDetailModal: Make stats section tappable
+  - Remove duplicate "Interaction Breakdown" section (redundant)
+  - Link to ManualInteractionLogger for data entry
+- **Complexity**: High
+- **Status**: ✅ Implemented 2025-11-04
+- **Definition of Done**:
+  - ✅ Score breakdown showing all algorithm components
+  - ✅ Objective vs subjective data separation
+  - ✅ Communication hierarchy visualization
+  - ✅ Behavioral patterns display
+  - ✅ Data availability warning
+  - ⏳ Interaction timeline with actual call/SMS history (NEXT)
+- **Test Criteria**:
+  - User can understand score calculation from breakdown
+  - Warning appears when callCount/smsCount are 0
+  - All sections render correctly with missing data
+  - Manual interaction logger accessible from stats screen
+
 **STORY-015: Swipeable Hero Card System** (P0)
 - **Priority**: P0  
 - **Description**: Extensible hero card carousel on dashboard for critical user actions
@@ -650,6 +722,111 @@ function reallocateContacts(rankedContacts: Contact[], layerCapacity: number) {
 - Identify relationships that may no longer serve growth
 - Tone: Empowering, aligned with 'courage to prune' philosophy
 - Complexity: High
+
+**STORY-019: Relationship Reports via Email** (MOONSHOT - Future)
+- **Priority**: P3 (Nice-to-have, not MVP)
+- **Description**: Generate and email comprehensive relationship health reports
+- **Purpose**: Allow users to receive periodic summaries of their relationship network, insights, and progress toward cultivation goals
+- **Features**:
+  1. **Report Types**:
+     - Weekly Summary: Interactions logged, goals progress, layer changes
+     - Monthly Deep Dive: Network health, relationship quality trends, pruning suggestions
+     - Quarterly Review: Long-term relationship patterns, achievements, strategic insights
+     - On-Demand: User-triggered report for specific contact or layer
+  2. **Report Content**:
+     - Relationship health score (0-100)
+     - Layer distribution visualization
+     - Top 5 strongest relationships (by interaction score)
+     - Top 5 relationships needing attention (dormant, declining)
+     - Quality trend analysis (improving/stable/declining)
+     - Goal completion summary
+     - Personalized cultivation recommendations
+  3. **Delivery Options**:
+     - Email (primary method)
+     - In-app PDF export
+     - Shareable link (privacy-controlled)
+  4. **Privacy Controls**:
+     - User opts in to email reports
+     - Can choose frequency (weekly, monthly, quarterly, never)
+     - Can disable specific report sections
+     - Reports are user-only (no data sharing with third parties)
+- **Technical Implementation**:
+  - Server-side report generation (Jazz Cloud Functions or separate service)
+  - Email delivery via SendGrid or similar
+  - PDF generation with charts/graphs
+  - Responsive HTML email templates
+- **Complexity**: High
+- **Timeline**: Post-v2.0 (MOONSHOT)
+- **Definition of Done**:
+  - User can configure report preferences
+  - Automated weekly/monthly reports sent on schedule
+  - On-demand report generation working
+  - PDF export functional
+  - Privacy controls implemented and tested
+
+**STORY-020: Voice Memo Integration for Interactions** (MOONSHOT - Future)
+- **Priority**: P3 (Nice-to-have, experimental)
+- **Description**: Allow users to capture voice notes about interactions and relationships for richer context
+- **Purpose**: Quick, low-friction way to record relationship context, feelings, and memorable moments without typing
+- **Features**:
+  1. **Voice Note Capture**:
+     - Quick record button in Contact Detail screen
+     - Post-interaction prompt: "How was your call with Jason?" (after detecting phone call)
+     - Voice note widget in Interaction Stats screen
+     - Max duration: 2 minutes per note
+  2. **Transcription**:
+     - Automatic speech-to-text transcription
+     - Text stored alongside audio for searchability
+     - Language detection and multilingual support
+  3. **Context Attachment**:
+     - Voice notes linked to specific contacts
+     - Can attach to interaction logs (call, meeting, etc.)
+     - Timestamped and dated automatically
+  4. **Playback & Search**:
+     - Play back voice notes from contact detail
+     - Search transcriptions for keywords
+     - Filter interactions by "has voice note"
+  5. **Privacy & Storage**:
+     - Voice notes stored locally (encrypted)
+     - Optional cloud backup via Jazz
+     - User can delete individual notes or all notes
+     - Clear consent flow for microphone permission
+  6. **Integration with Quality Ratings**:
+     - Voice note prompts after interactions: "How did it go?"
+     - Can suggest quality rating based on sentiment analysis (optional)
+     - Enriches manual interaction logs with context
+- **Use Cases**:
+  - After phone call: "That was a great conversation with Sarah - we talked about her new job and she seemed really excited"
+  - After meeting: "Coffee with Mike today - he opened up about his divorce, need to check in more often"
+  - Context capture: "Mom's birthday is next month - she mentioned wanting a specific book"
+  - Relationship notes: "Alex always calls when he needs something but never asks how I'm doing - feels one-sided"
+- **Technical Implementation**:
+  - React Native Voice library for recording
+  - Whisper API or Google Speech-to-Text for transcription
+  - Local storage with encryption
+  - Jazz Cloud storage for sync (optional)
+  - Audio compression for storage efficiency
+- **Challenges**:
+  - Microphone permission request UX
+  - Transcription accuracy and cost (API usage)
+  - Storage limits (audio files can be large)
+  - Privacy concerns (sensitive conversations)
+  - Battery impact from recording
+- **Complexity**: Very High
+- **Timeline**: Post-v2.0 (MOONSHOT - experimental feature)
+- **Definition of Done**:
+  - Voice recording working on iOS and Android
+  - Transcription accurate (>90% word accuracy)
+  - Notes attached to contacts and interactions
+  - Playback functional with seeking
+  - Search working on transcribed text
+  - Privacy controls and consent flow implemented
+  - Storage management (delete old notes, compression)
+- **Success Metrics**:
+  - % of users who enable voice notes
+  - Average voice notes per week per active user
+  - User-reported value (survey: "How useful are voice notes?")
+  - Interaction log completion rate (with vs without voice notes)
 
 ---
 
