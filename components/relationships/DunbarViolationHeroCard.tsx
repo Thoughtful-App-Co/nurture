@@ -24,12 +24,14 @@ interface DunbarViolation {
 interface DunbarViolationHeroCardProps {
   violation: DunbarViolation;
   onStart: () => void;
+  onStartQuickSelect?: () => void; // NEW: Quick select option for large groups
   onDismiss?: () => void; // Optional: allow snoozing
 }
 
 export function DunbarViolationHeroCard({
   violation,
   onStart,
+  onStartQuickSelect,
   onDismiss,
 }: DunbarViolationHeroCardProps) {
   const { layer, layerName, current, max, overage } = violation;
@@ -90,20 +92,60 @@ export function DunbarViolationHeroCard({
         You have <Text className="text-red-400 font-bold">{current}</Text> people in this layer, but the healthy limit is <Text className="text-primary font-bold">{max}</Text>. Let's prioritize who matters most.
       </Text>
       
-      <Pressable
-        onPress={onStart}
-        className="bg-primary py-4 px-6 border-2 border-primary shadow-xl"
-        accessibilityLabel="Start prioritizing relationships"
-        accessibilityRole="button"
-        style={({ pressed }) => ({ 
-          opacity: pressed ? 0.9 : 1,
-          transform: [{ scale: pressed ? 0.98 : 1 }],
-        })}
-      >
-        <Text className="text-center text-lg font-bold text-black tracking-wide">
-          Decide Who
-        </Text>
-      </Pressable>
+      {/* Show Quick Select for larger groups (>20 people) */}
+      {onStartQuickSelect && current > 20 ? (
+        <View>
+          <Pressable
+            onPress={onStartQuickSelect}
+            className="bg-primary py-4 px-6 border-2 border-primary shadow-xl mb-3"
+            accessibilityLabel="Quick select who to move"
+            accessibilityRole="button"
+            style={({ pressed }) => ({ 
+              opacity: pressed ? 0.9 : 1,
+              transform: [{ scale: pressed ? 0.98 : 1 }],
+            })}
+          >
+            <Text className="text-center text-lg font-bold text-black tracking-wide">
+              Quick Select ({overage} people)
+            </Text>
+            <Text className="text-center text-xs text-black/70 mt-1">
+              Visual selection • Takes 30 seconds
+            </Text>
+          </Pressable>
+          
+          <Pressable
+            onPress={onStart}
+            className="bg-zinc-800 py-3 px-6 border-2 border-zinc-700"
+            accessibilityLabel="Detailed ranking"
+            accessibilityRole="button"
+            style={({ pressed }) => ({ 
+              opacity: pressed ? 0.9 : 1,
+            })}
+          >
+            <Text className="text-center text-sm font-semibold text-zinc-300">
+              Detailed Ranking Instead
+            </Text>
+            <Text className="text-center text-xs text-zinc-500 mt-1">
+              Answer questions • Takes {Math.ceil(current * Math.log2(current) / 60)} minutes
+            </Text>
+          </Pressable>
+        </View>
+      ) : (
+        <Pressable
+          onPress={onStart}
+          className="bg-primary py-4 px-6 border-2 border-primary shadow-xl"
+          accessibilityLabel="Start prioritizing relationships"
+          accessibilityRole="button"
+          style={({ pressed }) => ({ 
+            opacity: pressed ? 0.9 : 1,
+            transform: [{ scale: pressed ? 0.98 : 1 }],
+          })}
+        >
+          <Text className="text-center text-lg font-bold text-black tracking-wide">
+            Decide Who Stays
+          </Text>
+        </Pressable>
+      )}
     </View>
   );
 }
