@@ -211,8 +211,8 @@ export const RankingSession = co.map({
   overageCount: z.number(), // How many need to be moved down
   
   // Algorithm state
-  algorithm: z.enum(["quicksort", "swiss-tournament"]), // Swiss for >50 contacts
-  phase: z.enum(["tiering", "ranking", "completed"]), // Swiss has tiering phase first
+  algorithm: z.enum(["mergesort", "quicksort", "swiss-tournament"]), // Merge sort for <50, Swiss for >50
+  phase: z.enum(["sorting", "tiering", "ranking", "completed"]), // Merge sort uses sorting phase
   
   // Contacts being ranked (array of contact IDs)
   contactIds: z.array(z.string()), // All contacts in this ranking session
