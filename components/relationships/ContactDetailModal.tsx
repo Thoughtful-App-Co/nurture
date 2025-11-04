@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, Modal } from 'react-native';
 import { ManualInteractionLogger } from './ManualInteractionLogger';
+import { InteractionStatsScreen } from './InteractionStatsScreen';
 
 interface Contact {
   id?: string;
@@ -63,6 +64,7 @@ export function ContactDetailModal({ contact, layer, onClose, onSave }: Props) {
   const [isEditing, setIsEditing] = useState(false);
   const [showInteractionLogger, setShowInteractionLogger] = useState(false);
   const [showLayerSelector, setShowLayerSelector] = useState(false);
+  const [showInteractionStats, setShowInteractionStats] = useState(false);
 
   const cultivationGoals: Array<{ value: Contact['cultivationGoal']; label: string; color: string }> = [
     { value: 'STRENGTHEN', label: 'Strengthen', color: 'bg-green-900 text-green-400' },
@@ -516,11 +518,17 @@ export function ContactDetailModal({ contact, layer, onClose, onSave }: Props) {
               </View>
             </View>
 
-            {/* Interaction Stats */}
-            <View className="mb-6 p-4 bg-zinc-900 border border-zinc-800">
-              <Text className="text-sm text-secondary font-medium mb-3">
-                INTERACTION STATS
-              </Text>
+            {/* Interaction Stats - Tappable */}
+            <Pressable
+              onPress={() => setShowInteractionStats(true)}
+              className="mb-6 p-4 bg-zinc-900 border border-zinc-800"
+            >
+              <View className="flex-row justify-between items-center mb-3">
+                <Text className="text-sm text-secondary font-medium">
+                  INTERACTION STATS
+                </Text>
+                <Text className="text-primary text-sm">View Details →</Text>
+              </View>
               
               <View className="flex-row justify-between mb-3">
                 <View>
@@ -533,37 +541,24 @@ export function ContactDetailModal({ contact, layer, onClose, onSave }: Props) {
                 <View>
                   <Text className="text-zinc-400 text-xs mb-1">Interactions</Text>
                   <Text className="text-white text-2xl font-bold">
-                    {contact.interactionFrequency || 0}
+                    {(contact.callCount || 0) + (contact.smsCount || 0)}
                   </Text>
                 </View>
+                
+                {contact.qualityRating && (
+                  <View>
+                    <Text className="text-zinc-400 text-xs mb-1">Quality</Text>
+                    <Text className="text-yellow-400 text-2xl font-bold">
+                      {contact.qualityRating.toFixed(1)}⭐
+                    </Text>
+                  </View>
+                )}
               </View>
               
-              <Text className="text-zinc-500 text-xs mt-2">
-                Based on calls, messages, and contact frequency over the last 3 months
+              <Text className="text-zinc-500 text-xs">
+                Tap to see detailed breakdown and score calculation
               </Text>
-              
-              {/* Quality Rating */}
-              {contact.qualityRating && (
-                <View className="mt-4 pt-4 border-t border-zinc-800">
-                  <Text className="text-zinc-400 text-xs mb-1">Average Interaction Quality</Text>
-                  <View className="flex-row items-center">
-                    <Text className="text-yellow-400 text-xl font-bold mr-2">
-                      {contact.qualityRating.toFixed(1)}
-                    </Text>
-                    <View className="flex-row">
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <Text key={i} className="text-base">
-                          {i < Math.round(contact.qualityRating || 0) ? '⭐' : '☆'}
-                        </Text>
-                      ))}
-                    </View>
-                  </View>
-                  <Text className="text-zinc-500 text-xs mt-1">
-                    From your manual interaction logs
-                  </Text>
-                </View>
-              )}
-            </View>
+            </Pressable>
 
             {/* Cultivation Goal */}
             <View className="mb-6">
@@ -628,95 +623,7 @@ export function ContactDetailModal({ contact, layer, onClose, onSave }: Props) {
               </View>
             </View>
 
-            {/* Interaction Breakdown (Debug/Transparency) */}
-            <View className="mb-6">
-              <Text className="text-sm text-secondary font-medium mb-3">
-                INTERACTION BREAKDOWN
-              </Text>
-              
-              <View className="p-4 bg-zinc-900 border border-zinc-800">
-                <Text className="text-xs text-zinc-500 mb-3">
-                  Last 3 months of activity
-                  {(!contact.callCount && !contact.smsCount) && (
-                    <Text className="text-orange-400"> • Re-analyze to see detailed breakdown</Text>
-                  )}
-                </Text>
-                
-                {/* Call Stats */}
-                <View className="mb-3 pb-3 border-b border-zinc-800">
-                  <View className="flex-row justify-between items-center mb-2">
-                    <Text className="text-white text-sm font-medium">📞 Voice Calls</Text>
-                    <Text className="text-primary text-sm font-bold">
-                      {contact.callCount || 0}
-                    </Text>
-                  </View>
-                  {contact.totalDuration !== undefined && contact.totalDuration > 0 && (
-                    <Text className="text-zinc-400 text-xs">
-                      Total duration: {Math.floor((contact.totalDuration || 0) / 60)} min
-                      {contact.callCount && contact.callCount > 0 && (
-                        <Text> • Avg: {Math.floor((contact.totalDuration || 0) / (contact.callCount || 1) / 60)} min/call</Text>
-                      )}
-                    </Text>
-                  )}
-                </View>
-                
-                {/* SMS Stats */}
-                <View className="mb-3 pb-3 border-b border-zinc-800">
-                  <View className="flex-row justify-between items-center mb-2">
-                    <Text className="text-white text-sm font-medium">💬 Text Messages</Text>
-                    <Text className="text-primary text-sm font-bold">
-                      {contact.smsCount || 0}
-                    </Text>
-                  </View>
-                  {contact.reciprocityScore !== undefined && contact.reciprocityScore > 0 && (
-                    <Text className="text-zinc-400 text-xs">
-                      Reciprocity: {Math.round((contact.reciprocityScore || 0) * 100)}%
-                    </Text>
-                  )}
-                </View>
-                
-                {/* Combined Metrics */}
-                <View className="mb-2">
-                  <Text className="text-white text-sm font-medium mb-2">📊 Metrics</Text>
-                  <View className="space-y-1">
-                    <View className="flex-row justify-between">
-                      <Text className="text-zinc-400 text-xs">Total interactions:</Text>
-                      <Text className="text-white text-xs font-medium">
-                        {(contact.callCount || 0) + (contact.smsCount || 0)}
-                      </Text>
-                    </View>
-                    <View className="flex-row justify-between">
-                      <Text className="text-zinc-400 text-xs">Interaction score:</Text>
-                      <Text className="text-white text-xs font-medium">
-                        {Math.round(contact.interactionScore || 0)}/100
-                      </Text>
-                    </View>
-                    {contact.contactInitiationRatio !== undefined && (
-                      <View className="flex-row justify-between">
-                        <Text className="text-zinc-400 text-xs">You initiate:</Text>
-                        <Text className="text-white text-xs font-medium">
-                          {Math.round((contact.contactInitiationRatio || 0) * 100)}%
-                        </Text>
-                      </View>
-                    )}
-                    {contact.averageResponseTime !== undefined && contact.averageResponseTime > 0 && (
-                      <View className="flex-row justify-between">
-                        <Text className="text-zinc-400 text-xs">Avg response time:</Text>
-                        <Text className="text-white text-xs font-medium">
-                          {Math.floor((contact.averageResponseTime || 0) / 3600)}h
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                </View>
-                
-                <View className="mt-3 pt-3 border-t border-zinc-800">
-                  <Text className="text-xs text-zinc-500 italic">
-                    This data shows your behavioral reality with this person. It's not about judgment - it's about awareness.
-                  </Text>
-                </View>
-              </View>
-            </View>
+
 
             {/* Quick Actions */}
             <View className="mb-6">
@@ -789,6 +696,19 @@ export function ContactDetailModal({ contact, layer, onClose, onSave }: Props) {
           }}
           onClose={() => setShowInteractionLogger(false)}
         />
+
+        {/* Interaction Stats Detail Screen */}
+        {showInteractionStats && (
+          <InteractionStatsScreen
+            contact={contact}
+            onClose={() => setShowInteractionStats(false)}
+            onReanalyze={() => {
+              setShowInteractionStats(false);
+              // TODO: Trigger data re-analysis
+              console.log('Re-analyze data requested');
+            }}
+          />
+        )}
       </View>
     </Modal>
   );
