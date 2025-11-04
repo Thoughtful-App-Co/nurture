@@ -18,12 +18,15 @@ import React, { useState } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { ALGORITHM_PRESETS, type AlgorithmType } from "@/jazz/harvestSchema";
 import { Card, Button, SectionHeader, InfoTooltip } from "@/components/ui";
+import { VolitionExplainerModal } from "@/components/harvest/VolitionExplainerModal";
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { getMockMetrics } from "@/hooks/useHarvestMetrics";
 
 export default function HarvestScreen() {
   const [activeAlgorithms, setActiveAlgorithms] = useState<AlgorithmType[]>([]);
   const [suggestions] = useState<any[]>([]); // TODO: Load from Jazz
+  const [showExplainerModal, setShowExplainerModal] = useState(false);
+  const [selectedVolitionId, setSelectedVolitionId] = useState<string | null>(null);
   
   // TODO: Replace with real data from Jazz
   // const metrics = useHarvestMetrics({
@@ -53,6 +56,15 @@ export default function HarvestScreen() {
       setActiveAlgorithms(activeAlgorithms.filter((a) => a !== type));
     } else {
       setActiveAlgorithms([...activeAlgorithms, type]);
+    }
+  };
+
+  // Handle starting a volition from the explainer modal
+  const handleStartVolition = (volitionId: string) => {
+    // TODO: Create Jazz record for volition
+    // For now, just activate it
+    if (!activeAlgorithms.includes(volitionId as AlgorithmType)) {
+      toggleAlgorithm(volitionId as AlgorithmType);
     }
   };
 
@@ -269,22 +281,30 @@ export default function HarvestScreen() {
                 <Text className="text-sm text-zinc-400 mb-3 leading-relaxed">
                   {preset.description}
                 </Text>
-                <View className="flex-row flex-wrap gap-2">
-                  <View className="px-2 py-1 bg-zinc-800 rounded">
-                    <Text className="text-xs text-zinc-400">
-                      Layers: {preset.targetLayers.join(", ")}
-                    </Text>
+                <View className="flex-row items-center justify-between">
+                  <View className="flex-row flex-wrap gap-2 flex-1">
+                    <View className="px-2 py-1 bg-zinc-800 rounded">
+                      <Text className="text-xs text-zinc-400">
+                        Layers: {preset.targetLayers.join(", ")}
+                      </Text>
+                    </View>
+                    <View className="px-2 py-1 bg-zinc-800 rounded">
+                      <Text className="text-xs text-zinc-400">
+                        Every {preset.checkFrequency} days
+                      </Text>
+                    </View>
                   </View>
-                  <View className="px-2 py-1 bg-zinc-800 rounded">
-                    <Text className="text-xs text-zinc-400">
-                      Every {preset.checkFrequency} days
-                    </Text>
-                  </View>
-                  <View className="px-2 py-1 bg-zinc-800 rounded">
-                    <Text className="text-xs text-zinc-400">
-                      {preset.actionThreshold}d threshold
-                    </Text>
-                  </View>
+                  <TouchableOpacity
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      setSelectedVolitionId(type);
+                      setShowExplainerModal(true);
+                    }}
+                    className="px-3 py-1.5 bg-zinc-800 border border-zinc-700 rounded"
+                    accessibilityLabel={`Learn more about ${preset.name}`}
+                  >
+                    <Text className="text-primary text-xs font-medium">Learn More</Text>
+                  </TouchableOpacity>
                 </View>
               </Card>
             );
@@ -294,6 +314,20 @@ export default function HarvestScreen() {
 
       {/* Bottom Spacing */}
       <View className="h-20" />
+
+      {/* Volition Explainer Modal */}
+      {selectedVolitionId && (
+        <VolitionExplainerModal
+          visible={showExplainerModal}
+          volitionId={selectedVolitionId}
+          onClose={() => {
+            setShowExplainerModal(false);
+            setSelectedVolitionId(null);
+          }}
+          onStart={handleStartVolition}
+          showStartButton={!activeAlgorithms.includes(selectedVolitionId as AlgorithmType)}
+        />
+      )}
     </Animated.ScrollView>
   );
 }
