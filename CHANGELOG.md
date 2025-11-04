@@ -1,5 +1,137 @@
 # Changelog
 
+## 2025-11-04 - Interaction Stats Transparency & PRD Updates
+
+### Added
+- **Interaction Stats Detail Screen - Comprehensive Relationship Transparency**
+  - New full-screen modal showing detailed breakdown of interaction data and score calculation
+  - **Score Breakdown Section**: Transparent calculation of all algorithm components
+    - Interaction frequency (0-30 pts)
+    - Call activity bonus with 5x weighting (0-20 pts)
+    - Call duration quality indicator (0-20 pts)
+    - Communication balance/reciprocity (0-20 pts)
+    - Recency bonus (0-10 pts)
+    - Family connection bonus (0-15 pts)
+    - Quality rating from manual logs (0-15 pts)
+    - Total: 0-100 normalized scale
+  - **Interaction vs Sentiment Section**: Side-by-side comparison
+    - Left (Blue): Objective data from device logs (calls, texts, duration)
+    - Right (Purple): Subjective user feelings (quality ratings, cultivation goals, layer)
+    - Clear separation: "What actually happened" vs "How you feel about them"
+  - **Communication Hierarchy**: Visual weight system
+    - Face-to-Face: 10x weight
+    - Voice Call: 5x weight (addresses user feedback: long calls > many texts)
+    - Video Call: 4x weight
+    - Text/SMS: 1x weight (baseline)
+    - Social Media: 0.5x weight
+    - Progress bars show relative importance
+  - **Behavioral Patterns**: Relationship dynamics visualization
+    - Initiation ratio (who reaches out more)
+    - Response time patterns
+    - Reciprocity balance with health indicators
+  - **Data Availability Warning**: Handles missing iOS data gracefully
+    - Prominent orange warning when callCount/smsCount are 0
+    - Explains platform limitations (iOS restrictions, Android permissions)
+    - Offers re-analyze button and manual logging alternative
+  - **Access**: Tap "INTERACTION STATS" in Contact Detail Modal
+  - Location: `components/relationships/InteractionStatsScreen.tsx` (new file, 900+ lines)
+
+- **PRD Story: STORY-014a - Interaction Stats Detail Screen**
+  - Documented comprehensive feature specification
+  - Status: ✅ Implemented 2025-11-04
+  - Priority: P0 (Required for MVP transparency)
+  - Definition of Done: Score breakdown, objective/subjective separation, hierarchy viz, patterns, warnings
+  - Test Criteria: User comprehension, warning visibility, graceful degradation
+  - Location: `docs/PRD.md:594-644`
+
+- **PRD Story: STORY-019 - Relationship Reports via Email (MOONSHOT)**
+  - Future feature for periodic email summaries of relationship health
+  - Report types: Weekly Summary, Monthly Deep Dive, Quarterly Review, On-Demand
+  - Content: Health score, layer distribution, top/bottom relationships, trends, goals, recommendations
+  - Delivery: Email (primary), in-app PDF, shareable links
+  - Privacy: Opt-in, configurable frequency, section controls
+  - Priority: P3 (Post-v2.0)
+  - Location: `docs/PRD.md:726-770`
+
+- **PRD Story: STORY-020 - Voice Memo Integration (MOONSHOT)**
+  - Future feature for quick voice notes about relationships
+  - Features: Quick record (2 min max), auto transcription, searchable, context attachment
+  - Use cases: Post-call reflections, meeting notes, relationship observations
+  - Integration: Contact detail, interaction stats, post-interaction prompts
+  - Challenges: Permissions UX, transcription costs, storage, privacy, battery
+  - Tech: React Native Voice, Whisper/Google Speech-to-Text, local encrypted storage
+  - Priority: P3 (Experimental, Post-v2.0)
+  - Location: `docs/PRD.md:772-840`
+
+### Changed
+- **ContactDetailModal - Simplified Interaction Stats Display**
+  - Made "INTERACTION STATS" section tappable with "View Details →" indicator
+  - Streamlined summary: Score, Interactions count (calls + texts), Quality rating
+  - Removed duplicate "Interaction Breakdown" section (88 lines deleted)
+  - Now shows brief summary with call-to-action to view full breakdown
+  - Added `showInteractionStats` state and modal integration
+  - Location: `components/relationships/ContactDetailModal.tsx:8,67,521-561,700-713`
+
+- **PRD Implementation Status - Progress Update**
+  - Updated completion status to 2025-11-04 with new feature
+  - Added Interaction Stats Detail Screen to completed list
+  - Updated "In Progress" section: Interaction Timeline (NEXT), Comparison View (NEXT)
+  - Restructured "Next Up" into NOW/NEXT/LATER priorities
+  - MVP progress: 10% → 15% (added 5% for interaction transparency UI)
+  - Location: `docs/PRD.md:12-52`
+
+- **PRD MVP Goal - Expanded Scope**
+  - Was: "Complete authentication + data mining + layer discovery"
+  - Now: "Complete authentication + data mining + layer discovery + interaction transparency"
+  - Progress breakdown: Auth (10%), Interaction UI (5%), Data Mining (0%), Layer Calc (0%)
+  - Location: `docs/PRD.md:45-52`
+
+### Removed
+- **ContactDetailModal - Duplicate Interaction Breakdown Section**
+  - Removed 88 lines of redundant interaction data display
+  - Was showing: Call stats, SMS stats, combined metrics, behavioral data
+  - Replaced with single tappable card that opens comprehensive detail screen
+  - Reduces visual clutter and cognitive load in contact modal
+  - Location: `components/relationships/ContactDetailModal.tsx` (lines 626-714 deleted)
+
+### Technical Notes
+- **Score Calculation Algorithm Transparency**
+  - Mirrors exact algorithm from `services/dunbarCalculator.ts`
+  - Provides user-facing explanation for each scoring component
+  - Helps users understand why certain relationships rank higher/lower
+  - Addresses user feedback: "Why does Jason (long calls) rank differently than Nic (many texts)?"
+
+- **Communication Weighting Philosophy**
+  - Calls (5x) > Texts (1x) reflects depth of communication
+  - Duration quality: 10+ min calls weighted highest
+  - Reciprocity: Balanced communication healthier than one-sided
+  - Recency: Recent contact indicates active relationship
+  - Family: Nuclear/Secondary/Tertiary tiers provide baseline minimum scores
+
+- **NOW/NEXT/LATER Priority System**
+  - NOW: Interaction Timeline (fetch actual call/SMS logs), Comparison View (layer averages)
+  - NEXT: Data mining pipeline (STORY-006, 001, 002, 003)
+  - LATER: Relationship Reports (MOONSHOT), Voice Memos (MOONSHOT)
+
+### Next Steps
+1. **Interaction Timeline** (NOW priority)
+   - Fetch actual interaction logs from Jazz
+   - Display chronological list of calls/texts with timestamps
+   - Group by time period (today, this week, this month, older)
+   - Show call duration, SMS count, initiator
+
+2. **Comparison View** (NOW priority)
+   - Calculate layer averages for interaction metrics
+   - Show "You interact with Jason 3x more than your Inner Circle average"
+   - Visual comparison charts/graphs
+
+3. **Data Mining Pipeline** (NEXT priority)
+   - Fix missing call/SMS data issue (currently showing 0 for most contacts)
+   - Ensure proper capture of call logs and SMS history
+   - Handle iOS limitations and Android permissions correctly
+
+---
+
 ## 2025-11-04 - Ranking Algorithm Overhaul & UX Improvements
 
 ### Added
