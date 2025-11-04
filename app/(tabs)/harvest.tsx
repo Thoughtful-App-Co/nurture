@@ -16,6 +16,7 @@ import { View, Text, TouchableOpacity } from "react-native";
 import { QUEST_PRESETS, BADGE_DEFINITIONS } from "@/jazz/harvestSchema";
 import { Card, Button, SectionHeader } from "@/components/ui";
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import BadgeCollectionModal from "@/components/relationships/BadgeCollectionModal";
 
 // Mock active quests for now (will be replaced with Jazz data)
 const MOCK_ACTIVE_QUESTS = [
@@ -39,6 +40,15 @@ const MOCK_ACTIVE_QUESTS = [
 
 export default function HarvestScreen() {
   const [activeQuests] = useState(MOCK_ACTIVE_QUESTS);
+  const [showBadgeModal, setShowBadgeModal] = useState(false);
+  
+  // Mock earned badges (will be replaced with Jazz data)
+  const earnedBadgeIds = ["CIRCLE_CLARITY", "WEEK_WARRIOR", "STEADY_GARDENER", "REFLECTIVE", "GARDENER"];
+  const badgeProgress = {
+    TRIBE_RANKER: 75,
+    MONTH_MASTER: 16,
+    REKINDLER: 2,
+  };
 
   // Get quest type color
   const getQuestColor = (type: string): string => {
@@ -200,26 +210,41 @@ export default function HarvestScreen() {
       <View className="px-6 mb-8">
         <View className="flex-row items-center justify-between mb-4">
           <SectionHeader>Your Badges</SectionHeader>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => setShowBadgeModal(true)}>
             <Text className="text-primary text-sm font-medium">View All →</Text>
           </TouchableOpacity>
         </View>
         <View className="flex-row flex-wrap gap-3">
           {/* Show first 4 earned badges */}
-          {Object.values(BADGE_DEFINITIONS).slice(0, 4).map((badge) => (
-            <View 
-              key={badge.id}
-              className="items-center bg-zinc-900 border-2 border-zinc-800 rounded-lg p-3"
-              style={{ width: '22%' }}
-            >
-              <Text className="text-3xl mb-1">{badge.emoji}</Text>
-              <Text className="text-xs text-white text-center" numberOfLines={2}>
-                {badge.name}
-              </Text>
-            </View>
-          ))}
+          {earnedBadgeIds.slice(0, 4).map((badgeId) => {
+            const badge = BADGE_DEFINITIONS[badgeId];
+            if (!badge) return null;
+            
+            return (
+              <TouchableOpacity
+                key={badge.id}
+                onPress={() => setShowBadgeModal(true)}
+                className="items-center bg-zinc-900 border-2 border-primary rounded-lg p-3"
+                style={{ width: '22%' }}
+                activeOpacity={0.7}
+              >
+                <Text className="text-3xl mb-1">{badge.emoji}</Text>
+                <Text className="text-xs text-white text-center" numberOfLines={2}>
+                  {badge.name}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
       </View>
+      
+      {/* Badge Collection Modal */}
+      <BadgeCollectionModal
+        visible={showBadgeModal}
+        onClose={() => setShowBadgeModal(false)}
+        earnedBadgeIds={earnedBadgeIds}
+        badgeProgress={badgeProgress}
+      />
 
       {/* Available Quests */}
       <View className="px-6 mb-8">
