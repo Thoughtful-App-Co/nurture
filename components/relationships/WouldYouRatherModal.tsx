@@ -458,12 +458,20 @@ export function WouldYouRatherModal({
       let stayingUpdated = 0;
       let movingUpdated = 0;
       
+      // Get final ranking for intuitive rank calculation
+      const finalRanking = rankingState.finalRanking;
+      
       const updatedContactsList = allContactsArray.map((c: any) => {
         const contactId = c.id || c.sourceId;
         
+        // Calculate intuitive rank (1-based: 1 = highest priority)
+        // This is SEPARATE from interactionScore (algorithmic)
+        const rankIndex = finalRanking.indexOf(contactId);
+        const intuitiveRank = rankIndex >= 0 ? rankIndex + 1 : undefined;
+        
         // Check if contact is moving down to next layer
         if (proposedChanges.movingDown.includes(contactId)) {
-          console.log(`  ↓ Moving: ${c.name} (Layer ${violatedLayer} → Layer ${violatedLayer + 1})`);
+          console.log(`  ↓ Moving: ${c.name} (Layer ${violatedLayer} → Layer ${violatedLayer + 1}) - Intuitive Rank: #${intuitiveRank}`);
           movingUpdated++;
           
           return Contact.create({
@@ -500,13 +508,16 @@ export function WouldYouRatherModal({
             tags: c.tags,
             quickSortStatus: "sorted", // Mark as sorted to prevent re-sorting
             quickSortedAt: new Date().toISOString(),
+            intuitiveRank, // User's explicit ranking from Would You Rather
+            intuitiveRankedAt: new Date().toISOString(),
+            intuitiveRankingSessionId: sessionId,
             createdAt: c.createdAt,
           }, me);
         }
         
         // Check if contact is staying in current layer
         if (proposedChanges.staying.includes(contactId)) {
-          console.log(`  ✓ Staying: ${c.name} (Layer ${violatedLayer})`);
+          console.log(`  ✓ Staying: ${c.name} (Layer ${violatedLayer}) - Intuitive Rank: #${intuitiveRank}`);
           stayingUpdated++;
           
           return Contact.create({
@@ -543,6 +554,9 @@ export function WouldYouRatherModal({
             tags: c.tags,
             quickSortStatus: "sorted", // Mark as sorted to prevent re-sorting
             quickSortedAt: new Date().toISOString(),
+            intuitiveRank, // User's explicit ranking from Would You Rather
+            intuitiveRankedAt: new Date().toISOString(),
+            intuitiveRankingSessionId: sessionId,
             createdAt: c.createdAt,
           }, me);
         }

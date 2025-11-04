@@ -72,6 +72,13 @@ export const Contact = co.map({
   quickSortStatus: z.enum(["not_sorted", "sorted", "hidden"]).optional(), // Tracks if contact has been sorted
   quickSortedAt: z.string().optional(), // ISO date of when contact was quick-sorted
   
+  // User-Intuitive Ranking (from Would You Rather sessions)
+  // This is SEPARATE from interactionScore (which is algorithmic/data-driven)
+  // intuitiveRank represents the user's explicit preference from manual sorting
+  intuitiveRank: z.number().optional(), // 1-based rank from manual sorting (1 = highest priority)
+  intuitiveRankedAt: z.string().optional(), // ISO date of when user last ranked this contact
+  intuitiveRankingSessionId: z.string().optional(), // Which ranking session produced this rank
+  
   createdAt: z.string(), // ISO date
 });
 
