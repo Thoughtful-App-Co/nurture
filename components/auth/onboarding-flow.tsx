@@ -13,6 +13,7 @@
 import React, { useState } from "react";
 import { View, Text, TextInput, Pressable, KeyboardAvoidingView, Platform, ScrollView, Keyboard } from "react-native";
 import { DataVerificationScreen } from "@/components/onboarding/DataVerificationScreen";
+import { z } from "zod";
 
 // Dynamically import expo-contacts to avoid errors in Expo Go
 let Contacts: any = null;
@@ -37,6 +38,13 @@ interface OnboardingFlowProps {
   onComplete: (data: OnboardingData) => void;
 }
 
+// Zod validation schemas
+const emailSchema = z.string().email({ message: "Please enter a valid email address" });
+const phoneSchema = z
+  .string()
+  .min(10, { message: "Phone number must be at least 10 digits" })
+  .regex(/^[\d\s()+\-\.]+$/, { message: "Please enter a valid phone number" });
+
 export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const [currentStep, setCurrentStep] = useState<OnboardingStep>("welcome");
   const [data, setData] = useState<OnboardingData>({
@@ -46,6 +54,8 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     phone: "",
     hasContactsPermission: false,
   });
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
 
   const handleRequestContactsPermission = async () => {
     if (!Contacts) {
@@ -64,6 +74,32 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     } catch (error) {
       console.error("Failed to request contacts permission:", error);
       setCurrentStep("data-verification");
+    }
+  };
+
+  const validateEmail = (email: string): boolean => {
+    try {
+      emailSchema.parse(email);
+      setEmailError(null);
+      return true;
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        setEmailError(error.errors[0]?.message || "Invalid email");
+      }
+      return false;
+    }
+  };
+
+  const validatePhone = (phone: string): boolean => {
+    try {
+      phoneSchema.parse(phone);
+      setPhoneError(null);
+      return true;
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        setPhoneError(error.errors[0]?.message || "Invalid phone number");
+      }
+      return false;
     }
   };
 
@@ -138,9 +174,9 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             </Text>
           </View>
 
-          {/* Input Fields */}
-          <View className="space-y-6 mb-8">
-            <View>
+          {/* Input Fields - Improved spacing per design specs */}
+          <View className="mb-8">
+            <View className="mb-6">
               <Text className="text-xs text-zinc-400 mb-2 font-semibold uppercase tracking-wider">
                 FIRST NAME
               </Text>
@@ -204,10 +240,10 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     );
   }
 
-  // Step 3: Contact Info (Email & Phone)
+  // Step 3: Contact Info (Email & Phone) - Improved spacing and Zod validation
   if (currentStep === "contact-info") {
-    const isValidEmail = data.email.trim().includes("@");
-    const isValidPhone = data.phone.trim().length >= 10; // Basic validation
+    const isValidEmail = emailError === null && data.email.trim().length > 0;
+    const isValidPhone = phoneError === null && data.phone.trim().length >= 10;
     const isValid = isValidEmail && isValidPhone;
 
     return (
@@ -232,22 +268,41 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             </Text>
           </View>
 
-          {/* Input Fields */}
-          <View className="space-y-6 mb-8">
-            <View>
+          {/* Input Fields - Improved spacing per design specs */}
+          <View className="mb-8">
+            <View className="mb-6">
               <Text className="text-xs text-zinc-400 mb-2 font-semibold uppercase tracking-wider">
                 EMAIL ADDRESS
               </Text>
               <TextInput
                 value={data.email}
-                onChangeText={(text) => setData({ ...data, email: text })}
+                onChangeText={(text) => {
+                  setData({ ...data, email: text });
+                  if (text.trim().length > 0) {
+                    validateEmail(text);
+                  } else {
+                    setEmailError(null);
+                  }
+                }}
+                onBlur={() => {
+                  if (data.email.trim().length > 0) {
+                    validateEmail(data.email);
+                  }
+                }}
                 placeholder="your.email@example.com"
                 placeholderTextColor="#71717a"
-                className="bg-zinc-900 text-white text-base px-4 py-3 border-2 border-zinc-800 min-h-[44px]"
+                className={`bg-zinc-900 text-white text-base px-4 py-3 border-2 min-h-[44px] ${
+                  emailError ? "border-red-500" : "border-zinc-800"
+                }`}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoComplete="email"
               />
+              {emailError && (
+                <Text className="text-red-400 text-sm mt-2">
+                  {emailError}
+                </Text>
+              )}
             </View>
 
             <View>
@@ -256,13 +311,32 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               </Text>
               <TextInput
                 value={data.phone}
-                onChangeText={(text) => setData({ ...data, phone: text })}
+                onChangeText={(text) => {
+                  setData({ ...data, phone: text });
+                  if (text.trim().length >= 10) {
+                    validatePhone(text);
+                  } else {
+                    setPhoneError(null);
+                  }
+                }}
+                onBlur={() => {
+                  if (data.phone.trim().length >= 10) {
+                    validatePhone(data.phone);
+                  }
+                }}
                 placeholder="+1 (555) 123-4567"
                 placeholderTextColor="#71717a"
-                className="bg-zinc-900 text-white text-base px-4 py-3 border-2 border-zinc-800 min-h-[44px]"
+                className={`bg-zinc-900 text-white text-base px-4 py-3 border-2 min-h-[44px] ${
+                  phoneError ? "border-red-500" : "border-zinc-800"
+                }`}
                 keyboardType="phone-pad"
                 autoComplete="tel"
               />
+              {phoneError && (
+                <Text className="text-red-400 text-sm mt-2">
+                  {phoneError}
+                </Text>
+              )}
             </View>
           </View>
 
