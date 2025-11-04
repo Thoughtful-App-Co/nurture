@@ -6,8 +6,9 @@
  * Provides full transparency on how relationship scores are calculated.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, ScrollView, Pressable, Modal } from 'react-native';
+import { useAccount } from 'jazz-tools/expo';
 import { ManualInteractionLogger } from './ManualInteractionLogger';
 
 interface Contact {
@@ -41,11 +42,59 @@ interface Props {
 }
 
 export function InteractionStatsScreen({ contact, onClose, onReanalyze }: Props) {
+  const { me } = useAccount();
   const [showInteractionLogger, setShowInteractionLogger] = useState(false);
 
   // Check if we have interaction data
   const hasInteractionData = (contact.callCount && contact.callCount > 0) || 
                              (contact.smsCount && contact.smsCount > 0);
+
+  // Fetch interactions for this contact from Jazz
+  const contactInteractions = useMemo(() => {
+    if (!me || !contact.id) return [];
+    
+    const root = me.root as any;
+    const allInteractions = root?.interactions || [];
+    
+    // Filter interactions for this contact
+    return Array.from(allInteractions)
+      .filter((interaction: any) => interaction?.contactId === contact.id)
+      .sort((a: any, b: any) => {
+        // Sort by date descending (newest first)
+        const dateA = new Date(a?.date || 0).getTime();
+        const dateB = new Date(b?.date || 0).getTime();
+        return dateB - dateA;
+      });
+  }, [me, contact.id]);
+
+  // Calculate layer averages for comparison
+  const layerAverages = useMemo(() => {
+    if (!me || contact.dunbarLayer === undefined) return null;
+    
+    const root = me.root as any;
+    const allContacts = Array.from(root?.contacts || []);
+    
+    // Get all contacts in the same layer
+    const layerContacts = allContacts.filter(
+      (c: any) => c?.dunbarLayer === contact.dunbarLayer && c?.id !== contact.id
+    );
+    
+    if (layerContacts.length === 0) return null;
+    
+    // Calculate averages
+    const avgInteractionScore = layerContacts.reduce((sum: number, c: any) => sum + (c?.interactionScore || 0), 0) / layerContacts.length;
+    const avgCallCount = layerContacts.reduce((sum: number, c: any) => sum + (c?.callCount || 0), 0) / layerContacts.length;
+    const avgSmsCount = layerContacts.reduce((sum: number, c: any) => sum + (c?.smsCount || 0), 0) / layerContacts.length;
+    const avgTotalDuration = layerContacts.reduce((sum: number, c: any) => sum + (c?.totalDuration || 0), 0) / layerContacts.length;
+    
+    return {
+      interactionScore: avgInteractionScore,
+      callCount: avgCallCount,
+      smsCount: avgSmsCount,
+      totalDuration: avgTotalDuration,
+      contactCount: layerContacts.length,
+    };
+  }, [me, contact.dunbarLayer, contact.id]);
 
   return (
     <Modal
@@ -124,8 +173,19 @@ export function InteractionStatsScreen({ contact, onClose, onReanalyze }: Props)
             <CommunicationHierarchySection />
 
             {/* Interaction Timeline */}
-            {hasInteractionData && (
-              <InteractionTimelineSection contact={contact} />
+            {(hasInteractionData || contactInteractions.length > 0) && (
+              <InteractionTimelineSection 
+                contact={contact} 
+                interactions={contactInteractions}
+              />
+            )}
+
+            {/* Comparison View */}
+            {layerAverages && (
+              <ComparisonViewSection 
+                contact={contact}
+                layerAverages={layerAverages}
+              />
             )}
 
             {/* Behavioral Patterns */}
@@ -608,69 +668,197 @@ function CommunicationHierarchySection() {
 
 /**
  * Interaction Timeline Section
- * Shows recent interactions grouped by type
+ * Shows recent interactions grouped by type with actual logs
  */
-function InteractionTimelineSection({ contact }: { contact: Contact }) {
-  // For now, just show summary. In future, we can fetch actual interaction logs
-  const hasData = (contact.callCount || 0) > 0 || (contact.smsCount || 0) > 0;
+function InteractionTimelineSection({ contact, interactions }: { contact: Contact; interactions: any[] }) {
+  const hasData = (contact.callCount || 0) > 0 || (contact.smsCount || 0) > 0 || interactions.length > 0;
   
   if (!hasData) return null;
+  
+  // Group interactions by time period
+  const groupedInteractions = useMemo(() => {
+    const now = Date.now();
+    const oneDayAgo = now - (24 * 60 * 60 * 1000);
+    const oneWeekAgo = now - (7 * 24 * 60 * 60 * 1000);
+    const oneMonthAgo = now - (30 * 24 * 60 * 60 * 1000);
+    
+    return {
+      today: interactions.filter((i: any) => new Date(i?.date || 0).getTime() > oneDayAgo),
+      thisWeek: interactions.filter((i: any) => {
+        const time = new Date(i?.date || 0).getTime();
+        return time <= oneDayAgo && time > oneWeekAgo;
+      }),
+      thisMonth: interactions.filter((i: any) => {
+        const time = new Date(i?.date || 0).getTime();
+        return time <= oneWeekAgo && time > oneMonthAgo;
+      }),
+      older: interactions.filter((i: any) => new Date(i?.date || 0).getTime() <= oneMonthAgo),
+    };
+  }, [interactions]);
+  
+  // Helper to render interaction icon
+  const getInteractionIcon = (type: string) => {
+    switch (type) {
+      case 'face-to-face': return '🤝';
+      case 'call': return '📞';
+      case 'text': return '💬';
+      case 'video': return '📹';
+      case 'email': return '📧';
+      case 'social-media': return '💭';
+      default: return '💬';
+    }
+  };
+  
+  // Helper to format interaction type
+  const formatType = (type: string) => {
+    return type.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  };
   
   return (
     <View className="mb-6">
       <Text className="text-sm text-secondary font-medium mb-3">
-        INTERACTION SUMMARY
+        INTERACTION TIMELINE
       </Text>
       
       <View className="bg-zinc-900 border-2 border-zinc-800 p-4">
-        <Text className="text-zinc-400 text-xs mb-4">
-          Last 3 months of activity
-        </Text>
+        {/* Summary Stats */}
+        <View className="mb-4 pb-4 border-b border-zinc-800">
+          <Text className="text-zinc-400 text-xs mb-3">
+            Last 3 months summary
+          </Text>
+          
+          <View className="flex-row justify-between">
+            {contact.callCount && contact.callCount > 0 && (
+              <View>
+                <Text className="text-zinc-400 text-xs">Calls</Text>
+                <Text className="text-primary text-lg font-bold">{contact.callCount}</Text>
+              </View>
+            )}
+            
+            {contact.smsCount && contact.smsCount > 0 && (
+              <View>
+                <Text className="text-zinc-400 text-xs">Texts</Text>
+                <Text className="text-primary text-lg font-bold">{contact.smsCount}</Text>
+              </View>
+            )}
+            
+            {contact.totalDuration && contact.totalDuration > 0 && (
+              <View>
+                <Text className="text-zinc-400 text-xs">Duration</Text>
+                <Text className="text-primary text-lg font-bold">
+                  {Math.floor((contact.totalDuration || 0) / 60)}m
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
         
-        {contact.callCount && contact.callCount > 0 && (
-          <View className="mb-3 pb-3 border-b border-zinc-800">
-            <View className="flex-row justify-between items-center mb-1">
-              <Text className="text-white text-sm font-medium">📞 Voice Calls</Text>
-              <Text className="text-primary text-sm font-bold">
-                {contact.callCount}
-              </Text>
-            </View>
-            {contact.totalDuration !== undefined && contact.totalDuration > 0 && (
-              <Text className="text-zinc-400 text-xs">
-                Total: {Math.floor((contact.totalDuration || 0) / 60)} min
-                {contact.callCount > 0 && (
-                  <> • Avg: {Math.floor((contact.totalDuration || 0) / contact.callCount / 60)} min/call</>
+        {/* Manual Interaction Logs */}
+        {interactions.length > 0 ? (
+          <>
+            <Text className="text-zinc-400 text-xs mb-3">
+              Recent manually logged interactions
+            </Text>
+            
+            {/* Today */}
+            {groupedInteractions.today.length > 0 && (
+              <View className="mb-3">
+                <Text className="text-zinc-500 text-xs font-semibold mb-2">TODAY</Text>
+                {groupedInteractions.today.map((interaction: any, index: number) => (
+                  <InteractionLogItem key={index} interaction={interaction} getIcon={getInteractionIcon} formatType={formatType} />
+                ))}
+              </View>
+            )}
+            
+            {/* This Week */}
+            {groupedInteractions.thisWeek.length > 0 && (
+              <View className="mb-3">
+                <Text className="text-zinc-500 text-xs font-semibold mb-2">THIS WEEK</Text>
+                {groupedInteractions.thisWeek.map((interaction: any, index: number) => (
+                  <InteractionLogItem key={index} interaction={interaction} getIcon={getInteractionIcon} formatType={formatType} />
+                ))}
+              </View>
+            )}
+            
+            {/* This Month */}
+            {groupedInteractions.thisMonth.length > 0 && (
+              <View className="mb-3">
+                <Text className="text-zinc-500 text-xs font-semibold mb-2">THIS MONTH</Text>
+                {groupedInteractions.thisMonth.map((interaction: any, index: number) => (
+                  <InteractionLogItem key={index} interaction={interaction} getIcon={getInteractionIcon} formatType={formatType} />
+                ))}
+              </View>
+            )}
+            
+            {/* Older */}
+            {groupedInteractions.older.length > 0 && (
+              <View>
+                <Text className="text-zinc-500 text-xs font-semibold mb-2">OLDER</Text>
+                {groupedInteractions.older.slice(0, 5).map((interaction: any, index: number) => (
+                  <InteractionLogItem key={index} interaction={interaction} getIcon={getInteractionIcon} formatType={formatType} />
+                ))}
+                {groupedInteractions.older.length > 5 && (
+                  <Text className="text-zinc-500 text-xs italic mt-2">
+                    + {groupedInteractions.older.length - 5} more older interactions
+                  </Text>
                 )}
-              </Text>
+              </View>
             )}
+          </>
+        ) : (
+          <Text className="text-zinc-500 text-sm italic">
+            No manually logged interactions yet. Use the "Log Interaction" button below to start tracking.
+          </Text>
+        )}
+      </View>
+    </View>
+  );
+}
+
+/**
+ * Helper component to render individual interaction log item
+ */
+function InteractionLogItem({ 
+  interaction, 
+  getIcon, 
+  formatType 
+}: { 
+  interaction: any; 
+  getIcon: (type: string) => string; 
+  formatType: (type: string) => string;
+}) {
+  return (
+    <View className="flex-row items-center py-2 border-b border-zinc-800 last:border-b-0">
+      <Text className="text-xl mr-3">{getIcon(interaction.type)}</Text>
+      
+      <View className="flex-1">
+        <View className="flex-row items-center justify-between mb-1">
+          <Text className="text-white text-sm font-medium">
+            {formatType(interaction.type)}
+          </Text>
+          <Text className="text-zinc-500 text-xs">
+            {formatLastInteraction(interaction.date)}
+          </Text>
+        </View>
+        
+        {interaction.duration && (
+          <Text className="text-zinc-400 text-xs">
+            Duration: {interaction.duration} min
+          </Text>
+        )}
+        
+        {interaction.quality && (
+          <View className="flex-row items-center mt-1">
+            <Text className="text-yellow-400 text-xs">
+              {'⭐'.repeat(interaction.quality)}
+            </Text>
           </View>
         )}
         
-        {contact.smsCount && contact.smsCount > 0 && (
-          <View className="mb-3 pb-3 border-b border-zinc-800">
-            <View className="flex-row justify-between items-center mb-1">
-              <Text className="text-white text-sm font-medium">💬 Text Messages</Text>
-              <Text className="text-primary text-sm font-bold">
-                {contact.smsCount}
-              </Text>
-            </View>
-            {contact.reciprocityScore !== undefined && contact.reciprocityScore > 0 && (
-              <Text className="text-zinc-400 text-xs">
-                Reciprocity: {Math.round((contact.reciprocityScore || 0) * 100)}%
-              </Text>
-            )}
-          </View>
-        )}
-        
-        {contact.lastInteraction && (
-          <View>
-            <View className="flex-row justify-between items-center">
-              <Text className="text-white text-sm font-medium">Last Contact</Text>
-              <Text className="text-primary text-sm font-bold">
-                {formatLastInteraction(contact.lastInteraction)}
-              </Text>
-            </View>
-          </View>
+        {interaction.notes && (
+          <Text className="text-zinc-500 text-xs mt-1 italic" numberOfLines={2}>
+            "{interaction.notes}"
+          </Text>
         )}
       </View>
     </View>
@@ -756,6 +944,161 @@ function BehavioralPatternsSection({ contact }: { contact: Contact }) {
               <Text className="text-zinc-400 text-sm">Average</Text>
               <Text className="text-primary text-sm font-bold">
                 {Math.floor((contact.averageResponseTime || 0) / 3600)}h {Math.floor(((contact.averageResponseTime || 0) % 3600) / 60)}m
+              </Text>
+            </View>
+          </View>
+        )}
+      </View>
+    </View>
+  );
+}
+
+/**
+ * Comparison View Section
+ * Shows how this contact compares to layer averages
+ */
+function ComparisonViewSection({ 
+  contact, 
+  layerAverages 
+}: { 
+  contact: Contact; 
+  layerAverages: {
+    interactionScore: number;
+    callCount: number;
+    smsCount: number;
+    totalDuration: number;
+    contactCount: number;
+  };
+}) {
+  const layerNames = ['Loved Ones', 'Inner Circle', 'Clan', 'Tribe', 'Acquaintances', 'Social Nebula'];
+  const layerName = layerNames[contact.dunbarLayer || 5];
+  
+  // Calculate comparison percentages
+  const scoreComparison = ((contact.interactionScore || 0) / layerAverages.interactionScore) * 100;
+  const callComparison = ((contact.callCount || 0) / (layerAverages.callCount || 1)) * 100;
+  const smsComparison = ((contact.smsCount || 0) / (layerAverages.smsCount || 1)) * 100;
+  const durationComparison = ((contact.totalDuration || 0) / (layerAverages.totalDuration || 1)) * 100;
+  
+  return (
+    <View className="mb-6">
+      <Text className="text-sm text-secondary font-medium mb-3">
+        COMPARISON TO {layerName.toUpperCase()}
+      </Text>
+      
+      <View className="bg-zinc-900 border-2 border-zinc-800 p-4">
+        <Text className="text-zinc-400 text-xs mb-4">
+          Compared to {layerAverages.contactCount} other {layerAverages.contactCount === 1 ? 'contact' : 'contacts'} in your {layerName}
+        </Text>
+        
+        {/* Overall Score Comparison */}
+        <View className="mb-4 pb-4 border-b border-zinc-800">
+          <View className="flex-row justify-between items-center mb-2">
+            <Text className="text-white text-sm font-medium">Overall Score</Text>
+            <Text className={`text-sm font-bold ${
+              scoreComparison > 100 ? 'text-primary' : 
+              scoreComparison > 80 ? 'text-blue-400' : 
+              'text-zinc-400'
+            }`}>
+              {scoreComparison > 100 ? `${Math.round(scoreComparison - 100)}% above` : 
+               scoreComparison < 100 ? `${Math.round(100 - scoreComparison)}% below` : 
+               'Average'}
+            </Text>
+          </View>
+          
+          <View className="flex-row items-center gap-2">
+            <View className="flex-1 h-3 bg-zinc-800 rounded-full overflow-hidden">
+              <View 
+                className={`h-full rounded-full ${
+                  scoreComparison > 100 ? 'bg-primary' : 'bg-blue-500'
+                }`}
+                style={{ width: `${Math.min(scoreComparison, 100)}%` }}
+              />
+            </View>
+            <Text className="text-zinc-500 text-xs w-16 text-right">
+              {Math.round(scoreComparison)}%
+            </Text>
+          </View>
+          
+          {scoreComparison > 150 && (
+            <Text className="text-primary text-xs mt-2">
+              ⭐ You interact with {contact.name} much more than your average {layerName} contact
+            </Text>
+          )}
+        </View>
+        
+        {/* Calls Comparison */}
+        {(contact.callCount || 0) > 0 && (
+          <View className="mb-4 pb-4 border-b border-zinc-800">
+            <View className="flex-row justify-between items-center mb-2">
+              <Text className="text-white text-sm">📞 Calls</Text>
+              <Text className="text-zinc-400 text-sm">
+                {contact.callCount} vs {Math.round(layerAverages.callCount)} avg
+              </Text>
+            </View>
+            
+            <View className="flex-row items-center gap-2">
+              <View className="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                <View 
+                  className="h-full rounded-full bg-blue-500"
+                  style={{ width: `${Math.min(callComparison, 100)}%` }}
+                />
+              </View>
+              <Text className="text-zinc-500 text-xs w-16 text-right">
+                {Math.round(callComparison)}%
+              </Text>
+            </View>
+            
+            {callComparison > 200 && (
+              <Text className="text-blue-400 text-xs mt-1">
+                {Math.round(callComparison / 100)}x more calls than average
+              </Text>
+            )}
+          </View>
+        )}
+        
+        {/* Duration Comparison */}
+        {(contact.totalDuration || 0) > 0 && (
+          <View className="mb-4 pb-4 border-b border-zinc-800">
+            <View className="flex-row justify-between items-center mb-2">
+              <Text className="text-white text-sm">⏱️ Call Duration</Text>
+              <Text className="text-zinc-400 text-sm">
+                {Math.round((contact.totalDuration || 0) / 60)} min vs {Math.round(layerAverages.totalDuration / 60)} avg
+              </Text>
+            </View>
+            
+            <View className="flex-row items-center gap-2">
+              <View className="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                <View 
+                  className="h-full rounded-full bg-purple-500"
+                  style={{ width: `${Math.min(durationComparison, 100)}%` }}
+                />
+              </View>
+              <Text className="text-zinc-500 text-xs w-16 text-right">
+                {Math.round(durationComparison)}%
+              </Text>
+            </View>
+          </View>
+        )}
+        
+        {/* SMS Comparison */}
+        {(contact.smsCount || 0) > 0 && (
+          <View className="mb-2">
+            <View className="flex-row justify-between items-center mb-2">
+              <Text className="text-white text-sm">💬 Texts</Text>
+              <Text className="text-zinc-400 text-sm">
+                {contact.smsCount} vs {Math.round(layerAverages.smsCount)} avg
+              </Text>
+            </View>
+            
+            <View className="flex-row items-center gap-2">
+              <View className="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                <View 
+                  className="h-full rounded-full bg-yellow-500"
+                  style={{ width: `${Math.min(smsComparison, 100)}%` }}
+                />
+              </View>
+              <Text className="text-zinc-500 text-xs w-16 text-right">
+                {Math.round(smsComparison)}%
               </Text>
             </View>
           </View>
