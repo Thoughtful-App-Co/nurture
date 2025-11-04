@@ -1,117 +1,34 @@
 # Changelog
 
-## 2025-11-04 - Interaction Timeline & Comparison View (NOW Stories Complete)
+## 2025-11-04 - Harvest Epic & Quest System Design
 
 ### Added
-- **Interaction Timeline with Actual Logs - Live Data from Jazz**
-  - Fetches manual interaction logs from Jazz `UserProfile.interactions`
-  - Filters by contact ID and sorts chronologically (newest first)
-  - Groups interactions by time period:
-    - **Today**: Last 24 hours
-    - **This Week**: 1-7 days ago
-    - **This Month**: 7-30 days ago  
-    - **Older**: 30+ days (shows first 5, indicates if more exist)
-  - Rich interaction display:
-    - Type-specific icons (🤝 face-to-face, 📞 call, 💬 text, 📹 video, 📧 email, 💭 social)
-    - Duration for calls/meetings (in minutes)
-    - Quality rating from manual logs (⭐ 1-5 stars)
-    - Notes preview (truncated to 2 lines)
-    - Relative timestamps ("2 days ago", "Yesterday", "Today")
-  - Summary stats header: Total calls, texts, and duration from device logs
-  - Empty state: "No manually logged interactions yet" with hint to use logger
-  - Location: `components/relationships/InteractionStatsScreen.tsx:673-865`
-
-- **Comparison View - Layer Average Benchmarking**
-  - Calculates averages for all contacts in same Dunbar layer
-  - Metrics compared:
-    - **Overall interaction score** (0-100 scale)
-    - **Call count** (total calls in 3 months)
-    - **SMS count** (total texts in 3 months)
-    - **Call duration** (total minutes on phone)
-  - Visual comparison bars:
-    - Color-coded: Green (above avg), Blue (near avg), Gray (below avg)
-    - Horizontal progress bars with percentage labels
-    - Capped at 100% visual width (labels show true percentage)
-  - Contextual insights:
-    - "⭐ You interact with [Name] much more than your average [Layer] contact" (>150%)
-    - "3x more calls than average" (>200%)
-    - Layer context: "Compared to [N] other contacts in your [Layer Name]"
-  - Null safety: Only shows if layer has other contacts for comparison
-  - Location: `components/relationships/InteractionStatsScreen.tsx:956-1107`
-
-### Changed
-- **InteractionStatsScreen - Jazz Integration for Live Data**
-  - Added `useAccount` hook to access Jazz user profile
-  - Added `useMemo` for `contactInteractions` (filters and sorts interaction logs)
-  - Added `useMemo` for `layerAverages` (calculates layer-wide statistics)
-  - Performance optimized: Calculations cached until contact/layer changes
-  - Updated `InteractionTimelineSection` signature to accept `interactions` prop
-  - Conditionally renders Timeline if device data OR manual logs exist
-  - Conditionally renders Comparison View if layer has other contacts
-  - Location: `components/relationships/InteractionStatsScreen.tsx:45-97,176-189`
-
-- **InteractionTimelineSection - Complete Rewrite**
-  - Was: Simple summary of call/SMS counts from device logs (48 lines)
-  - Now: Full timeline with grouped manual logs (198 lines)
-  - Removed: Basic summary display without actual logs
-  - Added: Time-based grouping logic with `useMemo`
-  - Added: `InteractionLogItem` helper component for individual log rendering
-  - Added: Icon helper (`getInteractionIcon`) for type-specific display
-  - Added: Type formatter (`formatType`) for human-readable labels
-  - Shows device log summary stats alongside manual logs
-  - Location: `components/relationships/InteractionStatsScreen.tsx:673-865`
-
-### Technical Notes
-- **Data Flow**: `UserProfile.interactions` → Filter by contactId → Sort by date → Group by time period → Render
-- **Layer Averages Algorithm**:
-  ```typescript
-  1. Fetch all contacts from Jazz root
-  2. Filter contacts in same Dunbar layer (exclude current contact)
-  3. Calculate averages: sum all metrics / contact count
-  4. Return null if no other contacts in layer (graceful degradation)
-  5. Compare current contact metrics to averages
-  6. Display percentage above/below average with visual bars
-  ```
-- **Performance**: `useMemo` ensures calculations run only when dependencies change (me, contact.id, contact.dunbarLayer)
-- **Graceful Degradation**:
-  - Timeline: Falls back to device log summary if no manual logs
-  - Comparison: Hides section if no layer contacts for comparison
-  - Division by zero: Uses `|| 1` fallback for safe division
-
-### User Experience Improvements
-- **Transparency**: Users see exactly how they compare to their layer peers
-- **Context**: "You call Jason 3x more than your Inner Circle average" answers "Is this normal?"
-- **Actionable Insights**: Visual bars make it easy to see where relationship stands
-- **Historical View**: Timeline shows relationship evolution over time
-- **Empty States**: Clear messaging when no data available yet
-
-### PRD Alignment
-- ✅ **STORY-014a: Interaction Timeline** - COMPLETE
-  - Fetch actual interaction logs from Jazz ✓
-  - Display chronological list with timestamps ✓
-  - Group by time period (today, week, month, older) ✓
-  - Show call duration, SMS count, initiator ✓
-  - Rich display with icons, quality ratings, notes ✓
-
-- ✅ **Comparison View** - COMPLETE  
-  - Calculate layer averages ✓
-  - Visual comparison charts/graphs ✓
-  - "You interact 3x more than average" insights ✓
-  - Color-coded indicators ✓
-  - Graceful null handling ✓
-
-### Next Steps (NEXT Priority)
-- **STORY-006**: Data Mining Onboarding Screen (permissions request)
-- **STORY-001**: Contact Data Ingestion (read device contacts)
-- **STORY-002**: Call & SMS Log Mining (analyze interaction patterns)
-- **STORY-003**: Dunbar Layer Calculator (assign behavioral layers)
-
-**NOW Stories Status**: 3/3 Complete ✅
-1. ✅ Interaction Stats Detail Screen (completed 2025-11-04)
-2. ✅ Interaction Timeline (completed 2025-11-04)
-3. ✅ Comparison View (completed 2025-11-04)
-
----
+- **Harvest Epic Documentation - Quest System & Achievement Framework** 🎮
+  - Comprehensive design for gamified relationship cultivation system
+  - Transforms Harvest from suggestion engine to daily quest system
+  - Quests act as "feature flags" that enable daily prompts/modals
+  - **Solves scalability problem**: 2-3 questions per day instead of 173 at once
+  - **Quest Categories**:
+    - Ranking Quests: Build intuitiveRank data gradually ("Know Your Circle", "Complete Your Ranking")
+    - Maintenance Quests: Relationship actions ("Weekly Check-In", "Rekindle Connections")
+    - Quality Quests: Data enrichment ("Rate Interactions", "Family Tree Builder")
+    - Discovery Quests: Feature exploration ("Explore Your Garden")
+  - **Badge System Design**:
+    - Completion badges for milestones (e.g., "Full Garden Ranker" - rank ALL contacts)
+    - Streak badges for consistency (Week Warrior, Month Master, Year Gardener)
+    - Action badges for relationship activities (Rekindler, Social Butterfly)
+    - Quality badges for data improvement (Reflective, Genealogist)
+  - **Architecture**:
+    - Quest data model with progress tracking and streaks
+    - Badge schema with unlock requirements
+    - Daily task generation algorithm
+    - Partial ranking state for resumability
+    - Feature flag system using quest configuration
+  - **Key Innovation**: Spread 100+ comparisons over 30-45 days at 2-3/day
+  - **Benefits**: Sustainable habits, clear goals, tangible rewards, daily engagement
+  - **Implementation**: 6-week phased rollout plan documented
+  - Location: `docs/features/HARVEST_EPIC.md` (715 lines)
+  - Complements: `docs/features/HARVEST_MODULE.md` (algorithm-focused)
 
 ## 2025-11-04 - Interaction Stats Transparency & PRD Updates
 
