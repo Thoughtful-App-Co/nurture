@@ -24,6 +24,7 @@ import {
   Animated,
   Dimensions,
   Alert,
+  ScrollView,
 } from "react-native";
 import { useAccount } from "jazz-tools/expo";
 import { Card, Button } from "@/components/ui";
@@ -77,12 +78,15 @@ export function WouldYouRatherModal({
   
   // Ranking state
   const [rankingState, setRankingState] = useState<RankingState | null>(null);
+  const [currentPair, setCurrentPair] = useState<{ contactA: any; contactB: any } | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState<string>("");
   const [sessionStartTime, setSessionStartTime] = useState<number>(0);
   const [comparisonStartTime, setComparisonStartTime] = useState<number>(0);
   
   // UI state
   const [isComplete, setIsComplete] = useState(false);
+  const [showReviewScreen, setShowReviewScreen] = useState(false);
+  const [proposedChanges, setProposedChanges] = useState<any>(null); // LayerReallocationResult
   const [selectedCard, setSelectedCard] = useState<"left" | "right" | null>(null);
   
   // Animation
@@ -144,6 +148,10 @@ export function WouldYouRatherModal({
       // Initialize session tracking
       initializeSession(state);
       
+      // Get first pair and set it in state
+      const firstPair = getNextPair(state);
+      setCurrentPair(firstPair);
+      
       // Get first question
       const question = getRotatedQuestion(0, Date.now(), []);
       setCurrentQuestion(question.text);
@@ -151,6 +159,7 @@ export function WouldYouRatherModal({
       console.log('✅ Ranking session initialized');
       console.log(`Algorithm: ${state.algorithm}`);
       console.log(`Total comparisons needed: ${state.totalComparisonsNeeded}`);
+      console.log(`First pair: ${firstPair ? `${firstPair.contactA.name} vs ${firstPair.contactB.name}` : 'None'}`);
       console.log('');
     }
   }, [visible, contacts, violatedLayer, layerCapacity, violatedLayerName]);
@@ -164,9 +173,6 @@ export function WouldYouRatherModal({
     
     console.log(`✅ Created session: ${id}`);
   };
-  
-  // Get current pair
-  const currentPair = rankingState ? getNextPair(rankingState) : null;
   
   // Handle card selection
   const handleCardPress = async (side: "left" | "right") => {
@@ -323,7 +329,10 @@ export function WouldYouRatherModal({
         setCurrentQuestion(question.text);
         setComparisonStartTime(Date.now());
         
-        // Reset UI
+        // Set next pair in state (THIS IS THE KEY FIX)
+        setCurrentPair(nextPair);
+        
+        // Reset UI and fade back in
         setSelectedCard(null);
         fadeAnim.setValue(1);
         scaleLeft.setValue(1);
@@ -332,13 +341,13 @@ export function WouldYouRatherModal({
     });
   };
   
-  // Complete ranking and reallocate
+  // Complete ranking and show review screen
   const completeRanking = () => {
     if (!rankingState) return;
     
     console.log('');
     console.log('=' .repeat(60));
-    console.log("🎉 RANKING COMPLETE - FINALIZING");
+    console.log("🎉 RANKING COMPLETE - PREPARING REVIEW");
     console.log('=' .repeat(60));
     console.log(`Total comparisons made: ${rankingState.completedComparisons}`);
     console.log(`Comparison graph size: ${rankingState.comparisonGraph.size}`);
@@ -354,7 +363,7 @@ export function WouldYouRatherModal({
     
     const finalRanking = finalizeRanking(rankingState);
     
-    // Reallocate contacts
+    // Calculate proposed changes (don't apply yet)
     const reallocationResult = reallocateContacts(
       finalRanking,
       rankingState.allContacts,
@@ -363,11 +372,31 @@ export function WouldYouRatherModal({
       violatedLayerName
     );
     
+    console.log('✅ Ranking finalized. Showing review screen...');
+    console.log(`   - ${reallocationResult.staying.length} staying in Layer ${violatedLayer}`);
+    console.log(`   - ${reallocationResult.movingDown.length} moving to Layer ${violatedLayer + 1}`);
+    
+    // Store proposed changes and show review screen
+    setProposedChanges(reallocationResult);
+    setShowReviewScreen(true);
+  };
+  
+  // Apply the ranking changes to Jazz after user approval
+  const applyRankingChanges = () => {
+    if (!rankingState || !proposedChanges) return;
+    
+    console.log('');
+    console.log('=' .repeat(60));
+    console.log("✅ USER APPROVED - APPLYING CHANGES");
+    console.log('=' .repeat(60));
+    
+    const finalRanking = rankingState.finalRanking;
+    
     // Track analytics
     const sessionDuration = Date.now() - sessionStartTime;
     trackLayerReallocation(
       sessionId || "unknown",
-      reallocationResult,
+      proposedChanges,
       sessionDuration,
       rankingState.completedComparisons,
       skipCount,
@@ -395,8 +424,8 @@ export function WouldYouRatherModal({
         completedComparisons: rankingState.completedComparisons,
         comparisonIds: [],
         finalRanking,
-        contactsStaying: reallocationResult.staying,
-        contactsMovingDown: reallocationResult.movingDown,
+        contactsStaying: proposedChanges.staying,
+        contactsMovingDown: proposedChanges.movingDown,
         questionBankSeed: Date.now(),
         skipCount,
         contradictionCount,
@@ -419,8 +448,8 @@ export function WouldYouRatherModal({
     console.log('=' .repeat(60));
     console.log('💾 APPLYING REALLOCATION UPDATES TO JAZZ');
     console.log('=' .repeat(60));
-    console.log(`Contacts staying in Layer ${violatedLayer}:`, reallocationResult.staying.length);
-    console.log(`Contacts moving to Layer ${violatedLayer + 1}:`, reallocationResult.movingDown.length);
+    console.log(`Contacts staying in Layer ${violatedLayer}:`, proposedChanges.staying.length);
+    console.log(`Contacts moving to Layer ${violatedLayer + 1}:`, proposedChanges.movingDown.length);
     
     if (me) {
       const root = me.root as any;
@@ -433,7 +462,7 @@ export function WouldYouRatherModal({
         const contactId = c.id || c.sourceId;
         
         // Check if contact is moving down to next layer
-        if (reallocationResult.movingDown.includes(contactId)) {
+        if (proposedChanges.movingDown.includes(contactId)) {
           console.log(`  ↓ Moving: ${c.name} (Layer ${violatedLayer} → Layer ${violatedLayer + 1})`);
           movingUpdated++;
           
@@ -476,7 +505,7 @@ export function WouldYouRatherModal({
         }
         
         // Check if contact is staying in current layer
-        if (reallocationResult.staying.includes(contactId)) {
+        if (proposedChanges.staying.includes(contactId)) {
           console.log(`  ✓ Staying: ${c.name} (Layer ${violatedLayer})`);
           stayingUpdated++;
           
@@ -534,6 +563,8 @@ export function WouldYouRatherModal({
       console.log('');
     }
     
+    // Close review screen and show completion
+    setShowReviewScreen(false);
     setIsComplete(true);
   };
   
@@ -560,6 +591,7 @@ export function WouldYouRatherModal({
   // Close and reset
   const handleClose = () => {
     setRankingState(null);
+    setCurrentPair(null);
     setIsComplete(false);
     setSelectedCard(null);
     fadeAnim.setValue(1);
@@ -575,6 +607,101 @@ export function WouldYouRatherModal({
   };
   
   if (!visible) return null;
+  
+  // Review screen - show proposed changes before applying
+  if (showReviewScreen && proposedChanges && rankingState) {
+    const stayingContacts = rankingState.allContacts.filter(c => 
+      proposedChanges.staying.includes(c.id || c.sourceId || '')
+    );
+    const movingContacts = rankingState.allContacts.filter(c => 
+      proposedChanges.movingDown.includes(c.id || c.sourceId || '')
+    );
+    
+    return (
+      <Modal visible={visible} animationType="slide" transparent>
+        <ScrollView className="flex-1 bg-black/95 pt-16 px-6">
+          <Text className="text-white text-2xl font-bold text-center mb-2">
+            Review Your Ranking
+          </Text>
+          
+          <Text className="text-zinc-400 text-center mb-8">
+            Based on your choices, here's how we'll reorganize your {violatedLayerName}
+          </Text>
+          
+          {/* Staying in Layer */}
+          <View className="mb-6">
+            <Text className="text-primary text-lg font-bold mb-3">
+              ✅ Staying in {violatedLayerName} ({stayingContacts.length})
+            </Text>
+            {stayingContacts.map((c, idx) => (
+              <View key={c.id || c.sourceId} className="bg-zinc-900 p-3 mb-2 rounded border border-zinc-800">
+                <Text className="text-white font-semibold">
+                  #{idx + 1} - {c.name}
+                </Text>
+                {c.interactionScore !== undefined && (
+                  <Text className="text-zinc-500 text-xs mt-1">
+                    Interaction Score: {c.interactionScore.toFixed(0)}
+                  </Text>
+                )}
+              </View>
+            ))}
+          </View>
+          
+          {/* Moving Down */}
+          {movingContacts.length > 0 && (
+            <View className="mb-6">
+              <Text className="text-orange-400 text-lg font-bold mb-3">
+                ↓ Moving to Next Layer ({movingContacts.length})
+              </Text>
+              {movingContacts.map((c, idx) => (
+                <View key={c.id || c.sourceId} className="bg-zinc-900 p-3 mb-2 rounded border border-orange-800/30">
+                  <Text className="text-white font-semibold">
+                    #{stayingContacts.length + idx + 1} - {c.name}
+                  </Text>
+                  {c.interactionScore !== undefined && (
+                    <Text className="text-zinc-500 text-xs mt-1">
+                      Interaction Score: {c.interactionScore.toFixed(0)}
+                    </Text>
+                  )}
+                </View>
+              ))}
+            </View>
+          )}
+          
+          <View className="bg-zinc-900/50 p-4 border border-zinc-800 rounded mb-6">
+            <Text className="text-zinc-400 text-sm text-center">
+              💡 Remember: Moving someone to the next layer doesn't mean you care less. 
+              It's about being realistic with your time and energy. You can still maintain 
+              these relationships!
+            </Text>
+          </View>
+          
+          <Button 
+            variant="primary" 
+            onPress={() => {
+              applyRankingChanges();
+            }}
+            className="mb-3"
+          >
+            Approve & Apply Changes
+          </Button>
+          
+          <Button 
+            variant="ghost" 
+            onPress={() => {
+              // Cancel and close
+              setShowReviewScreen(false);
+              setProposedChanges(null);
+              handleClose();
+            }}
+            className="mb-8"
+          >
+            Cancel - Keep Current Setup
+          </Button>
+        </ScrollView>
+      </Modal>
+    );
+  }
   
   // Completion screen
   if (isComplete && rankingState) {
