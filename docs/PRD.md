@@ -705,6 +705,80 @@ function reallocateContacts(rankedContacts: Contact[], layerCapacity: number) {
   - User satisfaction rating >7/10 for decision clarity
   - <5% of comparisons result in "skip" (well-designed questions)
 
+**STORY-021: Recurring Interaction Patterns** (P0 - CRITICAL)
+- **Priority**: P0 (Required for MVP - blocks accurate Dunbar calculations)
+- **Description**: Allow users to define recurring time blocks and standing patterns for consistent physical interactions
+- **Problem Statement**: Phones track calls/texts but not physical presence. Roommates, coworkers, and regular activity groups are invisible to the algorithm, causing massive Dunbar calculation errors (off by 3-5 layers).
+- **Solution**: Two-tier system:
+  1. **Contact-level standing patterns**: Quick toggles for "I live with this person (X hours/day)" or "I work with this person (X hours/week)"
+  2. **Group activity scheduler**: Create recurring events with multiple contacts (e.g., "Soccer every Tuesday, 7-10pm, 10 people")
+- **Features**:
+  1. **Template-Based Quick Setup**:
+     - 🏠 Living Together: 6-8 hours/day default (roommate, spouse, family)
+     - 💼 Work Colleagues: 40 hours/week default (close coworkers)
+     - 👨‍👩‍👧 Regular Family Time: Custom schedule (weekly dinners, visits)
+     - 🎓 Study/Project Partner: Custom hours
+  2. **Group Activity Scheduler**:
+     - Bulk contact selection (multi-select search)
+     - Recurring schedule builder (daily, weekly, biweekly, monthly)
+     - Days of week selector, time picker, duration slider
+     - Quality rating (1-5) and intensity level (LOW/MEDIUM/HIGH)
+     - Auto-generate interaction logs (optional)
+  3. **Pattern Management Dashboard**:
+     - View all active recurring patterns
+     - Edit/delete patterns, mark as ended (with end date)
+     - See which contacts are in each pattern
+     - Bulk edit: change entire group at once
+  4. **Algorithm Integration**:
+     - Recurring patterns feed into interaction score calculation
+     - Physical time weighted heavily (2x multiplier)
+     - Quality and intensity modulate base time score
+     - Logarithmic scaling prevents domination (40 hrs/week ≠ 10x score of 4 hrs/week)
+  5. **Schema Additions**:
+     - `RecurringPattern` model with contactIds, schedule, hours/week, quality, intensity
+     - `recurringPatternIds` array on Contact
+     - `totalRecurringHoursPerWeek` calculated field
+- **Real-World Impact Examples**:
+  - **Roommate (8 hrs/day)**: Moves from Layer 5 (Social Nebula) → Layer 0 (Intimate Core) [Error: 5 layers]
+  - **Coworker (40 hrs/week)**: Moves from Layer 4 (Acquaintances) → Layer 1-2 (Sympathy Group) [Error: 2-3 layers]
+  - **Sports Team (3 hrs/week)**: Moves from Layer 5 (Social Nebula) → Layer 2-3 (Close Group/Tribe) [Error: 2-3 layers]
+- **User Flows**:
+  1. Contact-level: Open contact → "Add Standing Pattern" → Select template → Adjust slider → Save (15 seconds)
+  2. Group activity: "Add Group Activity" → Multi-select contacts → Configure schedule → Create (60 seconds for 10 people)
+  3. Bulk edit: "Recurring Patterns" dashboard → Select pattern → Edit hours/intensity → Save (all contacts recalculate)
+  4. End pattern: Contact detail → Tap pattern badge → "End This Pattern" → Set end date → Recalculate
+- **Integration Points**:
+  - Contact Detail Modal: Add "Standing Pattern" button, show pattern badges
+  - Dashboard: Add "Group Activities" card, "Recurring Patterns" section
+  - Dunbar Calculator: Aggregate recurring time before scoring
+  - Interaction Stats: Show breakdown of digital vs physical time
+  - Manual Logger: Option to "Create recurring pattern from this interaction"
+- **Complexity**: Very High (schema changes, algorithm integration, extensive UI, auto-generation)
+- **Timeline**: 4-6 weeks for full implementation
+- **Definition of Done**:
+  - RecurringPattern schema created and integrated with UserProfile/Contact
+  - Algorithm calculates scores including recurring pattern data
+  - Contact-level pattern selector with templates working
+  - Group activity scheduler with bulk selection working
+  - Pattern management dashboard with edit/delete/end functionality
+  - Auto-generation of interaction logs (optional, user-configurable)
+  - All 4 user flows tested end-to-end
+  - Beta tested with real roommate/coworker/sports team scenarios
+- **Test Criteria**:
+  - Roommate marked as "8 hours/day" moves from Layer 5 → Layer 0-1 (verified)
+  - Coworker group (5 people, 40 hours/week) correctly weighted in Layer 1-2 (verified)
+  - Sports team (10 people, 3 hours/week) appears in Layer 2-3 (verified)
+  - Recurring patterns persist across app restarts (Jazz storage)
+  - Bulk edit: changing pattern updates all contacts in <2 seconds
+  - Pattern ending retroactively adjusts scores from end date
+  - Auto-generated logs marked with source="automatic", editable by user
+  - 60% of beta users create at least 1 recurring pattern within 30 days
+  - User-reported Dunbar accuracy improves from 70% → 85%
+- **Documentation**:
+  - Feature doc: `/docs/features/RECURRING_INTERACTIONS.md` (comprehensive guide)
+  - Tech spec: `/docs/implementation/RECURRING_PATTERNS_TECH_SPEC.md` (algorithm details)
+  - Roadmap: `/docs/implementation/RECURRING_PATTERNS_ROADMAP.md` (8-phase plan)
+
 ---
 
 ### EPIC-004: Analytics & Insights
@@ -908,7 +982,7 @@ function reallocateContacts(rankedContacts: Contact[], layerCapacity: number) {
   - ✅ Authentication & Account Setup
   - 🔄 EPIC-001: Stories 1-3 (Contact ingestion, Call/SMS mining, Layer calculator)
   - 🔄 EPIC-002: Stories 6-8 (Onboarding, Layer discovery, Family registration)
-  - 🔄 EPIC-003: Stories 11-12, 15-16 (Dashboard, Contact detail, Hero Cards, Would You Rather)
+  - 🔄 EPIC-003: Stories 11-12, 15-16, 21 (Dashboard, Contact detail, Hero Cards, Would You Rather, Recurring Patterns)
   
 - **Validation**: 100 beta users, manual layer validation
 
@@ -920,6 +994,11 @@ function reallocateContacts(rankedContacts: Contact[], layerCapacity: number) {
    - Required because automated layer calculation WILL create violations
    - Users need tool to make hard prioritization decisions
    - Prevents cognitive overload from abstract layer management
+5. **Recurring Interaction Patterns (STORY-021)** ⚠️ **CRITICAL**
+   - Required because phones don't track physical presence
+   - Roommates, coworkers, and regular activities are invisible without this
+   - Without it, Dunbar calculations are wrong by 3-5 layers for physical relationships
+   - Core tenet violation: can't show "behavioral reality" if we ignore 40+ hours/week of interaction
 
 ### Completed Milestones
 - **2025-10-27**: Authentication flow complete
