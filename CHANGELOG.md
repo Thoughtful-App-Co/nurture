@@ -1,5 +1,48 @@
 # Changelog
 
+## 2025-11-04 - Harvest Refactor: CRM for Social Health (Volitions System)
+
+### Refactored
+- **Harvest UI Redesign - Professional CRM Interface** 🏢
+  - Reverted from gamified "quest" system to clean, professional design
+  - **New Framing**: "A CRM for your social health" - relationship management tool
+  - **Terminology Update**: "Quests" → "Volitions" (active relationship cultivation strategies)
+  - **Metrics Bar**: 3 clickable KPIs at top of screen:
+    - Volitions Active: Shows number of active cultivation strategies
+    - Weekly Time: Tracks time investment in relationship maintenance
+    - Internal Work %: Measures progress on understanding your garden
+  - **Clean Sections**:
+    - Today's Actions: Actionable items with time estimates
+    - Active Volitions: Currently enabled strategies with weekly time estimates
+    - Available Volitions: Strategy selection interface
+  - Removed busy/gamified elements (progress bars, streaks, emojis everywhere)
+  - No mock/dummy data shown to user
+  - Professional, purposeful design focused on action not points
+  
+- **Schema Rename: Quest → Volition**
+  - `QuestType` → `VolitionType`
+  - `Quest` → `Volition` (co.map schema)
+  - `QuestList` → `VolitionList`
+  - `QUEST_PRESETS` → `VOLITION_PRESETS`
+  - `questId` → `volitionId` in badges
+  - Added `estimatedMinutesPerWeek` to all volition definitions
+  - Time tracking fields for CRM analytics
+  
+- **Time Investment Tracking**
+  - Know Your Circle: 5 min/week
+  - Complete Tribe Ranking: 12 min/week
+  - Weekly Check-In: 60 min/week
+  - Rekindle Connections: 90 min/week
+  - Rate Interactions: 10 min/week
+  - Explore Garden: 15 min/week
+  
+### Philosophy Change
+- **From**: Gamified quest system with badges, streaks, and progress bars
+- **To**: Professional CRM for managing relationships, tracking time investment
+- **Focus**: Actionable cultivation strategies, not points and achievements
+- **User Control**: Clear metrics, time tracking, purposeful design
+- **Next Steps**: Separate pages for detailed management, time breakdown analytics
+
 ## 2025-11-04 - Harvest Epic Implementation (Quest System & Badges)
 
 ### Added
