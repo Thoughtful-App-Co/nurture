@@ -144,18 +144,19 @@ export default function Index() {
             dataSharingLevel: data.dataSharingLevel,
           });
           
-          // Save onboarding data for data mining screen
-          setOnboardingData(data);
-          
-           // If contacts permission granted, go to data mining
-           if (data.hasContactsPermission) {
-             setFlow('data-mining');
-           } else {
-             // User skipped/denied contacts permission - mark as "attempted" so we don't ask again
-             console.log('User skipped contacts permission - marking as completed');
-             root.$jazz.set('hasCompletedContactAnalysis', true);
-             setFlow('ready');
-           }
+           // Save onboarding data for data mining screen
+           setOnboardingData(data);
+           
+            // If contacts permission granted, go to data mining
+            if (data.hasContactsPermission) {
+              setFlow('data-mining');
+            } else {
+              // User skipped/denied contacts permission - mark as "attempted" so we don't ask again
+              console.log('User skipped contacts permission - marking as completed');
+              root.$jazz.set('hasCompletedContactAnalysis', true);
+              // Show biometric lock setup before going to dashboard
+              setFlow('locked');
+            }
         }}
       />
     );
@@ -255,12 +256,12 @@ export default function Index() {
            
            console.log(`Saved ${newContactsList.length} contacts to Jazz`);
            
-           // Mark contact analysis as completed - prevents re-running on app restart
-           root.$jazz.set('hasCompletedContactAnalysis', true);
-           console.log('✅ Contact analysis marked as completed');
-           
-           // Go to ready state (will redirect to dashboard)
-           setFlow('ready');
+            // Mark contact analysis as completed - prevents re-running on app restart
+            root.$jazz.set('hasCompletedContactAnalysis', true);
+            console.log('✅ Contact analysis marked as completed');
+            
+            // Show biometric lock setup before going to dashboard
+            setFlow('locked');
         }}
       />
     );
