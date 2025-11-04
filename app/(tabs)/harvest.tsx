@@ -1,76 +1,56 @@
 /**
- * Harvest Screen - Quest-Based Relationship Cultivation
+ * Harvest Screen - Relationship Cultivation Management
  * 
- * The Harvest module transforms relationship maintenance into an engaging
- * quest system with daily tasks, streaks, and badge rewards.
+ * A CRM for your social health. Manage active volitions (relationship goals)
+ * and track time investment in understanding and maintaining your garden.
  * 
- * Quest Types:
- * - Ranking: Build intuitive ranking data through daily comparisons
- * - Maintenance: Proactive relationship nurturing actions
- * - Quality: Enrich data quality through reflection
- * - Discovery: Explore app features and layers
+ * Available Volitions:
+ * - Tend & Befriend: Nurture close relationships
+ * - Plant & Prune: Strategic social energy allocation
+ * - Cultivate: Balanced maintenance
+ * - Inner Circle: Focus on intimate core
+ * - Expand Horizons: Meet new people
+ * - Rekindle: Reconnect with past friends
+ * - Balance: Maintain equilibrium
  */
 
 import React, { useState } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
-import { QUEST_PRESETS, BADGE_DEFINITIONS } from "@/jazz/harvestSchema";
+import { ALGORITHM_PRESETS, type AlgorithmType } from "@/jazz/harvestSchema";
 import { Card, Button, SectionHeader } from "@/components/ui";
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
-import BadgeCollectionModal from "@/components/relationships/BadgeCollectionModal";
-
-// Mock active quests for now (will be replaced with Jazz data)
-const MOCK_ACTIVE_QUESTS = [
-  {
-    ...QUEST_PRESETS.KNOW_YOUR_CIRCLE,
-    isActive: true,
-    currentProgress: 47,
-    streakCount: 16,
-    todayCompleted: 2,
-    todayTarget: 2,
-  },
-  {
-    ...QUEST_PRESETS.WEEKLY_CHECKIN,
-    isActive: true,
-    currentProgress: 14,
-    streakCount: 8,
-    todayCompleted: 0,
-    todayTarget: 1,
-  },
-];
 
 export default function HarvestScreen() {
-  const [activeQuests] = useState(MOCK_ACTIVE_QUESTS);
-  const [showBadgeModal, setShowBadgeModal] = useState(false);
-  
-  // Mock earned badges (will be replaced with Jazz data)
-  const earnedBadgeIds = ["CIRCLE_CLARITY", "WEEK_WARRIOR", "STEADY_GARDENER", "REFLECTIVE", "GARDENER"];
-  const badgeProgress = {
-    TRIBE_RANKER: 75,
-    MONTH_MASTER: 16,
-    REKINDLER: 2,
-  };
+  const [activeAlgorithms, setActiveAlgorithms] = useState<AlgorithmType[]>([]);
+  const [suggestions] = useState<any[]>([]); // TODO: Load from Jazz
 
-  // Get quest type color
-  const getQuestColor = (type: string): string => {
-    const colors: Record<string, string> = {
-      RANKING: "#3b82f6",
-      MAINTENANCE: "#22c55e",
-      QUALITY: "#a855f7",
-      DISCOVERY: "#f97316",
+  // Get algorithm color based on type
+  const getAlgorithmColor = (type: AlgorithmType): string => {
+    const colors: Record<AlgorithmType, string> = {
+      TEND_AND_BEFRIEND: "#ef4444",
+      PLANT_AND_PRUNE: "#f97316",
+      CULTIVATE: "#22c55e",
+      INNER_CIRCLE: "#ec4899",
+      EXPAND_HORIZONS: "#3b82f6",
+      REKINDLE: "#a855f7",
+      BALANCE: "#14b8a6",
     };
-    return colors[type] || "#71717a";
+    return colors[type];
   };
 
-  // Calculate total stats
-  const totalBadgesEarned = 5; // Mock data
-  const currentStreak = Math.max(...activeQuests.map(q => q.streakCount));
-  const todayCompleted = activeQuests.reduce((sum, q) => sum + q.todayCompleted, 0);
-  const todayTotal = activeQuests.reduce((sum, q) => sum + q.todayTarget, 0);
+  // Toggle algorithm on/off
+  const toggleAlgorithm = (type: AlgorithmType) => {
+    if (activeAlgorithms.includes(type)) {
+      setActiveAlgorithms(activeAlgorithms.filter((a) => a !== type));
+    } else {
+      setActiveAlgorithms([...activeAlgorithms, type]);
+    }
+  };
 
-  // Available quests (not yet started)
-  const availableQuests = Object.values(QUEST_PRESETS).filter(
-    preset => !activeQuests.find(q => q.id === preset.id)
-  );
+  // Calculate metrics (will be moved to proper service)
+  const activeVolitionsCount = activeAlgorithms.length;
+  const weeklyTimeHours = 0; // TODO: Calculate from time tracking
+  const internalWorkPercent = 0; // TODO: Calculate from completion data
 
   return (
     <Animated.ScrollView 
@@ -82,260 +62,205 @@ export default function HarvestScreen() {
       <View className="px-6 pt-16 pb-6">
         <Text className="text-4xl font-bold tracking-wide text-primary mb-2">Harvest</Text>
         <Text className="text-base text-zinc-400 leading-relaxed">
-          Complete daily quests to cultivate your relationships and earn badges.
+          Relationship cultivation management. Track your active volitions and time investment.
         </Text>
       </View>
 
-      {/* Stats Overview */}
-      <View className="px-6 mb-6">
-        <Card className="bg-zinc-900 border-zinc-800">
-          <View className="flex-row justify-between items-center">
-            <View className="items-center">
-              <Text className="text-2xl font-bold text-primary">{currentStreak}</Text>
-              <Text className="text-xs text-zinc-500 mt-1">Day Streak</Text>
-            </View>
-            <View className="items-center">
-              <Text className="text-2xl font-bold text-white">{totalBadgesEarned}</Text>
-              <Text className="text-xs text-zinc-500 mt-1">Badges</Text>
-            </View>
-            <View className="items-center">
-              <Text className="text-2xl font-bold text-zinc-400">
-                {todayCompleted}/{todayTotal}
-              </Text>
-              <Text className="text-xs text-zinc-500 mt-1">Today</Text>
-            </View>
-          </View>
-        </Card>
+      {/* Metrics Bar - CRM Style */}
+      <View className="px-6 mb-8">
+        <View className="flex-row gap-3">
+          <TouchableOpacity 
+            className="flex-1 bg-zinc-900 border border-zinc-800 rounded-lg p-4"
+            onPress={() => {
+              // TODO: Navigate to Volition Management page
+              console.log('Navigate to volition management');
+            }}
+            activeOpacity={0.7}
+          >
+            <Text className="text-3xl font-bold text-primary mb-1">
+              {activeVolitionsCount}
+            </Text>
+            <Text className="text-xs text-zinc-400 uppercase tracking-wider">
+              Volitions{'\n'}Active
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            className="flex-1 bg-zinc-900 border border-zinc-800 rounded-lg p-4"
+            onPress={() => {
+              // TODO: Open time breakdown modal
+              console.log('Show time breakdown');
+            }}
+            activeOpacity={0.7}
+          >
+            <Text className="text-3xl font-bold text-white mb-1">
+              {weeklyTimeHours.toFixed(1)}h
+            </Text>
+            <Text className="text-xs text-zinc-400 uppercase tracking-wider">
+              Weekly{'\n'}Time
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            className="flex-1 bg-zinc-900 border border-zinc-800 rounded-lg p-4"
+            onPress={() => {
+              // TODO: Open internal work detail modal
+              console.log('Show internal work details');
+            }}
+            activeOpacity={0.7}
+          >
+            <Text className="text-3xl font-bold text-zinc-400 mb-1">
+              {internalWorkPercent}%
+            </Text>
+            <Text className="text-xs text-zinc-400 uppercase tracking-wider">
+              Internal{'\n'}Work
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* Active Quests Section */}
-      {activeQuests.length > 0 && (
+      {/* Today's Actions Section */}
+      {suggestions.length > 0 && (
         <View className="px-6 mb-8">
-          <SectionHeader>Active Quests</SectionHeader>
+          <SectionHeader>Today&apos;s Actions</SectionHeader>
           <View className="space-y-3">
-            {activeQuests.map((quest) => {
-              const isComplete = quest.todayCompleted >= quest.todayTarget;
-              const progressPercent = quest.totalTarget 
-                ? Math.round((quest.currentProgress / quest.totalTarget) * 100)
-                : 0;
-              
-              return (
-                <Card 
-                  key={quest.id}
-                  className="bg-zinc-900 border-zinc-800"
-                >
-                    <View className="flex-row items-start justify-between mb-3">
-                      <View className="flex-1">
-                        <View className="flex-row items-center mb-2">
-                          <Text className="text-2xl mr-2">{quest.emoji}</Text>
-                          <Text className="text-white font-semibold text-lg flex-1">
-                            {quest.name}
-                          </Text>
-                          {isComplete && (
-                            <View className="bg-green-500/20 px-2 py-1 rounded">
-                              <Text className="text-green-500 text-xs font-bold">✓ Today</Text>
-                            </View>
-                          )}
-                        </View>
-                        <Text className="text-sm text-zinc-400 mb-3 leading-relaxed">
-                          {quest.description}
-                        </Text>
-                      </View>
-                    </View>
-
-                    {/* Progress Bar */}
-                    {quest.totalTarget && (
-                      <View className="mb-3">
-                        <View className="h-2 bg-zinc-800 rounded-full overflow-hidden">
-                          <View 
-                            className="h-full bg-primary rounded-full"
-                            style={{ width: `${progressPercent}%` }}
-                          />
-                        </View>
-                        <Text className="text-xs text-zinc-500 mt-1">
-                          {quest.currentProgress} / {quest.totalTarget} ({progressPercent}%)
-                        </Text>
-                      </View>
-                    )}
-
-                    {/* Stats Row */}
-                    <View className="flex-row items-center justify-between">
-                      <View className="flex-row items-center gap-4">
-                        <View>
-                          <Text className="text-xs text-zinc-500">Today</Text>
-                          <Text className="text-sm text-white font-medium">
-                            {quest.todayCompleted}/{quest.todayTarget}
-                          </Text>
-                        </View>
-                        <View>
-                          <Text className="text-xs text-zinc-500">Streak</Text>
-                          <Text className="text-sm text-white font-medium">
-                            {quest.streakCount} days 🔥
-                          </Text>
-                        </View>
-                      </View>
-                      <View 
-                        className="px-3 py-1 rounded"
-                        style={{ backgroundColor: getQuestColor(quest.type) + "20" }}
-                      >
-                        <Text 
-                          className="text-xs font-medium"
-                          style={{ color: getQuestColor(quest.type) }}
-                        >
-                          {quest.type}
-                        </Text>
-                      </View>
-                    </View>
-
-                    {!isComplete && (
-                      <Button 
-                        variant="primary" 
-                        className="mt-3"
-                        onPress={() => {
-                          // TODO: Open quest modal
-                          console.log('Start quest:', quest.id);
-                        }}
-                      >
-                        <Text className="text-black font-semibold">Start Task</Text>
-                      </Button>
-                    )}
-                  </Card>
-                );
-              })}
+            {suggestions.map((suggestion, index) => (
+              <Card key={index}>
+                <View className="flex-row items-start justify-between mb-2">
+                  <View className="flex-1">
+                    <Text className="text-white font-semibold text-base mb-1">
+                      {suggestion.actionType} {suggestion.contactName}
+                    </Text>
+                    <Text className="text-sm text-zinc-400 mb-1">
+                      {suggestion.reason}
+                    </Text>
+                    <Text className="text-xs text-zinc-500">
+                      Est: {suggestion.estimatedTime || '15 min'}
+                    </Text>
+                  </View>
+                  <View
+                    className="px-2 py-1 rounded"
+                    style={{ backgroundColor: getAlgorithmColor(suggestion.algorithmType) + "20" }}
+                  >
+                    <Text className="text-xs" style={{ color: getAlgorithmColor(suggestion.algorithmType) }}>
+                      {ALGORITHM_PRESETS[suggestion.algorithmType as AlgorithmType]?.name}
+                    </Text>
+                  </View>
+                </View>
+                <View className="flex-row gap-2 mt-3">
+                  <Button variant="primary" className="flex-1">
+                    <Text className="text-black font-semibold">Complete</Text>
+                  </Button>
+                  <Button variant="secondary" className="px-4">
+                    <Text className="text-white">Snooze</Text>
+                  </Button>
+                </View>
+              </Card>
+            ))}
           </View>
         </View>
       )}
 
-      {/* Badges Section */}
-      <View className="px-6 mb-8">
-        <View className="flex-row items-center justify-between mb-4">
-          <SectionHeader>Your Badges</SectionHeader>
-          <TouchableOpacity onPress={() => setShowBadgeModal(true)}>
-            <Text className="text-primary text-sm font-medium">View All →</Text>
-          </TouchableOpacity>
+      {/* Active Volitions Section */}
+      {activeAlgorithms.length > 0 && (
+        <View className="px-6 mb-8">
+          <SectionHeader>Active Volitions</SectionHeader>
+          <View className="space-y-3">
+            {activeAlgorithms.map((type) => {
+              const preset = ALGORITHM_PRESETS[type];
+              return (
+                <Card
+                  key={type}
+                  variant="accent"
+                  accentColor={getAlgorithmColor(type)}
+                >
+                  <View className="flex-row items-center justify-between mb-2">
+                    <Text className="text-white font-medium text-lg">
+                      {preset.name}
+                    </Text>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onPress={() => toggleAlgorithm(type)}
+                      accessibilityLabel={`Disable ${preset.name}`}
+                    >
+                      <Text className="text-xs text-zinc-400">Disable</Text>
+                    </Button>
+                  </View>
+                  <Text className="text-sm text-zinc-400 leading-relaxed mb-2">
+                    {preset.description}
+                  </Text>
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-xs text-zinc-500">
+                      Layers: {preset.targetLayers.join(", ")} • Every {preset.checkFrequency}d
+                    </Text>
+                    <Text className="text-xs text-zinc-500">
+                      ~30 min/week
+                    </Text>
+                  </View>
+                </Card>
+              );
+            })}
+          </View>
         </View>
-        <View className="flex-row flex-wrap gap-3">
-          {/* Show first 4 earned badges */}
-          {earnedBadgeIds.slice(0, 4).map((badgeId) => {
-            const badge = BADGE_DEFINITIONS[badgeId];
-            if (!badge) return null;
+      )}
+
+      {/* Available Volitions Selection */}
+      <View className="px-6 mb-8">
+        <SectionHeader>Available Volitions</SectionHeader>
+        <Text className="text-sm text-zinc-400 mb-4 leading-relaxed">
+          Select relationship cultivation strategies that align with your goals.
+        </Text>
+        <View className="space-y-3">
+          {(Object.keys(ALGORITHM_PRESETS) as AlgorithmType[]).map((type) => {
+            const preset = ALGORITHM_PRESETS[type];
+            const isActive = activeAlgorithms.includes(type);
             
             return (
-              <TouchableOpacity
-                key={badge.id}
-                onPress={() => setShowBadgeModal(true)}
-                className="items-center bg-zinc-900 border-2 border-primary rounded-lg p-3"
-                style={{ width: '22%' }}
-                activeOpacity={0.7}
+              <Card
+                key={type}
+                onPress={() => toggleAlgorithm(type)}
+                className={isActive ? "border-2 border-primary" : "border-2 border-zinc-800"}
+                accessibilityLabel={`${preset.name}, ${isActive ? 'active' : 'inactive'}`}
+                accessibilityRole="button"
               >
-                <Text className="text-3xl mb-1">{badge.emoji}</Text>
-                <Text className="text-xs text-white text-center" numberOfLines={2}>
-                  {badge.name}
+                <View className="flex-row items-center justify-between mb-2">
+                  <Text className={`font-medium text-lg ${isActive ? "text-primary" : "text-white"}`}>
+                    {preset.name}
+                  </Text>
+                  <View
+                    className={`w-6 h-6 rounded-full border-2 ${
+                      isActive ? "bg-primary border-primary" : "border-zinc-700"
+                    } items-center justify-center`}
+                  >
+                    {isActive && <Text className="text-black text-xs font-bold">✓</Text>}
+                  </View>
+                </View>
+                <Text className="text-sm text-zinc-400 mb-3 leading-relaxed">
+                  {preset.description}
                 </Text>
-              </TouchableOpacity>
+                <View className="flex-row flex-wrap gap-2">
+                  <View className="px-2 py-1 bg-zinc-800 rounded">
+                    <Text className="text-xs text-zinc-400">
+                      Layers: {preset.targetLayers.join(", ")}
+                    </Text>
+                  </View>
+                  <View className="px-2 py-1 bg-zinc-800 rounded">
+                    <Text className="text-xs text-zinc-400">
+                      Every {preset.checkFrequency} days
+                    </Text>
+                  </View>
+                  <View className="px-2 py-1 bg-zinc-800 rounded">
+                    <Text className="text-xs text-zinc-400">
+                      {preset.actionThreshold}d threshold
+                    </Text>
+                  </View>
+                </View>
+              </Card>
             );
           })}
         </View>
       </View>
-      
-      {/* Badge Collection Modal */}
-      <BadgeCollectionModal
-        visible={showBadgeModal}
-        onClose={() => setShowBadgeModal(false)}
-        earnedBadgeIds={earnedBadgeIds}
-        badgeProgress={badgeProgress}
-      />
-
-      {/* Available Quests */}
-      <View className="px-6 mb-8">
-        <SectionHeader>Available Quests</SectionHeader>
-        <Text className="text-sm text-zinc-400 mb-4 leading-relaxed">
-          Start new quests to unlock badges and improve your relationship cultivation skills.
-        </Text>
-        <View className="space-y-3">
-          {availableQuests.map((quest) => (
-            <Card
-              key={quest.id}
-              className="bg-zinc-900 border-zinc-800"
-            >
-              <View className="flex-row items-start mb-3">
-                <Text className="text-3xl mr-3">{quest.emoji}</Text>
-                <View className="flex-1">
-                  <Text className="text-white font-semibold text-base mb-1">
-                    {quest.name}
-                  </Text>
-                  <Text className="text-sm text-zinc-400 leading-relaxed">
-                    {quest.description}
-                  </Text>
-                </View>
-              </View>
-
-              <View className="flex-row items-center justify-between mb-3">
-                <View className="flex-row items-center gap-3">
-                  <View>
-                    <Text className="text-xs text-zinc-500">Daily</Text>
-                    <Text className="text-sm text-white">{quest.dailyTarget} tasks</Text>
-                  </View>
-                  {quest.totalTarget && (
-                    <View>
-                      <Text className="text-xs text-zinc-500">Goal</Text>
-                      <Text className="text-sm text-white">{quest.totalTarget} total</Text>
-                    </View>
-                  )}
-                </View>
-                <View 
-                  className="px-3 py-1 rounded"
-                  style={{ backgroundColor: getQuestColor(quest.type) + "20" }}
-                >
-                  <Text 
-                    className="text-xs font-medium"
-                    style={{ color: getQuestColor(quest.type) }}
-                  >
-                    {quest.type}
-                  </Text>
-                </View>
-              </View>
-
-              {quest.badgeId && BADGE_DEFINITIONS[quest.badgeId] && (
-                <View className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-3 mb-3">
-                  <View className="flex-row items-center">
-                    <Text className="text-xl mr-2">
-                      {BADGE_DEFINITIONS[quest.badgeId].emoji}
-                    </Text>
-                    <View className="flex-1">
-                      <Text className="text-xs text-zinc-500">Reward</Text>
-                      <Text className="text-sm text-white font-medium">
-                        {BADGE_DEFINITIONS[quest.badgeId].name}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              )}
-
-              <Button 
-                variant="secondary"
-                onPress={() => {
-                  // TODO: Start quest
-                  console.log('Start quest:', quest.id);
-                }}
-              >
-                <Text className="text-white font-semibold">Start Quest</Text>
-              </Button>
-            </Card>
-          ))}
-        </View>
-      </View>
-
-      {/* Empty State */}
-      {activeQuests.length === 0 && (
-        <View className="px-6 py-12 items-center">
-          <Text className="text-6xl mb-4">🌱</Text>
-          <Text className="text-xl text-white font-semibold mb-2">Start Your First Quest</Text>
-          <Text className="text-sm text-zinc-400 text-center leading-relaxed">
-            Choose a quest above to begin cultivating your relationships with daily tasks and earn your first badge.
-          </Text>
-        </View>
-      )}
 
       {/* Bottom Spacing */}
       <View className="h-20" />
