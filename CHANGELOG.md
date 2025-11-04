@@ -1,5 +1,69 @@
 # Changelog
 
+## 2025-11-04 - Ranking Algorithm Overhaul & UX Improvements
+
+### Fixed
+- **CRITICAL: Black screen after first question in Would You Rather**
+  - Root cause: `currentPair` was recalculated on every render but state mutations didn't trigger re-renders
+  - Moved `currentPair` from computed value to React state
+  - Now properly updates after each comparison, preventing blank/black screens
+  - Added `setCurrentPair()` calls in initialization, comparison processing, and cleanup
+  - Location: `components/relationships/WouldYouRatherModal.tsx:80,147,329,569`
+
+### Enhanced
+- **Ranking Algorithm - Complete Rewrite with Merge Sort**
+  - Replaced broken QuickSort with **optimal Merge Sort algorithm**
+  - QuickSort was failing after first round (returned null instead of continuing)
+  - Merge Sort guarantees minimum comparisons: `n * log₂(n)` - provably optimal
+  - Implemented iterative stack-based approach (no recursion issues)
+  - Added proper state management for ongoing merge operations
+  - Maintains transitive inference to skip redundant comparisons
+  - For 10 contacts: ~34 questions max (was failing after 3-5)
+  - For 20 contacts: ~87 questions max (optimal for comparison-based sorting)
+  - Location: `services/rankingAlgorithm.ts` (complete rewrite)
+
+- **Review & Approval Screen for Ranking Results**
+  - Added comprehensive review screen BEFORE applying changes
+  - Shows two sections: "Staying in Layer" and "Moving to Next Layer"
+  - Displays rank numbers (#1, #2, #3...) for full transparency
+  - Shows interaction scores for each contact
+  - Includes reassuring message about moving contacts down
+  - User must approve before changes are applied to Jazz
+  - "Approve & Apply Changes" button commits the ranking
+  - "Cancel - Keep Current Setup" button aborts without changes
+  - Split `completeRanking()` into two functions:
+    - `completeRanking()`: calculates results, shows review screen
+    - `applyRankingChanges()`: applies changes after user approval
+  - Location: `components/relationships/WouldYouRatherModal.tsx:610-703`
+
+- **Schema Updates for New Algorithm**
+  - Added `"mergesort"` to algorithm enum in RankingSession
+  - Added `"sorting"` to phase enum (merge sort uses this state)
+  - Maintains backward compatibility with existing sessions
+  - Location: `jazz/schema.ts:214`
+
+### Changed
+- **Algorithm Selection Logic**
+  - Small sets (<50 contacts): Merge Sort (optimal comparisons)
+  - Large sets (>50 contacts): Swiss Tournament (heuristic approach)
+  - Removed broken QuickSort implementation entirely
+
+### Technical Details
+- **Merge Sort Implementation**
+  - Each contact starts as singleton sorted list
+  - Iteratively merges pairs of sorted lists
+  - When merging, asks user to compare front elements
+  - Uses BFS for transitive inference (skips inferrable comparisons)
+  - Completes when all lists merged into one final ranking
+  - State stored in `sortedLists` and `currentMerge` fields
+
+- **Review Screen Features**
+  - Scrollable view for large contact lists
+  - Color-coded sections (green for staying, orange for moving)
+  - Preserves complete ranking information
+  - Shows interaction scores for user validation
+  - Clear call-to-action buttons
+
 ## 2025-11-02 - Jazz Inspector Enhancement
 
 ### Enhanced
