@@ -19,6 +19,7 @@ import { View, Text, TouchableOpacity } from "react-native";
 import { ALGORITHM_PRESETS, type AlgorithmType } from "@/jazz/harvestSchema";
 import { Card, Button, SectionHeader, InfoTooltip } from "@/components/ui";
 import { VolitionExplainerModal } from "@/components/harvest/VolitionExplainerModal";
+import { MetricExplainerModal } from "@/components/harvest/MetricExplainerModal";
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { getMockMetrics } from "@/hooks/useHarvestMetrics";
 
@@ -27,6 +28,7 @@ export default function HarvestScreen() {
   const [suggestions] = useState<any[]>([]); // TODO: Load from Jazz
   const [showExplainerModal, setShowExplainerModal] = useState(false);
   const [selectedVolitionId, setSelectedVolitionId] = useState<string | null>(null);
+  const [showMetricModal, setShowMetricModal] = useState(false);
   
   // TODO: Replace with real data from Jazz
   // const metrics = useHarvestMetrics({
@@ -138,10 +140,7 @@ export default function HarvestScreen() {
 
           <TouchableOpacity 
             className="flex-1 bg-zinc-900 border border-zinc-800 rounded-lg p-4"
-            onPress={() => {
-              // TODO: Open internal work detail modal
-              console.log('Show internal work details');
-            }}
+            onPress={() => setShowMetricModal(true)}
             activeOpacity={0.7}
           >
             <Text className="text-3xl font-bold text-zinc-400 mb-1">
@@ -328,6 +327,13 @@ export default function HarvestScreen() {
           showStartButton={!activeAlgorithms.includes(selectedVolitionId as AlgorithmType)}
         />
       )}
+
+      {/* Metric Explainer Modal */}
+      <MetricExplainerModal
+        visible={showMetricModal}
+        breakdown={metrics.internalWorkBreakdown}
+        onClose={() => setShowMetricModal(false)}
+      />
     </Animated.ScrollView>
   );
 }
