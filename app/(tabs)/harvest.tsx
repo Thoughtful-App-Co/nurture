@@ -17,7 +17,7 @@
 import React, { useState } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { ALGORITHM_PRESETS, type AlgorithmType } from "@/jazz/harvestSchema";
-import { Card, Button, SectionHeader } from "@/components/ui";
+import { Card, Button, SectionHeader, InfoTooltip } from "@/components/ui";
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { getMockMetrics } from "@/hooks/useHarvestMetrics";
 
@@ -89,9 +89,16 @@ export default function HarvestScreen() {
             <Text className="text-3xl font-bold text-primary mb-1">
               {activeVolitionsCount}
             </Text>
-            <Text className="text-xs text-zinc-400 uppercase tracking-wider">
-              Volitions{'\n'}Active
-            </Text>
+            <View className="flex-row items-center">
+              <Text className="text-xs text-zinc-400 uppercase tracking-wider">
+                Volitions{'\n'}Active
+              </Text>
+              <InfoTooltip
+                title="Active Volitions"
+                content="Number of relationship cultivation strategies currently in progress. Each volition generates daily actions and tracks your time investment."
+                size="sm"
+              />
+            </View>
           </TouchableOpacity>
 
           <TouchableOpacity 
@@ -105,9 +112,16 @@ export default function HarvestScreen() {
             <Text className="text-3xl font-bold text-white mb-1">
               {weeklyTimeHours.toFixed(1)}h
             </Text>
-            <Text className="text-xs text-zinc-400 uppercase tracking-wider">
-              Weekly{'\n'}Time
-            </Text>
+            <View className="flex-row items-center">
+              <Text className="text-xs text-zinc-400 uppercase tracking-wider">
+                Weekly{'\n'}Time
+              </Text>
+              <InfoTooltip
+                title="Weekly Time Investment"
+                content="Estimated hours per week across all active volitions. This includes ranking questions, relationship actions, and data quality work."
+                size="sm"
+              />
+            </View>
           </TouchableOpacity>
 
           <TouchableOpacity 
@@ -121,9 +135,16 @@ export default function HarvestScreen() {
             <Text className="text-3xl font-bold text-zinc-400 mb-1">
               {internalWorkPercent}%
             </Text>
-            <Text className="text-xs text-zinc-400 uppercase tracking-wider">
-              Internal{'\n'}Work
-            </Text>
+            <View className="flex-row items-center">
+              <Text className="text-xs text-zinc-400 uppercase tracking-wider">
+                Internal{'\n'}Work
+              </Text>
+              <InfoTooltip
+                title="Internal Work Progress"
+                content="Percentage of time spent on foundational work (ranking, quality ratings, enrichment, and review) vs. relationship actions. Higher % means better data quality."
+                size="sm"
+              />
+            </View>
           </TouchableOpacity>
         </View>
       </View>

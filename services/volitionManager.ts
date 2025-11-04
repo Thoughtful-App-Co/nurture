@@ -116,7 +116,7 @@ function generateRankingTasks(volition: VolitionInstance): DailyAction[] {
       type: "RANKING",
       title: "Compare two contacts",
       subtitle: "Who would you rather spend time with?",
-      emoji: volition.emoji,
+      estimatedMinutes: 1,
       action: {
         type: "MODAL",
         modalType: "WOULD_YOU_RATHER",
@@ -143,7 +143,7 @@ function generateMaintenanceTasks(volition: VolitionInstance): DailyAction[] {
       type: "CONTACT",
       title: "Reach out to someone",
       subtitle: "Strengthen a connection today",
-      emoji: volition.emoji,
+      estimatedMinutes: 15,
       action: {
         type: "MODAL",
         modalType: "CONTACT_SUGGESTION",
@@ -170,7 +170,7 @@ function generateQualityTasks(volition: VolitionInstance): DailyAction[] {
       type: "RATE",
       title: "Rate a recent interaction",
       subtitle: "How was your last conversation?",
-      emoji: volition.emoji,
+      estimatedMinutes: 2,
       action: {
         type: "MODAL",
         modalType: "RATE_INTERACTION",
@@ -195,7 +195,7 @@ function generateDiscoveryTasks(volition: VolitionInstance): DailyAction[] {
     type: "DISCOVERY",
     title: "Explore a feature",
     subtitle: volition.description,
-    emoji: volition.emoji,
+    estimatedMinutes: 5,
     action: {
       type: "NAVIGATE",
       data: {
@@ -389,6 +389,7 @@ export function startQuest(volitionId: string): VolitionInstance | null {
     currentProgress: 0,
     streakCount: 0,
     longestStreak: 0,
+    weeklyTimeSpent: 0,
   };
 }
 
