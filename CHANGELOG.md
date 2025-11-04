@@ -135,6 +135,30 @@
 ## 2025-11-04 - Ranking Algorithm Overhaul & UX Improvements
 
 ### Added
+- **Overflow Selection Modal - Scalable Sorting for Large Groups** ⭐ CRITICAL UX FIX
+  - NEW: OverflowSelectionModal component for quick visual selection
+  - Replaces 173+ question ordeal with simple checkbox selection
+  - Takes 30 seconds instead of 30 minutes (60x faster!)
+  - Pre-sorted by lowest combined scores (interactionScore + intuitiveRank bonus)
+  - Algorithm suggests bottom X contacts, user can adjust
+  - Search/filter functionality for large lists
+  - Multi-select with selection counter
+  - "Restore Algorithm Picks" button to undo changes
+  - Review/approval screen before applying
+  - Integrated into Dunbar violation hero card
+  - For groups >20: Shows "Quick Select" (primary) vs "Detailed Ranking" (secondary)
+  - For groups ≤20: Shows single "Decide Who Stays" button (Would You Rather)
+  - Estimated time shown for transparency
+  - Location: `components/relationships/OverflowSelectionModal.tsx`
+  - Based on: `docs/features/SCALABLE_SORTING.md` (Phase 1 implementation)
+  
+- **Scalable Sorting Strategy Documentation**
+  - Comprehensive design doc for 3-phase approach
+  - Phase 1: Overflow Selection (IMPLEMENTED ✅)
+  - Phase 2: Top-K Selection (planned)
+  - Phase 3: Daily Gamified Questions (planned for Harvest)
+  - Location: `docs/features/SCALABLE_SORTING.md`
+
 - **Intuitive Rank Field - User-Driven Ranking Data**
   - Added `intuitiveRank` field to Contact schema (1-based, 1 = highest priority)
   - Added `intuitiveRankedAt` timestamp field
