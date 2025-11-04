@@ -1,5 +1,38 @@
 # Changelog
 
+## 2025-11-04 - Harvest Epic Implementation (Quest System & Badges)
+
+### Added
+- **Quest System Implementation - Gamified Relationship Cultivation** 🎮
+  - Implemented Phase 1 of Harvest Epic design from documentation
+  - **Jazz Schema Updates**:
+    - `Quest` schema with progress tracking, streaks, and feature flags
+    - `Badge` schema with categories and unlock requirements
+    - Updated `HarvestProfile` with quest/badge tracking fields
+    - 6 quest presets across 4 categories (ranking, maintenance, quality, discovery)
+    - 12 badge definitions across 4 categories (completion, streak, action, quality)
+  - **Quest Manager Service** (`services/questManager.ts`):
+    - Daily task generation based on active quests
+    - Quest completion tracking with streak calculations
+    - Badge unlock checking and progress tracking
+    - Helper functions for quest lifecycle management
+  - **Harvest UI Redesign** (`app/(tabs)/harvest.tsx`):
+    - Stats overview card (streak, badges, daily progress)
+    - Active quests list with progress bars and streaks
+    - Quest cards show today's completion status and overall progress
+    - Available quests section with descriptions and rewards
+    - Badge preview grid showing earned badges
+    - Empty state for new users
+  - **Badge Collection Modal** (`components/relationships/BadgeCollectionModal.tsx`):
+    - Full-screen modal displaying all badges (earned and locked)
+    - Grouped by category (Milestones, Consistency, Engagement, Excellence)
+    - Progress bars for locked badges with percentage
+    - Featured "Next Badge" section highlighting closest achievement
+    - Beautiful gradient design with color-coded categories
+  - **Mock Data**: Using mock quests and badges to demonstrate UI/UX
+  - Location: `jazz/harvestSchema.ts`, `services/questManager.ts`, `app/(tabs)/harvest.tsx`, `components/relationships/BadgeCollectionModal.tsx`
+  - Next Steps: Jazz integration, daily quest modals, push notifications
+
 ## 2025-11-04 - Harvest Epic & Quest System Design
 
 ### Added
