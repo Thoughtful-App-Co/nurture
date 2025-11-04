@@ -2,6 +2,21 @@
 
 ## 2025-11-04 - Ranking Algorithm Overhaul & UX Improvements
 
+### Added
+- **Intuitive Rank Field - User-Driven Ranking Data**
+  - Added `intuitiveRank` field to Contact schema (1-based, 1 = highest priority)
+  - Added `intuitiveRankedAt` timestamp field
+  - Added `intuitiveRankingSessionId` to track which session produced the rank
+  - Calculated from finalRanking array position after "Would You Rather" completes
+  - Stored separately from `interactionScore` (algorithmic/data-driven)
+  - Hidden from UI during ranking - intended for future reports/analytics
+  - Use cases:
+    - "You ranked Alice #3 in your Inner Circle"
+    - Compare algorithm accuracy vs user intuition
+    - Track ranking changes over time
+    - Validate and improve ranking algorithm
+  - Location: `jazz/schema.ts:74-78`, `components/relationships/WouldYouRatherModal.tsx:463-470,510-514,557-560`
+
 ### Fixed
 - **Contradiction Alert Logic - Remove False Positives**
   - Fixed overly aggressive transitive contradiction detection
