@@ -19,10 +19,19 @@ import { View, Text, TouchableOpacity } from "react-native";
 import { ALGORITHM_PRESETS, type AlgorithmType } from "@/jazz/harvestSchema";
 import { Card, Button, SectionHeader } from "@/components/ui";
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import { getMockMetrics } from "@/hooks/useHarvestMetrics";
 
 export default function HarvestScreen() {
   const [activeAlgorithms, setActiveAlgorithms] = useState<AlgorithmType[]>([]);
   const [suggestions] = useState<any[]>([]); // TODO: Load from Jazz
+  
+  // TODO: Replace with real data from Jazz
+  // const metrics = useHarvestMetrics({
+  //   activeVolitions: [...],
+  //   totalContacts: ...,
+  //   ... etc
+  // });
+  const metrics = getMockMetrics();
 
   // Get algorithm color based on type
   const getAlgorithmColor = (type: AlgorithmType): string => {
@@ -47,10 +56,10 @@ export default function HarvestScreen() {
     }
   };
 
-  // Calculate metrics (will be moved to proper service)
-  const activeVolitionsCount = activeAlgorithms.length;
-  const weeklyTimeHours = 0; // TODO: Calculate from time tracking
-  const internalWorkPercent = 0; // TODO: Calculate from completion data
+  // Metrics calculation - will be real when Jazz data is wired
+  const activeVolitionsCount = activeAlgorithms.length || metrics.activeVolitionsCount;
+  const weeklyTimeHours = metrics.weeklyTimeHours;
+  const internalWorkPercent = metrics.internalWorkPercent;
 
   return (
     <Animated.ScrollView 
