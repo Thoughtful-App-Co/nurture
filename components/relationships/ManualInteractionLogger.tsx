@@ -17,6 +17,7 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, Modal } from 'react-native';
 import { Phone, ChatCircle, VideoCamera, EnvelopeSimple, Users, Star } from 'phosphor-react-native';
+import { z } from 'zod';
 
 interface Contact {
   id?: string;
@@ -96,6 +97,31 @@ const QUALITY_LEVELS = [
   { value: 1, label: 'Poor', description: 'Uncomfortable or negative', emoji: '😞' },
 ];
 
+// Zod validation schemas
+const durationSchema = z
+  .string()
+  .trim()
+  .regex(/^\d+$/, { message: "Duration must be a number" })
+  .refine((val) => parseInt(val) > 0 && parseInt(val) <= 1440, {
+    message: "Duration must be between 1 and 1440 minutes (24 hours)",
+  });
+
+const dateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Date must be in YYYY-MM-DD format" })
+  .refine((val) => {
+    const date = new Date(val);
+    return !isNaN(date.getTime()) && date <= new Date();
+  }, { message: "Date must be valid and not in the future" });
+
+const notesSchema = z
+  .string()
+  .max(500, { message: "Notes must be less than 500 characters" });
+
+const platformSchema = z
+  .string()
+  .max(50, { message: "Platform name must be less than 50 characters" });
+
 export function ManualInteractionLogger({ contact, onSave, onClose, visible }: Props) {
   const [selectedType, setSelectedType] = useState<ManualInteraction['type']>('face-to-face');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]); // YYYY-MM-DD
@@ -103,10 +129,88 @@ export function ManualInteractionLogger({ contact, onSave, onClose, visible }: P
   const [quality, setQuality] = useState<ManualInteraction['quality']>(4);
   const [notes, setNotes] = useState('');
   const [platform, setPlatform] = useState('');
+  const [errors, setErrors] = useState<{
+    duration?: string;
+    date?: string;
+    notes?: string;
+    platform?: string;
+  }>({});
+
+  const validateDuration = (value: string): boolean => {
+    if (!value || value.trim() === '') {
+      setErrors(prev => ({ ...prev, duration: undefined }));
+      return true;
+    }
+    
+    try {
+      durationSchema.parse(value);
+      setErrors(prev => ({ ...prev, duration: undefined }));
+      return true;
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        setErrors(prev => ({ ...prev, duration: error.errors[0]?.message }));
+      }
+      return false;
+    }
+  };
+
+  const validateDate = (value: string): boolean => {
+    if (!value) {
+      setErrors(prev => ({ ...prev, date: 'Date is required' }));
+      return false;
+    }
+    
+    try {
+      dateSchema.parse(value);
+      setErrors(prev => ({ ...prev, date: undefined }));
+      return true;
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        setErrors(prev => ({ ...prev, date: error.errors[0]?.message }));
+      }
+      return false;
+    }
+  };
+
+  const validateNotes = (value: string): boolean => {
+    try {
+      notesSchema.parse(value);
+      setErrors(prev => ({ ...prev, notes: undefined }));
+      return true;
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        setErrors(prev => ({ ...prev, notes: error.errors[0]?.message }));
+      }
+      return false;
+    }
+  };
+
+  const validatePlatform = (value: string): boolean => {
+    try {
+      platformSchema.parse(value);
+      setErrors(prev => ({ ...prev, platform: undefined }));
+      return true;
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        setErrors(prev => ({ ...prev, platform: error.errors[0]?.message }));
+      }
+      return false;
+    }
+  };
 
   const handleSave = () => {
     if (!contact) {
       alert('Please select a contact first');
+      return;
+    }
+
+    // Validate all fields before saving
+    const isDurationValid = !duration || validateDuration(duration);
+    const isDateValid = validateDate(date);
+    const isNotesValid = validateNotes(notes);
+    const isPlatformValid = validatePlatform(platform);
+
+    if (!isDurationValid || !isDateValid || !isNotesValid || !isPlatformValid) {
       return;
     }
 
@@ -130,6 +234,7 @@ export function ManualInteractionLogger({ contact, onSave, onClose, visible }: P
     setQuality(4);
     setNotes('');
     setPlatform('');
+    setErrors({});
   };
 
   const selectedTypeInfo = INTERACTION_TYPES.find(t => t.value === selectedType);
@@ -215,14 +320,26 @@ export function ManualInteractionLogger({ contact, onSave, onClose, visible }: P
                 </Text>
                 <TextInput
                   value={platform}
-                  onChangeText={setPlatform}
+                  onChangeText={(text) => {
+                    setPlatform(text);
+                    validatePlatform(text);
+                  }}
+                  onBlur={() => validatePlatform(platform)}
                   placeholder="WhatsApp, Instagram, Zoom, etc."
                   placeholderTextColor="#71717a"
-                  className="bg-zinc-900 text-white text-base px-4 py-3 border border-zinc-800"
+                  className={`bg-zinc-900 text-white text-base px-4 py-3 border ${
+                    errors.platform ? 'border-red-500' : 'border-zinc-800'
+                  }`}
                 />
-                <Text className="text-xs text-zinc-500 mt-2">
-                  Helps track where you connect most
-                </Text>
+                {errors.platform ? (
+                  <Text className="text-red-400 text-xs mt-2">
+                    {errors.platform}
+                  </Text>
+                ) : (
+                  <Text className="text-xs text-zinc-500 mt-2">
+                    Helps track where you connect most
+                  </Text>
+                )}
               </View>
             )}
 
@@ -233,14 +350,26 @@ export function ManualInteractionLogger({ contact, onSave, onClose, visible }: P
               </Text>
               <TextInput
                 value={date}
-                onChangeText={setDate}
+                onChangeText={(text) => {
+                  setDate(text);
+                  validateDate(text);
+                }}
+                onBlur={() => validateDate(date)}
                 placeholder="YYYY-MM-DD"
                 placeholderTextColor="#71717a"
-                className="bg-zinc-900 text-white text-base px-4 py-3 border border-zinc-800"
+                className={`bg-zinc-900 text-white text-base px-4 py-3 border ${
+                  errors.date ? 'border-red-500' : 'border-zinc-800'
+                }`}
               />
-              <Text className="text-xs text-zinc-500 mt-2">
-                When did this interaction happen?
-              </Text>
+              {errors.date ? (
+                <Text className="text-red-400 text-xs mt-2">
+                  {errors.date}
+                </Text>
+              ) : (
+                <Text className="text-xs text-zinc-500 mt-2">
+                  When did this interaction happen?
+                </Text>
+              )}
             </View>
 
             {/* Duration */}
@@ -251,15 +380,27 @@ export function ManualInteractionLogger({ contact, onSave, onClose, visible }: P
                 </Text>
                 <TextInput
                   value={duration}
-                  onChangeText={setDuration}
+                  onChangeText={(text) => {
+                    setDuration(text);
+                    validateDuration(text);
+                  }}
+                  onBlur={() => validateDuration(duration)}
                   placeholder="60"
                   placeholderTextColor="#71717a"
                   keyboardType="number-pad"
-                  className="bg-zinc-900 text-white text-base px-4 py-3 border border-zinc-800"
+                  className={`bg-zinc-900 text-white text-base px-4 py-3 border ${
+                    errors.duration ? 'border-red-500' : 'border-zinc-800'
+                  }`}
                 />
-                <Text className="text-xs text-zinc-500 mt-2">
-                  Longer conversations = stronger connections
-                </Text>
+                {errors.duration ? (
+                  <Text className="text-red-400 text-xs mt-2">
+                    {errors.duration}
+                  </Text>
+                ) : (
+                  <Text className="text-xs text-zinc-500 mt-2">
+                    Longer conversations = stronger connections
+                  </Text>
+                )}
               </View>
             )}
 
@@ -320,17 +461,29 @@ export function ManualInteractionLogger({ contact, onSave, onClose, visible }: P
               </Text>
               <TextInput
                 value={notes}
-                onChangeText={setNotes}
+                onChangeText={(text) => {
+                  setNotes(text);
+                  validateNotes(text);
+                }}
+                onBlur={() => validateNotes(notes)}
                 placeholder="What did you talk about? How did it feel?"
                 placeholderTextColor="#71717a"
                 multiline
                 numberOfLines={4}
                 textAlignVertical="top"
-                className="bg-zinc-900 text-white text-base px-4 py-3 border border-zinc-800 min-h-24"
+                className={`bg-zinc-900 text-white text-base px-4 py-3 border min-h-24 ${
+                  errors.notes ? 'border-red-500' : 'border-zinc-800'
+                }`}
               />
-              <Text className="text-xs text-zinc-500 mt-2">
-                Private notes to help you remember and reflect
-              </Text>
+              {errors.notes ? (
+                <Text className="text-red-400 text-xs mt-2">
+                  {errors.notes}
+                </Text>
+              ) : (
+                <Text className="text-xs text-zinc-500 mt-2">
+                  Private notes to help you remember and reflect ({notes.length}/500)
+                </Text>
+              )}
             </View>
           </View>
         </ScrollView>
@@ -339,9 +492,19 @@ export function ManualInteractionLogger({ contact, onSave, onClose, visible }: P
         <View className="px-6 py-4 border-t border-zinc-800 bg-zinc-950">
           <Pressable
             onPress={handleSave}
-            className="bg-primary py-4 px-6"
+            disabled={Object.values(errors).some(error => error !== undefined)}
+            className={`py-4 px-6 ${
+              Object.values(errors).some(error => error !== undefined)
+                ? 'bg-zinc-900'
+                : 'bg-primary'
+            }`}
+            style={({ pressed }) => ({ 
+              opacity: Object.values(errors).some(error => error !== undefined) ? 0.5 : pressed ? 0.9 : 1 
+            })}
           >
-            <Text className="text-center text-lg font-bold text-black">
+            <Text className={`text-center text-lg font-bold ${
+              Object.values(errors).some(error => error !== undefined) ? 'text-zinc-600' : 'text-black'
+            }`}>
               Save Interaction
             </Text>
           </Pressable>

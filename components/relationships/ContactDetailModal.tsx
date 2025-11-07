@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, Modal } from 'react-native';
 import { ManualInteractionLogger } from './ManualInteractionLogger';
 import { InteractionStatsScreen } from './InteractionStatsScreen';
+import { z } from 'zod';
 
 interface Contact {
   id?: string;
@@ -59,12 +60,18 @@ const LAYERS = [
   { id: 5, name: "Social Nebula", range: "250+", color: "#8b5cf6" },
 ];
 
+// Zod validation schema
+const notesSchema = z
+  .string()
+  .max(1000, { message: "Notes must be less than 1000 characters" });
+
 export function ContactDetailModal({ contact, layer, onClose, onSave }: Props) {
   const [editedContact, setEditedContact] = useState<Contact>(contact);
   const [isEditing, setIsEditing] = useState(false);
   const [showInteractionLogger, setShowInteractionLogger] = useState(false);
   const [showLayerSelector, setShowLayerSelector] = useState(false);
   const [showInteractionStats, setShowInteractionStats] = useState(false);
+  const [notesError, setNotesError] = useState<string | undefined>();
 
   const cultivationGoals: Array<{ value: Contact['cultivationGoal']; label: string; color: string }> = [
     { value: 'STRENGTHEN', label: 'Strengthen', color: 'bg-green-900 text-green-400' },
@@ -86,9 +93,28 @@ export function ContactDetailModal({ contact, layer, onClose, onSave }: Props) {
     return `${Math.floor(daysAgo / 365)} years ago`;
   };
 
+  const validateNotes = (value: string): boolean => {
+    try {
+      notesSchema.parse(value);
+      setNotesError(undefined);
+      return true;
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        setNotesError(error.errors[0]?.message);
+      }
+      return false;
+    }
+  };
+
   const handleSave = () => {
+    // Validate notes before saving
+    if (editedContact.notes && !validateNotes(editedContact.notes)) {
+      return;
+    }
+    
     onSave(editedContact);
     setIsEditing(false);
+    setNotesError(undefined);
   };
 
   return (
@@ -106,8 +132,16 @@ export function ContactDetailModal({ contact, layer, onClose, onSave }: Props) {
           </Pressable>
           
           {isEditing ? (
-            <Pressable onPress={handleSave}>
-              <Text className="text-primary text-base font-semibold">Save</Text>
+            <Pressable 
+              onPress={handleSave}
+              disabled={notesError !== undefined}
+              style={{ opacity: notesError !== undefined ? 0.5 : 1 }}
+            >
+              <Text className={`text-base font-semibold ${
+                notesError !== undefined ? 'text-zinc-600' : 'text-primary'
+              }`}>
+                Save
+              </Text>
             </Pressable>
           ) : (
             <Pressable onPress={() => setIsEditing(true)}>
@@ -652,16 +686,33 @@ export function ContactDetailModal({ contact, layer, onClose, onSave }: Props) {
               </Text>
               
               {isEditing ? (
-                <TextInput
-                  value={editedContact.notes || ''}
-                  onChangeText={(text) => setEditedContact({ ...editedContact, notes: text })}
-                  placeholder="Add notes about this relationship..."
-                  placeholderTextColor="#71717a"
-                  multiline
-                  numberOfLines={6}
-                  textAlignVertical="top"
-                  className="bg-zinc-900 text-white text-base px-4 py-4 border border-zinc-800 rounded-none min-h-32"
-                />
+                <>
+                  <TextInput
+                    value={editedContact.notes || ''}
+                    onChangeText={(text) => {
+                      setEditedContact({ ...editedContact, notes: text });
+                      validateNotes(text);
+                    }}
+                    onBlur={() => validateNotes(editedContact.notes || '')}
+                    placeholder="Add notes about this relationship..."
+                    placeholderTextColor="#71717a"
+                    multiline
+                    numberOfLines={6}
+                    textAlignVertical="top"
+                    className={`bg-zinc-900 text-white text-base px-4 py-4 border rounded-none min-h-32 ${
+                      notesError ? 'border-red-500' : 'border-zinc-800'
+                    }`}
+                  />
+                  {notesError ? (
+                    <Text className="text-red-400 text-xs mt-2">
+                      {notesError}
+                    </Text>
+                  ) : (
+                    <Text className="text-xs text-zinc-500 mt-2">
+                      {editedContact.notes?.length || 0}/1000 characters
+                    </Text>
+                  )}
+                </>
               ) : (
                 <View className="p-4 bg-zinc-900 border border-zinc-800">
                   {contact.notes ? (

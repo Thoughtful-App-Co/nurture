@@ -21,6 +21,15 @@ import { DataLimitationsScreen } from './DataLimitationsScreen';
 import { runDiagnostics, getDataMiningStatus } from '@/scripts/diagnose-data-mining';
 import { isFeatureEnabled } from '@/config/featureFlags';
 import { LoadingAnimation } from '@/components/LoadingAnimation';
+import { z } from 'zod';
+
+// Zod validation schemas
+const familyNameSchema = z
+  .string()
+  .trim()
+  .min(1, { message: "Name must be at least 1 character" })
+  .max(50, { message: "Name must be less than 50 characters" })
+  .regex(/^[a-zA-Z\s\-']+$/, { message: "Only letters, spaces, hyphens, and apostrophes allowed" });
 
 type Step = 'intro' | 'family-names' | 'permissions' | 'analyzing' | 'limitations' | 'complete';
 
@@ -38,6 +47,11 @@ export function DataMiningScreen({ onComplete, savedFamilyNames }: Props) {
     hasSMSData: boolean;
   } | null>(null);
   const [dataMiningStatus, setDataMiningStatus] = useState(getDataMiningStatus());
+  const [nameErrors, setNameErrors] = useState<{
+    birthLastName?: string;
+    currentLastName?: string;
+    spouseLastName?: string;
+  }>({});
   
   // Check if we have saved family names - if so, we can skip the questionnaire
   const hasSavedFamilyNames = savedFamilyNames && (
@@ -50,6 +64,25 @@ export function DataMiningScreen({ onComplete, savedFamilyNames }: Props) {
   useEffect(() => {
     setDataMiningStatus(getDataMiningStatus());
   }, []);
+
+  const validateFamilyName = (fieldName: keyof FamilyNames, value: string): boolean => {
+    // Empty values are allowed (optional)
+    if (!value || value.trim() === '') {
+      setNameErrors(prev => ({ ...prev, [fieldName]: undefined }));
+      return true;
+    }
+
+    try {
+      familyNameSchema.parse(value);
+      setNameErrors(prev => ({ ...prev, [fieldName]: undefined }));
+      return true;
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        setNameErrors(prev => ({ ...prev, [fieldName]: error.errors[0]?.message || 'Invalid name' }));
+      }
+      return false;
+    }
+  };
 
   const handleStartAnalysis = async () => {
     setStep('permissions');
@@ -256,15 +289,27 @@ export function DataMiningScreen({ onComplete, savedFamilyNames }: Props) {
             </Text>
             <TextInput
               value={familyNames.birthLastName || ''}
-              onChangeText={(text) => setFamilyNames({ ...familyNames, birthLastName: text })}
+              onChangeText={(text) => {
+                setFamilyNames({ ...familyNames, birthLastName: text });
+                validateFamilyName('birthLastName', text);
+              }}
+              onBlur={() => validateFamilyName('birthLastName', familyNames.birthLastName || '')}
               placeholder="Smith"
               placeholderTextColor="#475569"
-              className="bg-zinc-900 text-white text-lg px-4 py-4 border border-zinc-800 rounded-none"
+              className={`bg-zinc-900 text-white text-lg px-4 py-4 border rounded-none ${
+                nameErrors.birthLastName ? 'border-red-500' : 'border-zinc-800'
+              }`}
               autoCapitalize="words"
             />
-            <Text className="text-xs text-secondary mt-2">
-              Your last name before marriage (if applicable)
-            </Text>
+            {nameErrors.birthLastName ? (
+              <Text className="text-red-400 text-xs mt-2">
+                {nameErrors.birthLastName}
+              </Text>
+            ) : (
+              <Text className="text-xs text-secondary mt-2">
+                Your last name before marriage (if applicable)
+              </Text>
+            )}
           </View>
 
           <View>
@@ -273,12 +318,23 @@ export function DataMiningScreen({ onComplete, savedFamilyNames }: Props) {
             </Text>
             <TextInput
               value={familyNames.currentLastName || ''}
-              onChangeText={(text) => setFamilyNames({ ...familyNames, currentLastName: text })}
+              onChangeText={(text) => {
+                setFamilyNames({ ...familyNames, currentLastName: text });
+                validateFamilyName('currentLastName', text);
+              }}
+              onBlur={() => validateFamilyName('currentLastName', familyNames.currentLastName || '')}
               placeholder="Johnson"
               placeholderTextColor="#475569"
-              className="bg-zinc-900 text-white text-lg px-4 py-4 border border-zinc-800 rounded-none"
+              className={`bg-zinc-900 text-white text-lg px-4 py-4 border rounded-none ${
+                nameErrors.currentLastName ? 'border-red-500' : 'border-zinc-800'
+              }`}
               autoCapitalize="words"
             />
+            {nameErrors.currentLastName && (
+              <Text className="text-red-400 text-xs mt-2">
+                {nameErrors.currentLastName}
+              </Text>
+            )}
           </View>
 
           <View>
@@ -287,23 +343,45 @@ export function DataMiningScreen({ onComplete, savedFamilyNames }: Props) {
             </Text>
             <TextInput
               value={familyNames.spouseLastName || ''}
-              onChangeText={(text) => setFamilyNames({ ...familyNames, spouseLastName: text })}
+              onChangeText={(text) => {
+                setFamilyNames({ ...familyNames, spouseLastName: text });
+                validateFamilyName('spouseLastName', text);
+              }}
+              onBlur={() => validateFamilyName('spouseLastName', familyNames.spouseLastName || '')}
               placeholder="Williams"
               placeholderTextColor="#475569"
-              className="bg-zinc-900 text-white text-lg px-4 py-4 border border-zinc-800 rounded-none"
+              className={`bg-zinc-900 text-white text-lg px-4 py-4 border rounded-none ${
+                nameErrors.spouseLastName ? 'border-red-500' : 'border-zinc-800'
+              }`}
               autoCapitalize="words"
             />
-            <Text className="text-xs text-secondary mt-2">
-              For identifying in-laws
-            </Text>
+            {nameErrors.spouseLastName ? (
+              <Text className="text-red-400 text-xs mt-2">
+                {nameErrors.spouseLastName}
+              </Text>
+            ) : (
+              <Text className="text-xs text-secondary mt-2">
+                For identifying in-laws
+              </Text>
+            )}
           </View>
         </View>
 
         <Pressable
           onPress={handleStartAnalysis}
-          className="bg-primary py-5 px-6 rounded-none border-2 border-primary mb-4"
+          disabled={Object.values(nameErrors).some(error => error !== undefined)}
+          className={`py-5 px-6 rounded-none border-2 mb-4 ${
+            Object.values(nameErrors).some(error => error !== undefined)
+              ? 'bg-zinc-900 border-zinc-800'
+              : 'bg-primary border-primary'
+          }`}
+          style={({ pressed }) => ({ 
+            opacity: Object.values(nameErrors).some(error => error !== undefined) ? 0.5 : pressed ? 0.9 : 1 
+          })}
         >
-          <Text className="text-center text-lg font-bold text-black">
+          <Text className={`text-center text-lg font-bold ${
+            Object.values(nameErrors).some(error => error !== undefined) ? 'text-zinc-600' : 'text-black'
+          }`}>
             CONTINUE
           </Text>
         </Pressable>
