@@ -10,7 +10,7 @@ import { useAccount, useDemoAuth } from "jazz-tools/expo";
 import { OnboardingFlow } from "@/components/auth/onboarding-flow";
 import { BiometricLock } from "@/components/auth/BiometricLock";
 import { DataMiningScreen } from "@/components/onboarding/DataMiningScreen";
-import { Contact, ContactList, DataSharingConsent } from "@/jazz/schema";
+import { Contact, DataSharingConsent } from "@/jazz/schema";
 import { useState, useEffect, useRef } from "react";
 import { calculateDunbarLayers } from "@/services/dunbarCalculator";
 import type { ContactWithMetrics } from "@/services/dataMining";
@@ -28,6 +28,12 @@ export default function Index() {
   // FEATURE FLAG: Use DemoAuth for testing (creates new accounts on every restart)
   // Set EXPO_PUBLIC_USE_DEMO_AUTH=true in .env to enable
   // WARNING: This will reset your data on every app restart!
+  
+  // 🔍 DEBUG: Environment variable verification
+  console.log('🔍 ENV CHECK:');
+  console.log('USE_DEMO_AUTH flag:', FeatureFlags.USE_DEMO_AUTH);
+  console.log('Raw env value:', process.env.EXPO_PUBLIC_USE_DEMO_AUTH);
+  
   if (FeatureFlags.USE_DEMO_AUTH) {
     useDemoAuth();
     console.warn('⚠️ DEMO AUTH ENABLED - Data will reset on app restart!');
@@ -40,6 +46,19 @@ export default function Index() {
       const root = me.root as any;
       const needsOnboarding = !root?.hasCompletedOnboarding;
       const needsContactAnalysis = root?.hasCompletedOnboarding && !root?.hasCompletedContactAnalysis;
+      
+      // 🔍 DEBUG: Enhanced account and flag logging
+      console.log('=== ACCOUNT DEBUG ===');
+      console.log('Account ID:', (me as any).id || 'unknown');
+      console.log('Account exists:', !!me);
+      console.log('Root exists:', !!root);
+      console.log('displayName:', root?.displayName);
+      console.log('hasCompletedOnboarding:', root?.hasCompletedOnboarding);
+      console.log('hasCompletedContactAnalysis:', root?.hasCompletedContactAnalysis);
+      console.log('Contacts count:', root?.contacts?.length || 0);
+      console.log('needsOnboarding:', needsOnboarding);
+      console.log('needsContactAnalysis:', needsContactAnalysis);
+      console.log('====================');
       
       console.log('Flow check:', {
         displayName: root?.displayName,
@@ -136,13 +155,22 @@ export default function Index() {
           // CRITICAL: Mark onboarding as completed
           root.$jazz.set('hasCompletedOnboarding', true);
           
+          // 🔧 FIX: Give Jazz time to persist the onboarding flag
+          console.log('⏳ Waiting for Jazz to persist onboarding data...');
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          // 🔍 DEBUG: Verify the flag was saved
           console.log("User data saved:", {
             displayName: root.displayName,
             email: root.email,
             phone: root.phone,
-            hasCompletedOnboarding: true,
+            hasCompletedOnboarding: root.hasCompletedOnboarding,
             dataSharingLevel: data.dataSharingLevel,
           });
+          
+          if (!root.hasCompletedOnboarding) {
+            console.error('⚠️ WARNING: Onboarding flag did not persist!');
+          }
           
            // Save onboarding data for data mining screen
            setOnboardingData(data);
@@ -222,8 +250,32 @@ export default function Index() {
           console.log('Dunbar layers calculated');
           
           // Save contacts to Jazz
-          // Create new ContactList with all contacts
-          const newContactsList: any[] = [];
+          // 🔧 FIX: Use the existing contacts list from migration
+          // Don't create a new list - modify the existing one
+          console.log('');
+          console.log('=' .repeat(60));
+          console.log('📝 SAVING CONTACTS TO JAZZ');
+          console.log('=' .repeat(60));
+          
+          const existingContacts = root.contacts;
+          
+          // Pre-save diagnostic
+          console.log('🔍 PRE-SAVE DIAGNOSTIC:');
+          console.log(`  Existing list length: ${existingContacts?.length || 0}`);
+          console.log(`  Contacts to add: ${contactsWithLayers.length}`);
+          console.log(`  List has $jazz: ${!!(existingContacts as any)?.$jazz}`);
+          
+          // Clear existing contacts (if any from previous runs)
+          if (existingContacts && existingContacts.length > 0) {
+            console.log('  ⚠️  Clearing existing contacts...');
+            while (existingContacts.length > 0) {
+              existingContacts.$jazz.splice(0, 1);
+            }
+          }
+          
+          // Add each contact to the EXISTING list
+          console.log('  ➕ Adding contacts one by one...');
+          let addedCount = 0;
           
           for (const contact of contactsWithLayers) {
             // Find the original contact to get family role
@@ -247,18 +299,54 @@ export default function Index() {
               createdAt: new Date().toISOString(),
             }, me);
             
-            newContactsList.push(contactData);
+            // Push to existing list (not creating new list!)
+            existingContacts.$jazz.push(contactData);
+            addedCount++;
+            
+            // Log progress every 50 contacts
+            if (addedCount % 50 === 0) {
+              console.log(`    Progress: ${addedCount}/${contactsWithLayers.length}`);
+            }
           }
           
-           // Replace the entire contacts list using $jazz.set
-           const newContacts = ContactList.create(newContactsList, me);
-           root.$jazz.set('contacts', newContacts);
-           
-           console.log(`Saved ${newContactsList.length} contacts to Jazz`);
+          // Post-save diagnostic
+          console.log('');
+          console.log('🔍 POST-SAVE DIAGNOSTIC:');
+          console.log(`  ✅ Added ${addedCount} contacts to Jazz`);
+          console.log(`  Final list length: ${existingContacts.length}`);
+          console.log(`  First contact: ${existingContacts[0]?.name || 'NONE'}`);
+          console.log(`  Last contact: ${existingContacts[existingContacts.length - 1]?.name || 'NONE'}`);
+          
+          // Sample verification
+          if (existingContacts.length >= 3) {
+            console.log('  Sample contacts (first 3):');
+            existingContacts.slice(0, 3).forEach((c: any, i: number) => {
+              console.log(`    ${i + 1}. ${c?.name} - Layer ${c?.dunbarLayer} (score: ${c?.interactionScore})`);
+            });
+          }
+          
+          console.log('=' .repeat(60));
+          console.log('');
            
             // Mark contact analysis as completed - prevents re-running on app restart
             root.$jazz.set('hasCompletedContactAnalysis', true);
             console.log('✅ Contact analysis marked as completed');
+            
+            // 🔧 FIX: Give Jazz time to persist the flag to local storage
+            // Jazz uses eventual consistency, so we add a small delay
+            console.log('⏳ Waiting for Jazz to persist data...');
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // 🔍 DEBUG: Verify the flag was actually saved
+            console.log('🔍 Verification after delay:');
+            console.log('hasCompletedContactAnalysis:', root.hasCompletedContactAnalysis);
+            console.log('Contacts count:', root.contacts?.length || 0);
+            
+            if (!root.hasCompletedContactAnalysis) {
+              console.error('⚠️ WARNING: Flag did not persist! This is a Jazz storage issue.');
+            } else {
+              console.log('✅ Flag successfully verified in Jazz state');
+            }
             
             // Show biometric lock setup before going to dashboard
             setFlow('locked');

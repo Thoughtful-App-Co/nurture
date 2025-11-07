@@ -35,6 +35,7 @@ export const NurtureAccount = co.account({
       {
         displayName: "", // Will be set during onboarding
         hasCompletedOnboarding: false, // User must complete onboarding
+        hasCompletedContactAnalysis: false, // User must complete contact analysis
         contacts: ContactList.create([], account),
         interactions: InteractionList.create([], account),
         goals: GoalList.create([], account),
