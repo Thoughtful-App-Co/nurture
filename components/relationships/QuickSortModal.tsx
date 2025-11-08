@@ -7,8 +7,9 @@
  * Features:
  * - Swipeable card interface for easy categorization
  * - 6 categories: Layers 0-4 + Hidden
+ * - Swipe left to hide/remove unknown contacts
+ * - Swipe right to skip for now
  * - Progress tracking
- * - Skip functionality for uncertain contacts
  * - Prevents re-tending already organized contacts
  */
 
@@ -22,6 +23,7 @@ import {
   PanResponder,
   Dimensions,
 } from "react-native";
+import { MaterialIcons } from "@expo/vector-icons";
 import { useAccount } from "jazz-tools/expo";
 import { Contact, ContactList } from "@/jazz/schema";
 import { Card, Button } from "@/components/ui";
@@ -42,8 +44,8 @@ const HIDDEN_CATEGORY = {
   id: "hidden",
   name: "Hidden",
   color: "#71717a",
-  emoji: "👻",
-  descriptor: "Hide",
+  emoji: "😐",
+  descriptor: "Don't Know",
 };
 
 interface QuickSortModalProps {
@@ -120,8 +122,14 @@ export function QuickSortModal({
     })
   ).current;
 
-  const forceSwipe = (direction: string) => {
+  const forceSwipe = async (direction: string) => {
     const x = direction === "right" ? SCREEN_WIDTH + 100 : -SCREEN_WIDTH - 100;
+    
+    // If swiping left, hide the contact first
+    if (direction === "left") {
+      await handleQuickHide();
+    }
+    
     Animated.parallel([
       Animated.timing(position, {
         toValue: { x, y: 0 },
@@ -134,7 +142,15 @@ export function QuickSortModal({
         useNativeDriver: true,
       }),
     ]).start(() => {
-      onSwipeComplete(direction === "right" ? 0 : "hidden");
+      if (direction === "right") {
+        // Skip for now - don't update contact
+        onSwipeComplete("skip");
+      } else {
+        // Already hidden, just advance
+        setCurrentIndex(currentIndex + 1);
+        position.setValue({ x: 0, y: 0 });
+        fadeAnim.setValue(1);
+      }
     });
   };
 
@@ -145,14 +161,47 @@ export function QuickSortModal({
     }).start();
   };
 
-  const onSwipeComplete = (category: number | "hidden") => {
+  const onSwipeComplete = (category: number | "hidden" | "skip") => {
     // Update contact in next tick
     setTimeout(() => {
       setCurrentIndex(currentIndex + 1);
-      setSortedCount(sortedCount + 1);
+      if (category !== "skip") {
+        setSortedCount(sortedCount + 1);
+      }
       position.setValue({ x: 0, y: 0 });
       fadeAnim.setValue(1);
     }, 50);
+  };
+
+  // Handle quick hide (for unknown contacts)
+  const handleQuickHide = async () => {
+    if (!me || !currentContact) return;
+
+    console.log(`Quick Hide: ${currentContact.name} → Unknown/Hidden`);
+
+    const root = me.root as any;
+    const allContacts = root?.contacts || [];
+
+    // Find the contact to update
+    const contactIndex = Array.from(allContacts).findIndex(
+      (c: any) => c.id === currentContact.id || c.sourceId === currentContact.sourceId
+    );
+
+    if (contactIndex !== -1) {
+      const existingContact = allContacts[contactIndex];
+
+      // Mark as hidden with no relationship type (unknown)
+      existingContact.$jazz.set('dunbarLayer', 5);
+      existingContact.$jazz.set('quickSortStatus', 'hidden');
+      existingContact.$jazz.set('quickSortedAt', new Date().toISOString());
+      existingContact.$jazz.set('relationshipType', undefined);
+      existingContact.$jazz.set('isFamily', false);
+      
+      console.log(`✅ Contact quick-hidden: ${currentContact.name} → Unknown`);
+      
+      // Update state
+      setSortedCount(sortedCount + 1);
+    }
   };
 
   // Handle category button press
@@ -180,43 +229,25 @@ export function QuickSortModal({
     if (contactIndex !== -1) {
       const existingContact = allContacts[contactIndex];
 
-      // Create updated contact with new layer, relationship type, and quick sort status
-      const updatedContactData = Contact.create(
-        {
-          sourceId: existingContact.sourceId,
-          name: existingContact.name,
-          phoneNumber: existingContact.phoneNumber,
-          email: existingContact.email,
-          dunbarLayer: layerId === "hidden" ? 5 : layerId, // Hidden goes to layer 5
-          interactionScore: existingContact.interactionScore,
-          lastInteraction: existingContact.lastInteraction,
-          interactionFrequency: existingContact.interactionFrequency,
-          reciprocityScore: existingContact.reciprocityScore,
-          contactInitiationRatio: existingContact.contactInitiationRatio,
-          averageResponseTime: existingContact.averageResponseTime,
-          // Relationship type and subcategories
-          relationshipType: selectedRelationshipType || existingContact.relationshipType,
-          isFamily: selectedRelationshipType === "FAMILY" || existingContact.isFamily,
-          familyTier: selectedRelationshipType === "FAMILY" ? selectedFamilyTier || existingContact.familyTier : existingContact.familyTier,
-          familyRole: existingContact.familyRole,
-          connectionOrigin: selectedRelationshipType === "FRIEND" ? selectedConnectionOrigin || existingContact.connectionOrigin : existingContact.connectionOrigin,
-          businessTier: selectedRelationshipType === "BUSINESS" ? selectedBusinessTier || existingContact.businessTier : existingContact.businessTier,
-          notes: existingContact.notes,
-          cultivationGoal: existingContact.cultivationGoal,
-          quickSortStatus: layerId === "hidden" ? "hidden" : "sorted",
-          quickSortedAt: new Date().toISOString(),
-          createdAt: existingContact.createdAt,
-        },
-        me
-      );
-
-      // Update the contacts list
-      const newContactsList = Array.from(allContacts).map((c: any, i: number) =>
-        i === contactIndex ? updatedContactData : c
-      );
-
-      const newContacts = ContactList.create(newContactsList, me);
-      root.$jazz.set("contacts", newContacts);
+      // Update contact fields directly in the existing Jazz CoMap
+      existingContact.$jazz.set('dunbarLayer', layerId === "hidden" ? 5 : layerId);
+      existingContact.$jazz.set('quickSortStatus', layerId === "hidden" ? "hidden" : "sorted");
+      existingContact.$jazz.set('quickSortedAt', new Date().toISOString());
+      
+      // Update relationship type if selected
+      if (selectedRelationshipType) {
+        existingContact.$jazz.set('relationshipType', selectedRelationshipType);
+        existingContact.$jazz.set('isFamily', selectedRelationshipType === "FAMILY");
+      }
+      
+      // Update subcategories based on type
+      if (selectedRelationshipType === "FAMILY" && selectedFamilyTier) {
+        existingContact.$jazz.set('familyTier', selectedFamilyTier);
+      } else if (selectedRelationshipType === "FRIEND" && selectedConnectionOrigin) {
+        existingContact.$jazz.set('connectionOrigin', selectedConnectionOrigin);
+      } else if (selectedRelationshipType === "BUSINESS" && selectedBusinessTier) {
+        existingContact.$jazz.set('businessTier', selectedBusinessTier);
+      }
 
       console.log(`✅ Contact sorted: ${currentContact.name} → ${layerId === "hidden" ? "Hidden" : `Layer ${layerId}`}`);
     }
@@ -270,36 +301,11 @@ export function QuickSortModal({
     const root = me.root as any;
     const allContacts = root?.contacts || [];
 
-    // Reset all contacts
-    const resetContacts = Array.from(allContacts).map((c: any) => {
-      return Contact.create(
-        {
-          sourceId: c.sourceId,
-          name: c.name,
-          phoneNumber: c.phoneNumber,
-          email: c.email,
-          dunbarLayer: c.dunbarLayer,
-          interactionScore: c.interactionScore,
-          lastInteraction: c.lastInteraction,
-          interactionFrequency: c.interactionFrequency,
-          reciprocityScore: c.reciprocityScore,
-          contactInitiationRatio: c.contactInitiationRatio,
-          averageResponseTime: c.averageResponseTime,
-          isFamily: c.isFamily,
-          familyTier: c.familyTier,
-          familyRole: c.familyRole,
-          notes: c.notes,
-          cultivationGoal: c.cultivationGoal,
-          quickSortStatus: "not_sorted",
-          quickSortedAt: undefined,
-          createdAt: c.createdAt,
-        },
-        me
-      );
+    // Reset all contacts by updating them in-place
+    Array.from(allContacts).forEach((c: any) => {
+      c.$jazz.set('quickSortStatus', 'not_sorted');
+      c.$jazz.set('quickSortedAt', undefined);
     });
-
-    const newContacts = ContactList.create(resetContacts, me);
-    root.$jazz.set("contacts", newContacts);
 
     // Reset state
     setCurrentIndex(0);
@@ -410,6 +416,29 @@ export function QuickSortModal({
               width: `${(currentIndex / unsortedContacts.length) * 100}%`,
             }}
           />
+        </View>
+
+        {/* Swipe Instructions */}
+        <View className="mb-4">
+          <View className="flex-row justify-between items-center px-6">
+            <View className="flex-row items-center gap-2 bg-red-950/20 border border-red-900/40 px-3 py-2 rounded">
+              <MaterialIcons name="arrow-back" size={20} color="#ef4444" />
+              <View>
+                <Text className="text-red-400 text-[10px] font-bold">SWIPE LEFT</Text>
+                <Text className="text-red-500 text-xs">Hide/Remove</Text>
+              </View>
+            </View>
+            
+            <View className="w-px h-8 bg-zinc-700" />
+            
+            <View className="flex-row items-center gap-2 bg-blue-950/20 border border-blue-900/40 px-3 py-2 rounded">
+              <View className="items-end">
+                <Text className="text-blue-400 text-[10px] font-bold">SWIPE RIGHT</Text>
+                <Text className="text-blue-500 text-xs">Skip for Now</Text>
+              </View>
+              <MaterialIcons name="arrow-forward" size={20} color="#3b82f6" />
+            </View>
+          </View>
         </View>
 
         {/* Card Stack */}
@@ -878,11 +907,6 @@ export function QuickSortModal({
             })()}
           </View>
         </View>
-
-        {/* Skip Button */}
-        <Button variant="ghost" onPress={handleSkip} className="mb-8">
-          Skip for Now
-        </Button>
       </View>
     </Modal>
   );
