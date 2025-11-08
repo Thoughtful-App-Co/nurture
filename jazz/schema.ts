@@ -49,8 +49,17 @@ export const Contact = co.map({
   // Friend connection context (how you met - orthogonal to Dunbar layers)
   connectionOrigin: z.enum(["FAMILY_FRIEND", "NEIGHBOR", "SCHOOL", "HOBBY_SPORTS", "WORK", "OTHER"]).optional(),
   
+  // Connection context details
+  schoolName: z.string().optional(), // Which school (if connectionOrigin is SCHOOL)
+  hobbyName: z.string().optional(), // Which hobby (if connectionOrigin is HOBBY_SPORTS)
+  workCompany: z.string().optional(), // Which company (if connectionOrigin is WORK)
+  
   // Business subcategories
-  businessTier: z.enum(["CLOSE_COLLEAGUE", "ACQUAINTANCE"]).optional(),
+  businessTier: z.enum(["CONTACT", "ACQUAINTANCE", "COWORKER", "CLIENT"]).optional(),
+  
+  // Relationship depth signals
+  knownSinceYear: z.number().optional(), // YYYY format - year met
+  closeEnoughToVisit: z.enum(["YES", "NO", "SOMETIMES"]).optional(), // Physical proximity/relationship depth
   
   // User Intent & Manual Overrides
   targetLayer: z.number().optional(), // desired layer
@@ -170,6 +179,24 @@ export const DataSharingConsent = co.map({
   lastUpdated: z.string().optional(), // ISO date
 });
 
+/**
+ * Dashboard summary cache for performance
+ * Pre-computed contact counts to avoid loading all contacts on dashboard load
+ * Updated when contacts are added/removed/modified
+ */
+export const DashboardSummary = co.map({
+  totalContacts: z.number(),
+  layer0Count: z.number(), // Loved Ones (0-5)
+  layer1Count: z.number(), // Inner Circle (5-15)
+  layer2Count: z.number(), // Clan (15-50)
+  layer3Count: z.number(), // Tribe (50-150)
+  layer4Count: z.number(), // Acquaintances (150-500)
+  layer5Count: z.number(), // Social Nebula (500-1500)
+  hiddenCount: z.number(), // Graveyard contacts
+  unsortedCount: z.number(), // Contacts needing Quick Sort
+  lastUpdated: z.string(), // ISO date
+});
+
 // ============================================================================
 // Cultivation Ranking System (Would You Rather - STORY-016)
 // ============================================================================
@@ -260,6 +287,7 @@ export const UserProfile = co.map({
   displayName: z.string(),
   email: z.string().optional(),
   phone: z.string().optional(),
+  birthYear: z.number().optional(), // User's birth year (YYYY) - for friendship timeline features
   hasCompletedOnboarding: z.boolean().optional(), // Track if user has completed initial onboarding
   hasCompletedContactAnalysis: z.boolean().optional(), // Track if one-time contact analysis is complete
   dataSharing: DataSharingConsent.optional(), // Opt-in data sharing for rebates
@@ -270,6 +298,7 @@ export const UserProfile = co.map({
   familyNames: FamilyNames.optional(),
   rankingSessions: RankingSessionList.optional(), // Cultivation ranking sessions
   comparisons: ComparisonList.optional(), // All pairwise comparisons
+  dashboardSummary: DashboardSummary.optional(), // Pre-computed dashboard metrics for performance
   createdAt: z.string(), // ISO date
   lastActive: z.string(), // ISO date
 });

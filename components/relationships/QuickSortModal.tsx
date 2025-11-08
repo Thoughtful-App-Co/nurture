@@ -22,7 +22,9 @@ import {
   Animated,
   PanResponder,
   Dimensions,
+  TextInput,
 } from "react-native";
+import Slider from "@react-native-community/slider";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useAccount } from "jazz-tools/expo";
 import { Contact, ContactList } from "@/jazz/schema";
@@ -68,7 +70,15 @@ export function QuickSortModal({
   const [selectedRelationshipType, setSelectedRelationshipType] = useState<"FAMILY" | "FRIEND" | "BUSINESS" | null>(null);
   const [selectedFamilyTier, setSelectedFamilyTier] = useState<"NUCLEAR" | "SECONDARY" | "TERTIARY" | null>(null);
   const [selectedConnectionOrigin, setSelectedConnectionOrigin] = useState<"FAMILY_FRIEND" | "NEIGHBOR" | "SCHOOL" | "HOBBY_SPORTS" | "WORK" | "OTHER" | null>(null);
-  const [selectedBusinessTier, setSelectedBusinessTier] = useState<"CLOSE_COLLEAGUE" | "ACQUAINTANCE" | null>(null);
+  const [selectedBusinessTier, setSelectedBusinessTier] = useState<"CONTACT" | "ACQUAINTANCE" | "COWORKER" | "CLIENT" | null>(null);
+  
+  // Additional context fields
+  const [knownSinceYear, setKnownSinceYear] = useState<string>("");
+  const [isEditingYear, setIsEditingYear] = useState<boolean>(false);
+  const [closeEnoughToVisit, setCloseEnoughToVisit] = useState<"YES" | "NO" | "SOMETIMES" | null>(null);
+  const [schoolName, setSchoolName] = useState<string>("");
+  const [hobbyName, setHobbyName] = useState<string>("");
+  const [workCompany, setWorkCompany] = useState<string>("");
   
   // Animation values
   const position = useRef(new Animated.ValueXY()).current;
@@ -91,6 +101,13 @@ export function QuickSortModal({
     setSelectedFamilyTier(null);
     setSelectedConnectionOrigin(null);
     setSelectedBusinessTier(null);
+    // Reset additional context fields
+    setKnownSinceYear("");
+    setIsEditingYear(false);
+    setCloseEnoughToVisit(null);
+    setSchoolName("");
+    setHobbyName("");
+    setWorkCompany("");
   }, [currentIndex]);
 
   // Check if complete
@@ -247,6 +264,23 @@ export function QuickSortModal({
         existingContact.$jazz.set('connectionOrigin', selectedConnectionOrigin);
       } else if (selectedRelationshipType === "BUSINESS" && selectedBusinessTier) {
         existingContact.$jazz.set('businessTier', selectedBusinessTier);
+      }
+      
+      // Update additional context fields
+      if (knownSinceYear && knownSinceYear.length === 4) {
+        existingContact.$jazz.set('knownSinceYear', parseInt(knownSinceYear));
+      }
+      if (closeEnoughToVisit) {
+        existingContact.$jazz.set('closeEnoughToVisit', closeEnoughToVisit);
+      }
+      if (schoolName && selectedConnectionOrigin === "SCHOOL") {
+        existingContact.$jazz.set('schoolName', schoolName);
+      }
+      if (hobbyName && selectedConnectionOrigin === "HOBBY_SPORTS") {
+        existingContact.$jazz.set('hobbyName', hobbyName);
+      }
+      if (workCompany && selectedConnectionOrigin === "WORK") {
+        existingContact.$jazz.set('workCompany', workCompany);
       }
 
       console.log(`✅ Contact sorted: ${currentContact.name} → ${layerId === "hidden" ? "Hidden" : `Layer ${layerId}`}`);
@@ -456,14 +490,9 @@ export function QuickSortModal({
               {...panResponder.panHandlers}
             >
               <Card className="p-6 border-2 border-zinc-700">
-                <Text className="text-white text-3xl font-bold text-center mb-2">
+                <Text className="text-white text-2xl font-bold text-center mb-4">
                   {currentContact.name}
                 </Text>
-                {currentContact.phoneNumber && (
-                  <Text className="text-zinc-400 text-sm text-center mb-4">
-                    {currentContact.phoneNumber}
-                  </Text>
-                )}
                 
                 {/* Relationship Type Selector */}
                 <View className="mb-4">
@@ -473,13 +502,12 @@ export function QuickSortModal({
                   <View className="flex-row gap-2">
                     <Pressable
                       onPress={() => setSelectedRelationshipType("FAMILY")}
-                      className={`flex-1 py-3 px-2 border items-center ${
+                      className={`flex-1 py-2 px-2 border ${
                         selectedRelationshipType === "FAMILY"
                           ? "border-primary bg-primary/20"
                           : "border-zinc-700 bg-zinc-800"
                       }`}
                     >
-                      <Text className="text-2xl mb-1">👨‍👩‍👧‍👦</Text>
                       <Text
                         className={`text-xs font-bold text-center ${
                           selectedRelationshipType === "FAMILY"
@@ -487,18 +515,17 @@ export function QuickSortModal({
                             : "text-zinc-400"
                         }`}
                       >
-                        FAMILY
+                        👨‍👩‍👧‍👦 FAMILY
                       </Text>
                     </Pressable>
                     <Pressable
                       onPress={() => setSelectedRelationshipType("FRIEND")}
-                      className={`flex-1 py-3 px-2 border items-center ${
+                      className={`flex-1 py-2 px-2 border ${
                         selectedRelationshipType === "FRIEND"
                           ? "border-primary bg-primary/20"
                           : "border-zinc-700 bg-zinc-800"
                       }`}
                     >
-                      <Text className="text-2xl mb-1">👥</Text>
                       <Text
                         className={`text-xs font-bold text-center ${
                           selectedRelationshipType === "FRIEND"
@@ -506,18 +533,17 @@ export function QuickSortModal({
                             : "text-zinc-400"
                         }`}
                       >
-                        FRIEND
+                        👥 FRIEND
                       </Text>
                     </Pressable>
                     <Pressable
                       onPress={() => setSelectedRelationshipType("BUSINESS")}
-                      className={`flex-1 py-3 px-2 border items-center ${
+                      className={`flex-1 py-2 px-2 border ${
                         selectedRelationshipType === "BUSINESS"
                           ? "border-primary bg-primary/20"
                           : "border-zinc-700 bg-zinc-800"
                       }`}
                     >
-                      <Text className="text-2xl mb-1">💼</Text>
                       <Text
                         className={`text-xs font-bold text-center ${
                           selectedRelationshipType === "BUSINESS"
@@ -525,7 +551,7 @@ export function QuickSortModal({
                             : "text-zinc-400"
                         }`}
                       >
-                        BUSINESS
+                        💼 BUSINESS
                       </Text>
                     </Pressable>
                   </View>
@@ -723,23 +749,23 @@ export function QuickSortModal({
                     <Text className="text-zinc-400 text-xs text-center mb-2">
                       BUSINESS TIER
                     </Text>
-                    <View className="flex-row gap-2">
+                    <View className="flex-row gap-2 mb-2">
                       <Pressable
-                        onPress={() => setSelectedBusinessTier("CLOSE_COLLEAGUE")}
+                        onPress={() => setSelectedBusinessTier("CONTACT")}
                         className={`flex-1 py-2 px-2 border ${
-                          selectedBusinessTier === "CLOSE_COLLEAGUE"
+                          selectedBusinessTier === "CONTACT"
                             ? "border-blue-500 bg-blue-500/20"
                             : "border-zinc-700 bg-zinc-800"
                         }`}
                       >
                         <Text
                           className={`text-xs text-center ${
-                            selectedBusinessTier === "CLOSE_COLLEAGUE"
+                            selectedBusinessTier === "CONTACT"
                               ? "text-blue-400 font-bold"
                               : "text-zinc-400"
                           }`}
                         >
-                          Close Colleague
+                          Contact
                         </Text>
                       </Pressable>
                       <Pressable
@@ -761,14 +787,197 @@ export function QuickSortModal({
                         </Text>
                       </Pressable>
                     </View>
+                    <View className="flex-row gap-2">
+                      <Pressable
+                        onPress={() => setSelectedBusinessTier("COWORKER")}
+                        className={`flex-1 py-2 px-2 border ${
+                          selectedBusinessTier === "COWORKER"
+                            ? "border-blue-500 bg-blue-500/20"
+                            : "border-zinc-700 bg-zinc-800"
+                        }`}
+                      >
+                        <Text
+                          className={`text-xs text-center ${
+                            selectedBusinessTier === "COWORKER"
+                              ? "text-blue-400 font-bold"
+                              : "text-zinc-400"
+                          }`}
+                        >
+                          Coworker
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => setSelectedBusinessTier("CLIENT")}
+                        className={`flex-1 py-2 px-2 border ${
+                          selectedBusinessTier === "CLIENT"
+                            ? "border-blue-500 bg-blue-500/20"
+                            : "border-zinc-700 bg-zinc-800"
+                        }`}
+                      >
+                        <Text
+                          className={`text-xs text-center ${
+                            selectedBusinessTier === "CLIENT"
+                              ? "text-blue-400 font-bold"
+                              : "text-zinc-400"
+                          }`}
+                        >
+                          Client
+                        </Text>
+                      </Pressable>
+                    </View>
                   </View>
                 )}
 
-                <View className="bg-zinc-800 px-4 py-2 rounded">
-                  <Text className="text-zinc-400 text-xs text-center">
-                    Current Layer: {currentContact.dunbarLayer ?? "Not Set"}
-                  </Text>
+                {/* Known Since Year */}
+                <View className="mb-3">
+                  <Text className="text-zinc-400 text-xs mb-2">KNOWN SINCE (YYYY)?</Text>
+                  
+                  {/* Tappable Year Display */}
+                  <Pressable 
+                    onPress={() => setIsEditingYear(!isEditingYear)}
+                    className="bg-zinc-800 border border-zinc-700 px-3 py-2 rounded mb-2"
+                  >
+                    <Text className="text-white text-center text-lg font-bold">
+                      {knownSinceYear || "Select Year"}
+                    </Text>
+                  </Pressable>
+
+                  {isEditingYear ? (
+                    // Text input mode
+                    <TextInput
+                      value={knownSinceYear}
+                      onChangeText={(text) => {
+                        if (text.length <= 4) setKnownSinceYear(text);
+                      }}
+                      placeholder="Type year"
+                      placeholderTextColor="#71717a"
+                      maxLength={4}
+                      keyboardType="numeric"
+                      className="bg-zinc-900 border border-zinc-600 text-white px-3 py-2 rounded text-sm"
+                      autoFocus
+                    />
+                  ) : (
+                    // Slider mode
+                    <View>
+                      <Slider
+                        style={{ width: '100%', height: 40 }}
+                        minimumValue={1950}
+                        maximumValue={new Date().getFullYear()}
+                        step={1}
+                        value={knownSinceYear ? parseInt(knownSinceYear) : new Date().getFullYear()}
+                        onValueChange={(value) => setKnownSinceYear(Math.round(value).toString())}
+                        minimumTrackTintColor="#3b82f6"
+                        maximumTrackTintColor="#52525b"
+                        thumbTintColor="#3b82f6"
+                      />
+                      <View className="flex-row justify-between px-1">
+                        <Text className="text-zinc-500 text-xs">1950</Text>
+                        <Text className="text-zinc-500 text-xs">{new Date().getFullYear()}</Text>
+                      </View>
+                    </View>
+                  )}
                 </View>
+
+                {/* Close Enough to Visit */}
+                <View className="mb-3">
+                  <Text className="text-zinc-400 text-xs mb-2">CLOSE ENOUGH TO VISIT?</Text>
+                  <View className="flex-row gap-2">
+                    <Pressable
+                      onPress={() => setCloseEnoughToVisit("YES")}
+                      className={`flex-1 py-2 border ${
+                        closeEnoughToVisit === "YES"
+                          ? "border-green-500 bg-green-500/20"
+                          : "border-zinc-700 bg-zinc-800"
+                      }`}
+                    >
+                      <Text
+                        className={`text-xs text-center ${
+                          closeEnoughToVisit === "YES"
+                            ? "text-green-400 font-bold"
+                            : "text-zinc-400"
+                        }`}
+                      >
+                        Yes
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => setCloseEnoughToVisit("SOMETIMES")}
+                      className={`flex-1 py-2 border ${
+                        closeEnoughToVisit === "SOMETIMES"
+                          ? "border-yellow-500 bg-yellow-500/20"
+                          : "border-zinc-700 bg-zinc-800"
+                      }`}
+                    >
+                      <Text
+                        className={`text-xs text-center ${
+                          closeEnoughToVisit === "SOMETIMES"
+                            ? "text-yellow-400 font-bold"
+                            : "text-zinc-400"
+                        }`}
+                      >
+                        Sometimes
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => setCloseEnoughToVisit("NO")}
+                      className={`flex-1 py-2 border ${
+                        closeEnoughToVisit === "NO"
+                          ? "border-red-500 bg-red-500/20"
+                          : "border-zinc-700 bg-zinc-800"
+                      }`}
+                    >
+                      <Text
+                        className={`text-xs text-center ${
+                          closeEnoughToVisit === "NO"
+                            ? "text-red-400 font-bold"
+                            : "text-zinc-400"
+                        }`}
+                      >
+                        No
+                      </Text>
+                    </Pressable>
+                  </View>
+                </View>
+
+                {/* Context-specific input fields */}
+                {selectedConnectionOrigin === "SCHOOL" && (
+                  <View className="mb-3">
+                    <Text className="text-zinc-400 text-xs mb-2">WHICH SCHOOL?</Text>
+                    <TextInput
+                      value={schoolName}
+                      onChangeText={setSchoolName}
+                      placeholder="School name"
+                      placeholderTextColor="#71717a"
+                      className="bg-zinc-800 border border-zinc-700 text-white px-3 py-2 rounded text-sm"
+                    />
+                  </View>
+                )}
+
+                {selectedConnectionOrigin === "HOBBY_SPORTS" && (
+                  <View className="mb-3">
+                    <Text className="text-zinc-400 text-xs mb-2">WHICH HOBBY?</Text>
+                    <TextInput
+                      value={hobbyName}
+                      onChangeText={setHobbyName}
+                      placeholder="Hobby name"
+                      placeholderTextColor="#71717a"
+                      className="bg-zinc-800 border border-zinc-700 text-white px-3 py-2 rounded text-sm"
+                    />
+                  </View>
+                )}
+
+                {selectedConnectionOrigin === "WORK" && (
+                  <View className="mb-3">
+                    <Text className="text-zinc-400 text-xs mb-2">WHICH COMPANY?</Text>
+                    <TextInput
+                      value={workCompany}
+                      onChangeText={setWorkCompany}
+                      placeholder="Company name"
+                      placeholderTextColor="#71717a"
+                      className="bg-zinc-800 border border-zinc-700 text-white px-3 py-2 rounded text-sm"
+                    />
+                  </View>
+                )}
               </Card>
             </Animated.View>
           )}

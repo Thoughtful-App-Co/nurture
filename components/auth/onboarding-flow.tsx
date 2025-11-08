@@ -12,6 +12,7 @@
 
 import React, { useState } from "react";
 import { View, Text, TextInput, Pressable, KeyboardAvoidingView, Platform, ScrollView, Keyboard } from "react-native";
+import Slider from "@react-native-community/slider";
 import { DataVerificationScreen } from "@/components/onboarding/DataVerificationScreen";
 import { z } from "zod";
 
@@ -23,11 +24,12 @@ try {
   console.log("expo-contacts not available - running in Expo Go or dev client");
 }
 
-type OnboardingStep = "welcome" | "basic-info" | "contact-info" | "contacts-permission" | "data-verification" | "complete";
+type OnboardingStep = "welcome" | "basic-info" | "birth-year" | "contact-info" | "contacts-permission" | "data-verification" | "complete";
 
 interface OnboardingData {
   firstName: string;
   lastName: string;
+  birthYear?: number;
   email: string;
   phone: string;
   hasContactsPermission: boolean;
@@ -56,6 +58,8 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   });
   const [emailError, setEmailError] = useState<string | null>(null);
   const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [isEditingBirthYear, setIsEditingBirthYear] = useState<boolean>(false);
+  const [birthYearText, setBirthYearText] = useState<string>("");
 
   const handleRequestContactsPermission = async () => {
     if (!Contacts) {
@@ -161,7 +165,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         <ScrollView className="flex-1" contentContainerClassName="px-8 py-16">
           {/* Progress */}
           <View className="mb-8">
-            <Text className="text-xs text-zinc-400 font-semibold uppercase tracking-wider">STEP 1 OF 3</Text>
+            <Text className="text-xs text-zinc-400 font-semibold uppercase tracking-wider">STEP 1 OF 4</Text>
           </View>
 
           {/* Header */}
@@ -211,7 +215,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           <Pressable
             onPress={() => {
               Keyboard.dismiss();
-              setTimeout(() => setCurrentStep("contact-info"), 100);
+              setTimeout(() => setCurrentStep("birth-year"), 100);
             }}
             disabled={!isValid}
             className={`py-4 px-6 border-2 min-h-[52px] justify-center ${
@@ -240,6 +244,125 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     );
   }
 
+  // Step 2: Birth Year (with slider)
+  if (currentStep === "birth-year") {
+    const currentYear = new Date().getFullYear();
+    const displayYear = data.birthYear || birthYearText || currentYear - 25;
+
+    return (
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        className="flex-1 bg-black"
+      >
+        <ScrollView className="flex-1" contentContainerClassName="px-8 py-16">
+          {/* Progress */}
+          <View className="mb-8">
+            <Text className="text-xs text-zinc-400 font-semibold uppercase tracking-wider">STEP 2 OF 4</Text>
+          </View>
+
+          {/* Header */}
+          <View className="mb-12">
+            <Text className="text-3xl font-bold tracking-wide text-white mb-4">
+              When were you born?
+            </Text>
+            <Text className="text-base text-zinc-400 leading-relaxed">
+              This helps us understand friendship timelines and relationship context.
+            </Text>
+          </View>
+
+          {/* Year Display (Tappable) */}
+          <View className="mb-8">
+            <Pressable 
+              onPress={() => setIsEditingBirthYear(!isEditingBirthYear)}
+              className="bg-zinc-900 border-2 border-zinc-700 px-6 py-6 mb-4"
+            >
+              <Text className="text-white text-center text-5xl font-bold">
+                {displayYear}
+              </Text>
+              <Text className="text-zinc-500 text-center text-xs mt-2">
+                {isEditingBirthYear ? "Tap to use slider" : "Tap to type"}
+              </Text>
+            </Pressable>
+
+            {isEditingBirthYear ? (
+              // Text input mode
+              <TextInput
+                value={birthYearText}
+                onChangeText={(text) => {
+                  if (text.length <= 4) {
+                    setBirthYearText(text);
+                    const year = parseInt(text);
+                    if (text.length === 4 && year >= 1900 && year <= currentYear) {
+                      setData({ ...data, birthYear: year });
+                    }
+                  }
+                }}
+                placeholder="Type birth year"
+                placeholderTextColor="#71717a"
+                maxLength={4}
+                keyboardType="numeric"
+                className="bg-zinc-900 border-2 border-zinc-600 text-white text-center px-4 py-4 text-xl"
+                autoFocus
+              />
+            ) : (
+              // Slider mode
+              <View>
+                <Slider
+                  style={{ width: '100%', height: 60 }}
+                  minimumValue={1940}
+                  maximumValue={currentYear}
+                  step={1}
+                  value={typeof displayYear === 'number' ? displayYear : currentYear - 25}
+                  onValueChange={(value) => {
+                    const year = Math.round(value);
+                    setData({ ...data, birthYear: year });
+                    setBirthYearText(year.toString());
+                  }}
+                  minimumTrackTintColor="#3b82f6"
+                  maximumTrackTintColor="#52525b"
+                  thumbTintColor="#3b82f6"
+                />
+                <View className="flex-row justify-between px-2">
+                  <Text className="text-zinc-500 text-sm">1940</Text>
+                  <Text className="text-zinc-500 text-sm">{currentYear}</Text>
+                </View>
+              </View>
+            )}
+          </View>
+
+          {/* Continue Button */}
+          <Pressable
+            onPress={() => {
+              Keyboard.dismiss();
+              setTimeout(() => setCurrentStep("contact-info"), 100);
+            }}
+            disabled={!data.birthYear}
+            className={`py-4 px-6 border-2 min-h-[52px] justify-center ${
+              data.birthYear
+                ? "bg-primary border-primary"
+                : "bg-zinc-900 border-zinc-800"
+            }`}
+            accessibilityLabel="Continue to next step"
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !data.birthYear }}
+            style={({ pressed }) => ({ 
+              opacity: !data.birthYear ? 0.5 : pressed ? 0.9 : 1,
+              transform: [{ scale: pressed && data.birthYear ? 0.98 : 1 }],
+            })}
+          >
+            <Text
+              className={`text-center text-lg font-bold ${
+                data.birthYear ? "text-white" : "text-zinc-600"
+              }`}
+            >
+              Continue
+            </Text>
+          </Pressable>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    );
+  }
+
   // Step 3: Contact Info (Email & Phone) - Improved spacing and Zod validation
   if (currentStep === "contact-info") {
     const isValidEmail = emailError === null && data.email.trim().length > 0;
@@ -254,7 +377,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         <ScrollView className="flex-1" contentContainerClassName="px-8 py-16">
           {/* Progress */}
           <View className="mb-8">
-            <Text className="text-xs text-zinc-400 font-semibold uppercase tracking-wider">STEP 2 OF 3</Text>
+            <Text className="text-xs text-zinc-400 font-semibold uppercase tracking-wider">STEP 3 OF 4</Text>
           </View>
 
           {/* Header */}
@@ -379,7 +502,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       <View className="flex-1 bg-black justify-center px-8">
         {/* Progress */}
         <View className="mb-8">
-          <Text className="text-xs text-zinc-400 font-semibold uppercase tracking-wider">STEP 3 OF 3</Text>
+          <Text className="text-xs text-zinc-400 font-semibold uppercase tracking-wider">STEP 4 OF 4</Text>
         </View>
 
         {/* Header */}
