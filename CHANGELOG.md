@@ -56,9 +56,20 @@
 
 ### Next Steps
 - Further optimization needed (currently at 33s load time)
-- Consider Jazz version upgrade to 0.19.1
+- ~~Consider Jazz version upgrade to 0.19.1~~ **BLOCKED** - See below
 - Implement Phase 2: Schema decomposition (ContactCore + ContactMetrics)
 - Implement Phase 3: Layer-based collections for faster access
+
+### Jazz Tools 0.19.x Upgrade Blocked
+- **Attempted**: Upgrade from 0.18.30 → 0.19.1
+- **Status**: ❌ BLOCKED by breaking API changes
+- **Reason**: 0.19.0 introduces significant breaking changes:
+  - `useAccount()` API changed completely (returns Account directly instead of `{me, agent, logOut}`)
+  - New `MaybeLoaded` type requires `$isLoaded` checks everywhere
+  - Split into multiple hooks (`useAccount`, `useAgent`, `useLogOut`)
+  - Requires refactoring 40+ files with 12-18 hours estimated effort
+- **Decision**: Stay on 0.18.30, pursue schema optimization instead
+- **Documentation**: `docs/archive/JAZZ_UPGRADE_019_BLOCKED.md`
 
 ## 2025-11-07 - Form Validation & Data Persistence Improvements
 
