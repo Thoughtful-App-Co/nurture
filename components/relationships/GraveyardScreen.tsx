@@ -36,7 +36,7 @@ export function GraveyardScreen({
   onContactUpdate,
 }: GraveyardScreenProps) {
   // Performance optimization: Use $each to batch-load all contacts in one operation
-  const { me } = useAccount(undefined, {
+  const me = useAccount(undefined, {
     resolve: {
       root: {
         contacts: { $each: true },
@@ -63,7 +63,7 @@ export function GraveyardScreen({
 
   // Unhide a contact - restore to not_sorted state
   const handleUnhide = async (contact: any) => {
-    if (!me) return;
+    if (!me?.$isLoaded) return;
     
     setProcessingContactId(contact.id);
     
@@ -99,7 +99,7 @@ export function GraveyardScreen({
 
   // Delete a contact permanently
   const handleDelete = async (contact: any) => {
-    if (!me) return;
+    if (!me?.$isLoaded) return;
     
     Alert.alert(
       "Delete Contact?",

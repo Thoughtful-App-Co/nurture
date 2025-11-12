@@ -50,7 +50,7 @@ export function OverflowSelectionModal({
   layerCapacity,
 }: OverflowSelectionModalProps) {
   // Performance optimization: Use $each to batch-load all contacts in one operation
-  const { me } = useAccount(undefined, {
+  const me = useAccount(undefined, {
     resolve: {
       root: {
         contacts: { $each: true },
@@ -135,7 +135,7 @@ export function OverflowSelectionModal({
   
   // Apply changes
   const handleApply = () => {
-    if (!me) return;
+    if (!me?.$isLoaded) return;
     
     console.log('');
     console.log('=' .repeat(60));

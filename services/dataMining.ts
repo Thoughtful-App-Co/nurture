@@ -228,18 +228,19 @@ export async function fetchCallLogs(): Promise<CallLogEntry[]> {
       timestamp: call.timestamp || call.dateTime || Date.now(),
       type: mapCallType(call.type),
     }));
-  } catch (error: any) {
-    if (error.message?.includes('timeout')) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (errorMessage.includes('timeout')) {
       console.error('⏱️ Call log fetch timeout - may be too much data');
       console.warn('   Try reducing timeframe or contact developer');
     } else {
-      console.error('❌ Failed to fetch call logs:', error.message || error);
+      console.error('❌ Failed to fetch call logs:', errorMessage);
       
       // Provide specific guidance based on error
-      if (error.message?.includes('not linked')) {
+      if (errorMessage.includes('not linked')) {
         console.warn('📱 Native module not linked.');
         console.warn('   For EAS: Rebuild with "eas build --profile development"');
-      } else if (error.message?.includes('permission')) {
+      } else if (errorMessage.includes('permission')) {
         console.warn('⚠️ Permission denied for call logs');
       } else {
         console.warn('⚠️ Call log module may not be properly installed');
@@ -352,14 +353,15 @@ export async function fetchSMSHistory(): Promise<SMSEntry[]> {
     );
     
     return Promise.race([fetchPromise, timeoutPromise]);
-  } catch (error: any) {
-    console.error('❌ Failed to fetch SMS history:', error.message || error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('❌ Failed to fetch SMS history:', errorMessage);
     
     // Provide specific guidance based on error
-    if (error.message?.includes('not linked')) {
+    if (errorMessage.includes('not linked')) {
       console.warn('📱 Native module not linked.');
       console.warn('   For EAS: Rebuild with "eas build --profile development"');
-    } else if (error.message?.includes('permission')) {
+    } else if (errorMessage.includes('permission')) {
       console.warn('⚠️ Permission denied for SMS');
     } else {
       console.warn('⚠️ SMS module may not be properly installed');

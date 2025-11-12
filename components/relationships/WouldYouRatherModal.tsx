@@ -75,7 +75,7 @@ export function WouldYouRatherModal({
   layerCapacity,
 }: WouldYouRatherModalProps) {
   // Performance optimization: Use $each to batch-load all contacts in one operation
-  const { me } = useAccount(undefined, {
+  const me = useAccount(undefined, {
     resolve: {
       root: {
         contacts: { $each: true },
@@ -285,7 +285,7 @@ export function WouldYouRatherModal({
     );
     
     // Save comparison to Jazz
-    if (me) {
+    if (me?.$isLoaded) {
       const comparison = Comparison.create({
         contactAId,
         contactBId,
@@ -411,7 +411,7 @@ export function WouldYouRatherModal({
     );
     
     // Save final session to Jazz
-    if (me) {
+    if (me?.$isLoaded) {
       const now = new Date().toISOString();
       const session = RankingSession.create({
         sessionId: sessionId || `ranking_${Date.now()}`,
@@ -458,7 +458,7 @@ export function WouldYouRatherModal({
     console.log(`Contacts staying in Layer ${violatedLayer}:`, proposedChanges.staying.length);
     console.log(`Contacts moving to Layer ${violatedLayer + 1}:`, proposedChanges.movingDown.length);
     
-    if (me) {
+    if (me?.$isLoaded) {
       const root = me.root as any;
       const allContactsArray = Array.from(root?.contacts || []);
       

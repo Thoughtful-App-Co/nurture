@@ -19,9 +19,19 @@ import { FeatureFlags } from "@/config/featureFlags";
 
 type AppFlow = 'loading' | 'onboarding' | 'data-mining' | 'locked' | 'ready';
 
+interface OnboardingData {
+  firstName: string;
+  lastName: string;
+  birthYear?: number;
+  email: string;
+  phone: string;
+  hasContactsPermission: boolean;
+  dataSharingLevel?: "NONE" | "ANONYMIZED" | "FULL";
+}
+
 export default function Index() {
   // Performance optimization: Use $each to batch-load all contacts in one operation
-  const { me } = useAccount(undefined, {
+  const me = useAccount(undefined, {
     resolve: {
       root: {
         contacts: { $each: true },
@@ -30,7 +40,7 @@ export default function Index() {
     }
   });
   const [flow, setFlow] = useState<AppFlow>('loading');
-  const [onboardingData, setOnboardingData] = useState<any>(null);
+  const [onboardingData, setOnboardingData] = useState<OnboardingData | null>(null);
   const appState = useRef(RNAppState.currentState);
   const [hasCheckedFlow, setHasCheckedFlow] = useState(false);
   const [showDebugPanel, setShowDebugPanel] = useState(false);
@@ -52,9 +62,9 @@ export default function Index() {
 
   // Check if user needs onboarding (hasCompletedOnboarding flag) or contact analysis
   useEffect(() => {
-    if (!me) return;
+    if (!me?.$isLoaded) return;
     
-    const root = me.root as any;
+    const root = me.$isLoaded ? (me.root as any) : null;
     
     // Wait for root to fully load before checking flags
     // Jazz CoValues load lazily, so we need to ensure root is actually loaded
@@ -171,6 +181,10 @@ export default function Index() {
       <OnboardingFlow
         onComplete={async (data) => {
           console.log("Onboarding complete, saving user data to Jazz...");
+          if (!me.$isLoaded) {
+            console.error("Account not loaded during onboarding completion");
+            return;
+          }
           const root = me.root as any;
           
           // Update the user profile with onboarding data
@@ -179,7 +193,7 @@ export default function Index() {
           root.$jazz.set('phone', data.phone);
           
           // Save data sharing consent if provided
-          if (data.dataSharingLevel) {
+          if (data.dataSharingLevel && me.$isLoaded) {
             const now = new Date().toISOString();
             const dataSharingConsent = DataSharingConsent.create({
               hasConsented: data.dataSharingLevel !== "NONE",
@@ -235,6 +249,13 @@ export default function Index() {
 
   // Data mining flow
   if (flow === 'data-mining') {
+    if (!me.$isLoaded) {
+      return (
+        <View className="flex-1 bg-black justify-center items-center">
+          <ActivityIndicator size="large" color="#22c55e" />
+        </View>
+      );
+    }
     const root = me.root as any;
     
     // Debug logging
@@ -252,9 +273,13 @@ export default function Index() {
     return (
       <DataMiningScreen
         savedFamilyNames={savedFamilyNames}
-        onComplete={async (contacts: ContactWithMetrics[], familyNames?: any) => {
+        onComplete={async (contacts: ContactWithMetrics[], familyNames?: { birthLastName?: string; currentLastName?: string; spouseLastName?: string; otherFamilyNames?: string[] }) => {
           console.log(`Data mining complete! Imported ${contacts.length} contacts`);
           
+          if (!me.$isLoaded) {
+            console.error("Account not loaded during data mining completion");
+            return;
+          }
           const root = me.root as any;
           
           // Save family names if provided
@@ -454,7 +479,7 @@ function DiagnosticPanel({ me }: { me: any }) {
     return () => clearInterval(interval);
   }, []);
   
-  const root = me?.root as any;
+  const root = me?.$isLoaded ? me.root as any : null;
   const contactsCount = root?.contacts?.length || 0;
   const hasCompletedAnalysis = root?.hasCompletedContactAnalysis;
   

@@ -62,7 +62,7 @@ export function QuickSortModal({
   contacts,
 }: QuickSortModalProps) {
   // Performance optimization: Use $each to batch-load all contacts in one operation
-  const { me } = useAccount(undefined, {
+  const me = useAccount(undefined, {
     resolve: {
       root: {
         contacts: { $each: true },
@@ -199,7 +199,7 @@ export function QuickSortModal({
 
   // Handle quick hide (for unknown contacts)
   const handleQuickHide = async () => {
-    if (!me || !currentContact) return;
+    if (!me?.$isLoaded || !currentContact) return;
 
     console.log(`Quick Hide: ${currentContact.name} → Unknown/Hidden`);
 
@@ -230,7 +230,7 @@ export function QuickSortModal({
 
   // Handle category button press
   const handleCategorySelect = async (layerId: number | "hidden") => {
-    if (!me || !currentContact) return;
+    if (!me?.$isLoaded || !currentContact) return;
 
     console.log(`Tend Garden: ${currentContact.name} → ${layerId === "hidden" ? "Hidden" : `Layer ${layerId}`}`);
     console.log(`  Relationship Type: ${selectedRelationshipType || "Not set"}`);
@@ -335,7 +335,7 @@ export function QuickSortModal({
 
   // Reset all quick sort statuses
   const handleReset = async () => {
-    if (!me) return;
+    if (!me?.$isLoaded) return;
 
     console.log("🔄 Resetting Tend Garden statuses...");
 

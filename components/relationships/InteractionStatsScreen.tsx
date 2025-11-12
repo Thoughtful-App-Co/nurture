@@ -43,7 +43,7 @@ interface Props {
 
 export function InteractionStatsScreen({ contact, onClose, onReanalyze }: Props) {
   // Performance optimization: Use $each to batch-load all contacts in one operation
-  const { me } = useAccount(undefined, {
+  const me = useAccount(undefined, {
     resolve: {
       root: {
         contacts: { $each: true },
@@ -58,7 +58,7 @@ export function InteractionStatsScreen({ contact, onClose, onReanalyze }: Props)
 
   // Fetch interactions for this contact from Jazz
   const contactInteractions = useMemo(() => {
-    if (!me || !contact.id) return [];
+    if (!me?.$isLoaded || !contact.id) return [];
     
     const root = me.root as any;
     const allInteractions = root?.interactions || [];
@@ -76,7 +76,7 @@ export function InteractionStatsScreen({ contact, onClose, onReanalyze }: Props)
 
   // Calculate layer averages for comparison
   const layerAverages = useMemo(() => {
-    if (!me || contact.dunbarLayer === undefined) return null;
+    if (!me?.$isLoaded || contact.dunbarLayer === undefined) return null;
     
     const root = me.root as any;
     const allContacts = Array.from(root?.contacts || []);

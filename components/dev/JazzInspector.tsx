@@ -15,7 +15,7 @@ interface JazzInspectorProps {
 
 export function JazzInspector({ onClose }: JazzInspectorProps) {
   // Performance optimization: Use $each to batch-load all contacts in one operation
-  const { me } = useAccount(undefined, {
+  const me = useAccount(undefined, {
     resolve: {
       root: {
         contacts: { $each: true },
@@ -25,7 +25,7 @@ export function JazzInspector({ onClose }: JazzInspectorProps) {
       }
     }
   });
-  const root = me?.root as any;
+  const root = me?.$isLoaded ? me.root as any : null;
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
 
   const toggleSection = (section: string) => {

@@ -7,7 +7,7 @@
  */
 
 import React from "react";
-import { JazzExpoProvider, expoSQLiteAdapterProvider } from "jazz-tools/expo";
+import { JazzExpoProvider, ExpoSQLiteAdapter } from "jazz-tools/expo";
 import { co, Group } from "jazz-tools";
 import { 
   UserProfile, 
@@ -76,7 +76,7 @@ export function JazzProvider({ children }: { children: React.ReactNode }) {
       sync={{
         peer: JAZZ_PEER_URL,
       }}
-      storage={expoSQLiteAdapterProvider}
+      storage={new ExpoSQLiteAdapter()}
     >
       {children}
     </JazzExpoProvider>

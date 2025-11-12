@@ -1,5 +1,47 @@
 # Changelog
 
+## [0.4.0] - 2025-11-12 - Jazz 0.19 Upgrade
+
+### Breaking Changes
+- **Upgraded jazz-tools from 0.18.30 to 0.19.1** 🎉
+  - Implements new `MaybeLoaded<T>` type system for better loading state management
+  - Requires `$isLoaded` checks before accessing account properties
+  - Storage adapter API changed: `expoSQLiteAdapterProvider` → `new ExpoSQLiteAdapter()`
+
+### Type Safety Improvements
+- **Fixed all TypeScript errors** ✅
+  - Updated `useAccount` usage across 8 files to handle `MaybeLoaded` types
+  - Added proper type guards with `$isLoaded` checks
+  - Replaced generic `any` types with specific interfaces where possible
+  - Improved error handling with `unknown` type and proper type narrowing
+
+### Files Updated
+- `jazz/provider.tsx` - Updated storage adapter instantiation
+- `app/index.tsx` - Added `OnboardingData` interface, fixed account loading checks
+- `components/relationships/InteractionStatsScreen.tsx` - Added loading state checks
+- `components/relationships/QuickSortModal.tsx` - Added loading state checks
+- `components/relationships/WouldYouRatherModal.tsx` - Fixed multiple account access points
+- `services/dataMining.ts` - Improved error handling types
+
+### Migration Notes
+```typescript
+// Before (Jazz 0.18.x)
+const { me } = useAccount();
+if (!me) return;
+const root = me.root;
+
+// After (Jazz 0.19.x)
+const me = useAccount();
+if (!me?.$isLoaded) return;
+const root = me.root;
+```
+
+### Technical Details
+- Zero TypeScript compilation errors
+- Maintains backward compatibility with existing data
+- All existing features continue to work as expected
+- Performance optimizations from previous `$each` batch loading preserved
+
 ## 2025-11-12 - Jazz Performance Optimization ($each Batch Loading)
 
 ### Performance Improvements
