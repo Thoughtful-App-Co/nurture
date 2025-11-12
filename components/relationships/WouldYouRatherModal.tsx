@@ -74,7 +74,14 @@ export function WouldYouRatherModal({
   violatedLayerName,
   layerCapacity,
 }: WouldYouRatherModalProps) {
-  const { me } = useAccount();
+  // Performance optimization: Use $each to batch-load all contacts in one operation
+  const { me } = useAccount(undefined, {
+    resolve: {
+      root: {
+        contacts: { $each: true },
+      }
+    }
+  });
   
   // Ranking state
   const [rankingState, setRankingState] = useState<RankingState | null>(null);
@@ -461,7 +468,8 @@ export function WouldYouRatherModal({
       // Get final ranking for intuitive rank calculation
       const finalRanking = rankingState.finalRanking;
       
-      const updatedContactsList = allContactsArray.map((c: any) => {
+      // Update contacts in-place
+      allContactsArray.forEach((c: any) => {
         const contactId = c.id || c.sourceId;
         
         // Calculate intuitive rank (1-based: 1 = highest priority)
@@ -474,100 +482,29 @@ export function WouldYouRatherModal({
           console.log(`  ↓ Moving: ${c.name} (Layer ${violatedLayer} → Layer ${violatedLayer + 1}) - Intuitive Rank: #${intuitiveRank}`);
           movingUpdated++;
           
-          return Contact.create({
-            sourceId: c.sourceId,
-            name: c.name,
-            phoneNumber: c.phoneNumber,
-            email: c.email,
-            photoUrl: c.photoUrl,
-            dunbarLayer: violatedLayer + 1, // Move to next layer down
-            interactionScore: c.interactionScore,
-            lastInteraction: c.lastInteraction,
-            interactionFrequency: c.interactionFrequency,
-            reciprocityScore: c.reciprocityScore,
-            contactInitiationRatio: c.contactInitiationRatio,
-            averageResponseTime: c.averageResponseTime,
-            callCount: c.callCount,
-            smsCount: c.smsCount,
-            totalDuration: c.totalDuration,
-            relationshipType: c.relationshipType,
-            isFamily: c.isFamily,
-            familyTier: c.familyTier,
-            familyRole: c.familyRole,
-            connectionOrigin: c.connectionOrigin,
-            businessTier: c.businessTier,
-            targetLayer: c.targetLayer,
-            cultivationGoal: c.cultivationGoal,
-            notes: c.notes,
-            manualLayerOverride: c.manualLayerOverride,
-            lockedLayer: c.lockedLayer,
-            qualityRating: c.qualityRating,
-            manuallyPinned: c.manuallyPinned,
-            lastManualInteraction: c.lastManualInteraction,
-            vertical: c.vertical,
-            tags: c.tags,
-            quickSortStatus: "sorted", // Mark as sorted to prevent re-sorting
-            quickSortedAt: new Date().toISOString(),
-            intuitiveRank, // User's explicit ranking from Would You Rather
-            intuitiveRankedAt: new Date().toISOString(),
-            intuitiveRankingSessionId: sessionId,
-            createdAt: c.createdAt,
-          }, me);
+          c.$jazz.set('dunbarLayer', violatedLayer + 1);
+          c.$jazz.set('quickSortStatus', 'sorted');
+          c.$jazz.set('quickSortedAt', new Date().toISOString());
+          if (intuitiveRank !== undefined) {
+            c.$jazz.set('intuitiveRank', intuitiveRank);
+            c.$jazz.set('intuitiveRankedAt', new Date().toISOString());
+            c.$jazz.set('intuitiveRankingSessionId', sessionId);
+          }
         }
-        
         // Check if contact is staying in current layer
-        if (proposedChanges.staying.includes(contactId)) {
+        else if (proposedChanges.staying.includes(contactId)) {
           console.log(`  ✓ Staying: ${c.name} (Layer ${violatedLayer}) - Intuitive Rank: #${intuitiveRank}`);
           stayingUpdated++;
           
-          return Contact.create({
-            sourceId: c.sourceId,
-            name: c.name,
-            phoneNumber: c.phoneNumber,
-            email: c.email,
-            photoUrl: c.photoUrl,
-            dunbarLayer: c.dunbarLayer, // Keep in current layer
-            interactionScore: c.interactionScore,
-            lastInteraction: c.lastInteraction,
-            interactionFrequency: c.interactionFrequency,
-            reciprocityScore: c.reciprocityScore,
-            contactInitiationRatio: c.contactInitiationRatio,
-            averageResponseTime: c.averageResponseTime,
-            callCount: c.callCount,
-            smsCount: c.smsCount,
-            totalDuration: c.totalDuration,
-            relationshipType: c.relationshipType,
-            isFamily: c.isFamily,
-            familyTier: c.familyTier,
-            familyRole: c.familyRole,
-            connectionOrigin: c.connectionOrigin,
-            businessTier: c.businessTier,
-            targetLayer: c.targetLayer,
-            cultivationGoal: c.cultivationGoal,
-            notes: c.notes,
-            manualLayerOverride: c.manualLayerOverride,
-            lockedLayer: c.lockedLayer,
-            qualityRating: c.qualityRating,
-            manuallyPinned: c.manuallyPinned,
-            lastManualInteraction: c.lastManualInteraction,
-            vertical: c.vertical,
-            tags: c.tags,
-            quickSortStatus: "sorted", // Mark as sorted to prevent re-sorting
-            quickSortedAt: new Date().toISOString(),
-            intuitiveRank, // User's explicit ranking from Would You Rather
-            intuitiveRankedAt: new Date().toISOString(),
-            intuitiveRankingSessionId: sessionId,
-            createdAt: c.createdAt,
-          }, me);
+          c.$jazz.set('quickSortStatus', 'sorted');
+          c.$jazz.set('quickSortedAt', new Date().toISOString());
+          if (intuitiveRank !== undefined) {
+            c.$jazz.set('intuitiveRank', intuitiveRank);
+            c.$jazz.set('intuitiveRankedAt', new Date().toISOString());
+            c.$jazz.set('intuitiveRankingSessionId', sessionId);
+          }
         }
-        
-        // Contact not involved in this ranking session - return unchanged
-        return c;
       });
-      
-      // Save all contacts back to Jazz
-      const newContacts = ContactList.create(updatedContactsList, me);
-      root.$jazz.set('contacts', newContacts);
       
       console.log('');
       console.log(`✅ Successfully updated ${stayingUpdated + movingUpdated} contacts in Jazz`);

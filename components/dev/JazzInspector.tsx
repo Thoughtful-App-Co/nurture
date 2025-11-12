@@ -14,7 +14,17 @@ interface JazzInspectorProps {
 }
 
 export function JazzInspector({ onClose }: JazzInspectorProps) {
-  const { me } = useAccount();
+  // Performance optimization: Use $each to batch-load all contacts in one operation
+  const { me } = useAccount(undefined, {
+    resolve: {
+      root: {
+        contacts: { $each: true },
+        interactions: { $each: true },
+        goals: { $each: true },
+        dashboardSummary: true,
+      }
+    }
+  });
   const root = me?.root as any;
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
 
@@ -34,12 +44,12 @@ export function JazzInspector({ onClose }: JazzInspectorProps) {
     );
   }
 
-  // Calculate statistics
-  const contactsArray = root.contacts || [];
-  const interactionsArray = root.interactions || [];
-  const goalsArray = root.goals || [];
-  const rankingSessionsArray = root.rankingSessions || [];
-  const comparisonsArray = root.comparisons || [];
+  // Calculate statistics - filter out null/undefined values
+  const contactsArray = (root.contacts || []).filter((c: any) => c != null);
+  const interactionsArray = (root.interactions || []).filter((i: any) => i != null);
+  const goalsArray = (root.goals || []).filter((g: any) => g != null);
+  const rankingSessionsArray = (root.rankingSessions || []).filter((s: any) => s != null);
+  const comparisonsArray = (root.comparisons || []).filter((c: any) => c != null);
   
   const layerDistribution = contactsArray.reduce((acc: Record<number, number>, contact: any) => {
     const layer = contact.dunbarLayer ?? 5;

@@ -35,7 +35,14 @@ export function GraveyardScreen({
   hiddenContacts,
   onContactUpdate,
 }: GraveyardScreenProps) {
-  const { me } = useAccount();
+  // Performance optimization: Use $each to batch-load all contacts in one operation
+  const { me } = useAccount(undefined, {
+    resolve: {
+      root: {
+        contacts: { $each: true },
+      }
+    }
+  });
   const [processingContactId, setProcessingContactId] = useState<string | null>(null);
 
   // Format date for display
@@ -72,52 +79,15 @@ export function GraveyardScreen({
 
       const existingContact = contacts[contactIndex];
 
-      // Create updated contact with not_sorted status
-      const updatedContactData = Contact.create(
-        {
-          sourceId: existingContact.sourceId,
-          name: existingContact.name,
-          phoneNumber: existingContact.phoneNumber,
-          email: existingContact.email,
-          dunbarLayer: existingContact.dunbarLayer,
-          interactionScore: existingContact.interactionScore,
-          lastInteraction: existingContact.lastInteraction,
-          interactionFrequency: existingContact.interactionFrequency,
-          reciprocityScore: existingContact.reciprocityScore,
-          contactInitiationRatio: existingContact.contactInitiationRatio,
-          averageResponseTime: existingContact.averageResponseTime,
-          callCount: existingContact.callCount,
-          smsCount: existingContact.smsCount,
-          totalDuration: existingContact.totalDuration,
-          isFamily: existingContact.isFamily,
-          familyTier: existingContact.familyTier,
-          familyRole: existingContact.familyRole,
-          relationshipType: existingContact.relationshipType,
-          connectionOrigin: existingContact.connectionOrigin,
-          businessTier: existingContact.businessTier,
-          notes: existingContact.notes,
-          cultivationGoal: existingContact.cultivationGoal,
-          // Reset quick sort status to not_sorted
-          quickSortStatus: "not_sorted",
-          quickSortedAt: new Date().toISOString(),
-          createdAt: existingContact.createdAt,
-        },
-        me
-      );
-
-      // Replace contact in list
-      const newContactsList = Array.from(contacts).map((c: any, i: number) => 
-        i === contactIndex ? updatedContactData : c
-      );
-      
-      const newContacts = ContactList.create(newContactsList, me);
-      root.$jazz.set('contacts', newContacts);
+      // Update contact fields directly in the existing Jazz CoMap
+      existingContact.$jazz.set('quickSortStatus', 'not_sorted');
+      existingContact.$jazz.set('quickSortedAt', new Date().toISOString());
 
       console.log('✅ Contact unhidden:', contact.name);
       
       // Notify parent to refresh
       if (onContactUpdate) {
-        onContactUpdate(updatedContactData);
+        onContactUpdate(existingContact);
       }
     } catch (error) {
       console.error('Error unhiding contact:', error);
@@ -146,15 +116,13 @@ export function GraveyardScreen({
               const root = me.root as any;
               const contacts = root?.contacts || [];
               
-              // Filter out the contact - need to use map approach for type safety
-              const newContactsList = Array.from(contacts)
-                .map((c: any) => c)
-                .filter((c: any) => c?.id !== contact.id);
+              // Find the contact index and remove it using splice
+              const contactIndex = Array.from(contacts).findIndex((c: any) => c?.id === contact.id);
               
-              const newContacts = ContactList.create(newContactsList as any, me);
-              root.$jazz.set('contacts', newContacts);
-
-              console.log('🗑️ Contact deleted:', contact.name);
+              if (contactIndex !== -1) {
+                contacts.$jazz.splice(contactIndex, 1);
+                console.log('🗑️ Contact deleted:', contact.name);
+              }
               
               // Notify parent to refresh
               if (onContactUpdate) {

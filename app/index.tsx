@@ -5,7 +5,7 @@
  * Flow: Onboarding → Data Mining → Biometric Lock → Dashboard
  */
 
-import { Text, View, ActivityIndicator, AppState as RNAppState } from "react-native";
+import { Text, View, ActivityIndicator, AppState as RNAppState, Pressable } from "react-native";
 import { useAccount, useDemoAuth } from "jazz-tools/expo";
 import { OnboardingFlow } from "@/components/auth/onboarding-flow";
 import { BiometricLock } from "@/components/auth/BiometricLock";
@@ -20,10 +20,20 @@ import { FeatureFlags } from "@/config/featureFlags";
 type AppFlow = 'loading' | 'onboarding' | 'data-mining' | 'locked' | 'ready';
 
 export default function Index() {
-  const { me } = useAccount();
+  // Performance optimization: Use $each to batch-load all contacts in one operation
+  const { me } = useAccount(undefined, {
+    resolve: {
+      root: {
+        contacts: { $each: true },
+        dashboardSummary: true,
+      }
+    }
+  });
   const [flow, setFlow] = useState<AppFlow>('loading');
   const [onboardingData, setOnboardingData] = useState<any>(null);
   const appState = useRef(RNAppState.currentState);
+  const [hasCheckedFlow, setHasCheckedFlow] = useState(false);
+  const [showDebugPanel, setShowDebugPanel] = useState(false);
   
   // FEATURE FLAG: Use DemoAuth for testing (creates new accounts on every restart)
   // Set EXPO_PUBLIC_USE_DEMO_AUTH=true in .env to enable
@@ -42,20 +52,50 @@ export default function Index() {
 
   // Check if user needs onboarding (hasCompletedOnboarding flag) or contact analysis
   useEffect(() => {
-    if (me) {
-      const root = me.root as any;
+    if (!me) return;
+    
+    const root = me.root as any;
+    
+    // Wait for root to fully load before checking flags
+    // Jazz CoValues load lazily, so we need to ensure root is actually loaded
+    if (!root) {
+      console.log('⏳ Waiting for root to load...');
+      return;
+    }
+    
+    // 🔧 FIX: Add a delay to allow Jazz CoValues to lazy-load
+    // Jazz loads account first, then lazy-loads nested CoValues like contacts and familyNames
+    // Without this delay, contacts.length will be 0 even if contacts exist in storage
+    console.log('⏳ Waiting 500ms for Jazz CoValues to load...');
+    const checkFlowTimer = setTimeout(() => {
       const needsOnboarding = !root?.hasCompletedOnboarding;
       const needsContactAnalysis = root?.hasCompletedOnboarding && !root?.hasCompletedContactAnalysis;
       
       // 🔍 DEBUG: Enhanced account and flag logging
-      console.log('=== ACCOUNT DEBUG ===');
+      console.log('=== ACCOUNT DEBUG (after delay) ===');
       console.log('Account ID:', (me as any).id || 'unknown');
       console.log('Account exists:', !!me);
       console.log('Root exists:', !!root);
       console.log('displayName:', root?.displayName);
       console.log('hasCompletedOnboarding:', root?.hasCompletedOnboarding);
       console.log('hasCompletedContactAnalysis:', root?.hasCompletedContactAnalysis);
-      console.log('Contacts count:', root?.contacts?.length || 0);
+      console.log('Contacts reference exists:', !!root?.contacts);
+      console.log('Contacts type:', typeof root?.contacts);
+      console.log('Contacts length:', root?.contacts?.length || 0);
+      
+      // Try to inspect first contact
+      if (root?.contacts && root.contacts.length > 0) {
+        const firstContact = root.contacts[0];
+        console.log('First contact exists:', !!firstContact);
+        console.log('First contact name:', firstContact?.name);
+      }
+      
+      console.log('Family names exist:', !!root?.familyNames);
+      if (root?.familyNames) {
+        console.log('  Birth last name:', root.familyNames.birthLastName);
+        console.log('  Current last name:', root.familyNames.currentLastName);
+      }
+      
       console.log('needsOnboarding:', needsOnboarding);
       console.log('needsContactAnalysis:', needsContactAnalysis);
       console.log('====================');
@@ -78,7 +118,10 @@ export default function Index() {
         // TODO: Re-enable biometric lock after MVP
         setFlow('ready');
       }
-    }
+    }, 500); // Wait 500ms for Jazz to load CoValues
+    
+    // Cleanup timeout on unmount
+    return () => clearTimeout(checkFlowTimer);
   }, [me]);
 
   // Handle app state changes for biometric lock
@@ -370,10 +413,100 @@ export default function Index() {
 
   // User is ready - redirect to dashboard
   if (flow === 'ready') {
-    return <Redirect href="/(tabs)/dashboard" />;
+    return (
+      <>
+        <Redirect href="/(tabs)/dashboard" />
+        {FeatureFlags.SHOW_STATE_DEBUG_PANEL && <DiagnosticPanel me={me} />}
+      </>
+    );
   }
 
-  return null;
+  return (
+    <>
+      {flow === 'loading' && (
+        <View className="flex-1 bg-black justify-center items-center">
+          <ActivityIndicator size="large" color="#22c55e" />
+          <Text className="text-secondary mt-4">Loading...</Text>
+        </View>
+      )}
+      {FeatureFlags.SHOW_STATE_DEBUG_PANEL && <DiagnosticPanel me={me} />}
+    </>
+  );
+}
+
+/**
+ * DiagnosticPanel
+ * 
+ * Real-time display of Jazz data loading state
+ * Shows contacts count, flags, and loading indicators
+ */
+function DiagnosticPanel({ me }: { me: any }) {
+  if (!__DEV__) return null;
+  
+  const [expanded, setExpanded] = useState(false);
+  const [refreshCount, setRefreshCount] = useState(0);
+  
+  // Force re-render every second to show real-time data
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setRefreshCount(c => c + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+  
+  const root = me?.root as any;
+  const contactsCount = root?.contacts?.length || 0;
+  const hasCompletedAnalysis = root?.hasCompletedContactAnalysis;
+  
+  return (
+    <View className="absolute bottom-0 left-0 right-0 z-50">
+      <Pressable
+        onPress={() => setExpanded(!expanded)}
+        className="bg-purple-900 border-t-2 border-purple-500 p-2"
+      >
+        <Text className="text-purple-200 text-xs font-mono text-center">
+          🔧 {expanded ? 'Hide' : 'Show'} Diagnostics | Contacts: {contactsCount} | Flag: {hasCompletedAnalysis ? '✅' : '❌'}
+        </Text>
+      </Pressable>
+      
+      {expanded && (
+        <View className="bg-purple-950 border-t-2 border-purple-500 p-4">
+          <Text className="text-purple-200 text-xs font-mono mb-2">
+            🔄 Refresh #{refreshCount} (updates every 1s)
+          </Text>
+          <Text className="text-purple-200 text-xs font-mono">
+            Account: {me ? (me as any).id || 'loading...' : 'none'}
+          </Text>
+          <Text className="text-purple-200 text-xs font-mono">
+            Root exists: {root ? '✅' : '❌'}
+          </Text>
+          <Text className="text-purple-200 text-xs font-mono">
+            Display name: {root?.displayName || '(none)'}
+          </Text>
+          <Text className="text-purple-200 text-xs font-mono">
+            hasCompletedOnboarding: {root?.hasCompletedOnboarding ? '✅' : '❌'}
+          </Text>
+          <Text className="text-purple-200 text-xs font-mono">
+            hasCompletedContactAnalysis: {hasCompletedAnalysis ? '✅' : '❌'}
+          </Text>
+          <Text className="text-purple-200 text-xs font-mono">
+            Contacts ref exists: {root?.contacts ? '✅' : '❌'}
+          </Text>
+          <Text className="text-purple-200 text-xs font-mono">
+            Contacts length: {contactsCount}
+          </Text>
+          <Text className="text-purple-200 text-xs font-mono">
+            Family names exist: {root?.familyNames ? '✅' : '❌'}
+          </Text>
+          {root?.familyNames && (
+            <Text className="text-purple-200 text-xs font-mono">
+              Family: {root.familyNames.currentLastName || '(none)'}
+            </Text>
+          )}
+        </View>
+      )}
+    </View>
+  );
 }
 
 /**

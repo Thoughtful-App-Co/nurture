@@ -49,7 +49,14 @@ export function OverflowSelectionModal({
   violatedLayerName,
   layerCapacity,
 }: OverflowSelectionModalProps) {
-  const { me } = useAccount();
+  // Performance optimization: Use $each to batch-load all contacts in one operation
+  const { me } = useAccount(undefined, {
+    resolve: {
+      root: {
+        contacts: { $each: true },
+      }
+    }
+  });
   
   // Calculate how many need to move down
   const overflowCount = contacts.length - layerCapacity;
@@ -139,70 +146,23 @@ export function OverflowSelectionModal({
     const root = me.root as any;
     const allContactsArray = Array.from(root?.contacts || []);
     
-    const updatedContactsList = allContactsArray.map((c: any) => {
+    // Update contacts in-place
+    allContactsArray.forEach((c: any) => {
       const contactId = c.id || c.sourceId;
       
       // Check if this contact should be moved
       if (selectedIds.has(contactId)) {
         console.log(`  ↓ Moving: ${c.name} (Layer ${violatedLayer} → Layer ${violatedLayer + 1})`);
-        
-        return Contact.create({
-          sourceId: c.sourceId,
-          name: c.name,
-          phoneNumber: c.phoneNumber,
-          email: c.email,
-          photoUrl: c.photoUrl,
-          dunbarLayer: violatedLayer + 1,
-          interactionScore: c.interactionScore,
-          lastInteraction: c.lastInteraction,
-          interactionFrequency: c.interactionFrequency,
-          reciprocityScore: c.reciprocityScore,
-          contactInitiationRatio: c.contactInitiationRatio,
-          averageResponseTime: c.averageResponseTime,
-          callCount: c.callCount,
-          smsCount: c.smsCount,
-          totalDuration: c.totalDuration,
-          relationshipType: c.relationshipType,
-          isFamily: c.isFamily,
-          familyTier: c.familyTier,
-          familyRole: c.familyRole,
-          connectionOrigin: c.connectionOrigin,
-          businessTier: c.businessTier,
-          targetLayer: c.targetLayer,
-          cultivationGoal: c.cultivationGoal,
-          notes: c.notes,
-          manualLayerOverride: c.manualLayerOverride,
-          lockedLayer: c.lockedLayer,
-          qualityRating: c.qualityRating,
-          manuallyPinned: c.manuallyPinned,
-          lastManualInteraction: c.lastManualInteraction,
-          vertical: c.vertical,
-          tags: c.tags,
-          quickSortStatus: "sorted",
-          quickSortedAt: new Date().toISOString(),
-          intuitiveRank: c.intuitiveRank,
-          intuitiveRankedAt: c.intuitiveRankedAt,
-          intuitiveRankingSessionId: c.intuitiveRankingSessionId,
-          createdAt: c.createdAt,
-        }, me);
+        c.$jazz.set('dunbarLayer', violatedLayer + 1);
+        c.$jazz.set('quickSortStatus', 'sorted');
+        c.$jazz.set('quickSortedAt', new Date().toISOString());
       }
-      
-      // Contact not selected - stays in current layer (but mark as sorted)
-      if (contacts.some((orig: any) => (orig.id || orig.sourceId) === contactId)) {
-        return Contact.create({
-          ...c,
-          quickSortStatus: "sorted",
-          quickSortedAt: new Date().toISOString(),
-        }, me);
+      // Contact not selected - stays in current layer (but mark as sorted if it's in the violated layer)
+      else if (contacts.some((orig: any) => (orig.id || orig.sourceId) === contactId)) {
+        c.$jazz.set('quickSortStatus', 'sorted');
+        c.$jazz.set('quickSortedAt', new Date().toISOString());
       }
-      
-      // Contact not involved - return unchanged
-      return c;
     });
-    
-    // Save all contacts back to Jazz
-    const newContacts = ContactList.create(updatedContactsList, me);
-    root.$jazz.set('contacts', newContacts);
     
     console.log('✅ Overflow selection changes applied');
     console.log('=' .repeat(60));

@@ -61,7 +61,14 @@ export function QuickSortModal({
   onClose,
   contacts,
 }: QuickSortModalProps) {
-  const { me } = useAccount();
+  // Performance optimization: Use $each to batch-load all contacts in one operation
+  const { me } = useAccount(undefined, {
+    resolve: {
+      root: {
+        contacts: { $each: true },
+      }
+    }
+  });
   const [currentIndex, setCurrentIndex] = useState(0);
   const [sortedCount, setSortedCount] = useState(0);
   const [isComplete, setIsComplete] = useState(false);

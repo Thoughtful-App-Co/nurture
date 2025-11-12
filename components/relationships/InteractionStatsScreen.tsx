@@ -42,7 +42,14 @@ interface Props {
 }
 
 export function InteractionStatsScreen({ contact, onClose, onReanalyze }: Props) {
-  const { me } = useAccount();
+  // Performance optimization: Use $each to batch-load all contacts in one operation
+  const { me } = useAccount(undefined, {
+    resolve: {
+      root: {
+        contacts: { $each: true },
+      }
+    }
+  });
   const [showInteractionLogger, setShowInteractionLogger] = useState(false);
 
   // Check if we have interaction data

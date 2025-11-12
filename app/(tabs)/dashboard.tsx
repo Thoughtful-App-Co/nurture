@@ -12,7 +12,7 @@ import { useNavigation } from "expo-router";
 import { calculateDunbarLayers } from "@/services/dunbarCalculator";
 import { DataMiningScreen } from "@/components/onboarding/DataMiningScreen";
 import { LayerDetailScreen } from "@/components/relationships/LayerDetailScreen";
-import { Contact, ContactList, FamilyNames } from "@/jazz/schema";
+import { Contact, ContactList, FamilyNames, DashboardSummary } from "@/jazz/schema";
 import type { ContactWithMetrics } from "@/services/dataMining";
 import { LoadingAnimation } from "@/components/LoadingAnimation";
 import { ContactSearch } from "@/components/relationships/ContactSearch";
@@ -55,7 +55,17 @@ interface LayerStats {
 }
 
 export default function Dashboard() {
-  const { me } = useAccount();
+  // Performance optimization: Use $each to batch-load all contacts in one operation
+  // This prevents N+1 queries where each contact is loaded sequentially
+  const { me } = useAccount(undefined, {
+    resolve: {
+      root: {
+        contacts: { $each: true },  // Batch load all contacts
+        dashboardSummary: true,      // Load summary cache
+        familyNames: true,           // Load family names
+      }
+    }
+  });
   const navigation = useNavigation();
   const [layerStats, setLayerStats] = useState<LayerStats[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(true);
@@ -158,146 +168,160 @@ export default function Dashboard() {
         return;
       }
       
-      const contacts = root.contacts || [];
+      const hasCompletedAnalysis = root.hasCompletedContactAnalysis;
       
       console.log('');
       console.log('=' .repeat(60));
-      console.log("📊 ANALYZING RELATIONSHIPS FROM JAZZ");
+      console.log("📊 LOADING DASHBOARD (FAST PATH - SUMMARY CACHE)");
       console.log('=' .repeat(60));
-      console.log(`Has contacts: ${!!root.contacts}`);
-      console.log(`Contacts length: ${contacts.length}`);
-      console.log(`Contacts type: ${typeof contacts}`);
-      console.log(`Is array: ${Array.isArray(contacts)}`);
+      console.log(`Has completed analysis flag: ${hasCompletedAnalysis}`);
       console.log('=' .repeat(60));
       console.log('');
       
-      // Check if we have any contacts at all
-      if (!contacts || contacts.length === 0) {
-        console.log("No contacts found - need to run data mining");
+      // Check if user has completed contact analysis
+      // If the flag is false, they need to run data mining
+      if (!hasCompletedAnalysis) {
+        console.log("❌ User has not completed contact analysis - need to run data mining");
         setNeedsDataMining(true);
         setIsAnalyzing(false);
         return;
       }
       
-      // Convert Jazz CoList to array if needed
-      let contactsArray: any[] = [];
-      try {
-        if (Array.isArray(contacts)) {
-          contactsArray = contacts;
-        } else if (contacts && typeof contacts[Symbol.iterator] === 'function') {
-          contactsArray = Array.from(contacts);
-        } else if (contacts && typeof contacts === 'object') {
-          // Might be a Jazz CoList - try to convert
-          contactsArray = Object.values(contacts).filter(c => c && typeof c === 'object');
-        }
-      } catch (e) {
-        console.error("Error converting contacts to array:", e);
-        contactsArray = [];
-      }
+      // PERFORMANCE FIX: Load from summary cache instead of iterating all contacts
+      const summary = root.dashboardSummary;
       
-      console.log("Processing contacts:", {
-        arrayLength: contactsArray.length,
-        firstContact: contactsArray[0] ? {
-          type: typeof contactsArray[0],
-          keys: Object.keys(contactsArray[0] || {}),
-          hasId: contactsArray[0]?.id !== undefined,
-          hasSourceId: contactsArray[0]?.sourceId !== undefined,
-          hasName: contactsArray[0]?.name !== undefined,
-        } : null,
-      });
-      
-      // Filter out null/undefined contacts and convert to plain objects
-      const plainContacts = contactsArray
-        .filter((contact: any) => contact != null) // Remove null/undefined
-        .map((contact: any, index: number) => {
-          try {
-            // Jazz CoMaps have an internal id property
-            const contactId = contact?.id || contact?.sourceId || `temp-${index}`;
+      if (!summary) {
+        console.log("⚠️ No dashboard summary found - falling back to full load");
+        console.log("This should only happen once after upgrade");
+        
+        // Fallback: Load contacts to build summary (will be saved for next time)
+        const contacts = root.contacts || [];
+        
+        console.log(`📦 Contacts object: ${!!contacts}`);
+        console.log(`📦 Contacts length: ${contacts?.length || 0}`);
+        console.log(`📦 Contacts type: ${typeof contacts}`);
+        
+        // Try to access length directly (triggers Jazz loading)
+        let contactCount = 0;
+        try {
+          if (contacts && Symbol.iterator in Object(contacts)) {
+            const contactsArray = Array.from(contacts);
+            contactCount = contactsArray.length;
+            console.log(`📦 Loaded ${contactCount} contacts from Jazz`);
             
-            return {
-              id: contactId,
-              sourceId: contact?.sourceId || '',
-              name: contact?.name || 'Unknown',
-              phoneNumber: contact?.phoneNumber || '',
-              email: contact?.email || '',
-              dunbarLayer: contact?.dunbarLayer ?? 5, // Default to Social Nebula
-              interactionScore: contact?.interactionScore ?? 0,
-              lastInteraction: contact?.lastInteraction || '',
-              interactionFrequency: contact?.interactionFrequency ?? 0,
-              reciprocityScore: contact?.reciprocityScore ?? 0,
-              contactInitiationRatio: contact?.contactInitiationRatio ?? 0,
-              averageResponseTime: contact?.averageResponseTime ?? 0,
-              // Raw interaction counts (now stored in Jazz)
-              callCount: contact?.callCount ?? 0,
-              smsCount: contact?.smsCount ?? 0,
-              totalDuration: contact?.totalDuration ?? 0,
-              isFamily: contact?.isFamily ?? false,
-              familyTier: contact?.familyTier || undefined,
-              familyRole: contact?.familyRole || '',
-              notes: contact?.notes || '',
-              cultivationGoal: contact?.cultivationGoal || undefined,
-              // Quick Sort / Tend Garden status
-              quickSortStatus: contact?.quickSortStatus || 'not_sorted',
-              quickSortedAt: contact?.quickSortedAt || undefined,
-              // Relationship type fields
-              relationshipType: contact?.relationshipType || undefined,
-              connectionOrigin: contact?.connectionOrigin || undefined,
-              businessTier: contact?.businessTier || undefined,
-            };
-          } catch (e) {
-            console.error("Error processing contact:", e, contact);
-            return null;
+            if (contactCount > 0) {
+              // Build summary from contacts (one-time migration)
+              console.log('🔨 Building summary from loaded contacts...');
+              await buildAndSaveSummary(contacts);
+              
+              // Retry with summary
+              hasAnalyzed.current = false;
+              analyzeRelationships();
+              return;
+            }
           }
-        })
-        .filter((contact: any) => contact != null); // Remove any failed conversions
-      
-      console.log("Plain contacts after processing:", {
-        count: plainContacts.length,
-        sample: plainContacts[0],
-      });
-      
-      // Check if we ended up with any valid contacts
-      if (plainContacts.length === 0) {
-        console.log("No valid contacts after processing - need to run data mining");
+        } catch (e) {
+          console.error('Error accessing contacts:', e);
+        }
+        
+        // If truly no contacts, something is wrong - show data mining
+        console.log("⚠️ No contacts found in Jazz storage");
+        console.log("🔄 Triggering data mining to rebuild contacts...");
         setNeedsDataMining(true);
         setIsAnalyzing(false);
         return;
       }
       
-      // Group contacts by their EXISTING dunbarLayer (no need to recalculate on every load)
-      const layerGroups: LayerStats[] = LAYERS.map(layer => ({
-        layer: layer.id,
-        count: 0,
-        contacts: [],
-      }));
-      
-      plainContacts.forEach((contact: any) => {
-        const layer = contact?.dunbarLayer ?? 5;
-        layerGroups[layer].contacts.push(contact);
-        layerGroups[layer].count++;
-      });
-      
+      console.log('✅ Loaded dashboard summary from cache');
+      console.log(`  Total contacts: ${summary.totalContacts}`);
+      console.log(`  Layer 0: ${summary.layer0Count}`);
+      console.log(`  Layer 1: ${summary.layer1Count}`);
+      console.log(`  Layer 2: ${summary.layer2Count}`);
+      console.log(`  Layer 3: ${summary.layer3Count}`);
+      console.log(`  Layer 4: ${summary.layer4Count}`);
+      console.log(`  Layer 5: ${summary.layer5Count}`);
+      console.log(`  Hidden: ${summary.hiddenCount}`);
+      console.log(`  Unsorted: ${summary.unsortedCount}`);
+      console.log(`  Last updated: ${summary.lastUpdated}`);
       console.log('');
-      console.log('=' .repeat(60));
-      console.log('📋 CONTACT GROUPING BY LAYER');
-      console.log('=' .repeat(60));
-      layerGroups.forEach((group, index) => {
-        console.log(`Layer ${index}: ${group.count} contacts`);
-        if (group.count > 0) {
-          console.log(`  Sample: ${group.contacts.slice(0, 3).map(c => c.name).join(', ')}`);
-        }
-      });
-      console.log('=' .repeat(60));
-      console.log('');
+      
+      // Build layer stats from summary (no contact loading needed!)
+      const layerGroups: LayerStats[] = [
+        { layer: 0, count: summary.layer0Count, contacts: [] },
+        { layer: 1, count: summary.layer1Count, contacts: [] },
+        { layer: 2, count: summary.layer2Count, contacts: [] },
+        { layer: 3, count: summary.layer3Count, contacts: [] },
+        { layer: 4, count: summary.layer4Count, contacts: [] },
+        { layer: 5, count: summary.layer5Count, contacts: [] },
+      ];
       
       setLayerStats(layerGroups);
-      setTotalContacts(plainContacts.length);
+      setTotalContacts(summary.totalContacts);
     } catch (error) {
       console.error("Error analyzing relationships:", error);
     } finally {
       setIsAnalyzing(false);
     }
   }, [me]); // Only depend on me
+  
+  // Helper function to build summary from contacts (migration path)
+  const buildAndSaveSummary = async (contacts: any) => {
+    if (!me) return;
+    
+    console.log('🔄 Building summary from contacts (one-time migration)...');
+    
+    const root = me.root as any;
+    const contactsArray = Array.from(contacts);
+    
+    const layerCounts = [0, 0, 0, 0, 0, 0];
+    let hiddenCount = 0;
+    let unsortedCount = 0;
+    
+    contactsArray.forEach((c: any) => {
+      if (c?.quickSortStatus === "hidden") {
+        hiddenCount++;
+      } else {
+        const layer = c?.dunbarLayer ?? 5;
+        layerCounts[layer]++;
+        
+        if (c?.quickSortStatus === "not_sorted" || !c?.quickSortStatus) {
+          unsortedCount++;
+        }
+      }
+    });
+    
+    const summary = DashboardSummary.create({
+      totalContacts: contactsArray.length,
+      layer0Count: layerCounts[0],
+      layer1Count: layerCounts[1],
+      layer2Count: layerCounts[2],
+      layer3Count: layerCounts[3],
+      layer4Count: layerCounts[4],
+      layer5Count: layerCounts[5],
+      hiddenCount,
+      unsortedCount,
+      lastUpdated: new Date().toISOString(),
+    }, me);
+    
+    root.$jazz.set('dashboardSummary', summary);
+    
+    console.log('✅ Summary built and saved');
+  };
+  
+  // Helper function to refresh summary after contact mutations
+  // Call this after any contact add/update/delete/hide/unhide operations
+  const refreshSummary = useCallback(async () => {
+    if (!me) return;
+    
+    const root = me.root as any;
+    const contacts = root?.contacts || [];
+    
+    await buildAndSaveSummary(contacts);
+    
+    // Refresh dashboard display
+    hasAnalyzed.current = false;
+    analyzeRelationships();
+  }, [me, analyzeRelationships]);
 
   // Handle data mining completion
   const handleDataMiningComplete = async (contacts: ContactWithMetrics[], familyNames?: any) => {
@@ -392,8 +416,28 @@ export default function Dashboard() {
     console.log('');
     
     // Save contacts to Jazz
-    // Create new ContactList with all contacts
-    const newContactsList: any[] = [];
+    // 🔧 FIX: Use existing contacts list, don't replace
+    let existingContacts = root.contacts;
+    
+    // If contacts list doesn't exist yet (first time), create it
+    if (!existingContacts) {
+      console.log("No contacts list exists - creating new one");
+      existingContacts = ContactList.create([], me);
+      root.$jazz.set('contacts', existingContacts);
+    }
+    
+    // Clear existing contacts if user is intentionally re-analyzing
+    // This only happens when clicking "Re-analyze" button, not on app load
+    if (existingContacts.length > 0) {
+      console.log(`🔄 Re-analyzing: Clearing ${existingContacts.length} existing contacts...`);
+      while (existingContacts.length > 0) {
+        existingContacts.$jazz.splice(0, 1);
+      }
+    }
+    
+    // Add contacts to existing list
+    console.log(`Adding ${contactsWithLayers.length} contacts to existing Jazz list...`);
+    let addedCount = 0;
     
     for (const contact of contactsWithLayers) {
       // Find the original contact to get family role
@@ -422,24 +466,12 @@ export default function Dashboard() {
         createdAt: new Date().toISOString(),
       }, me);
       
-      newContactsList.push(contactData);
+      // Push to existing list
+      existingContacts.$jazz.push(contactData);
+      addedCount++;
     }
     
-    // Replace the entire contacts list using $jazz.set
-    const newContacts = ContactList.create(newContactsList, me);
-    root.$jazz.set('contacts', newContacts);
-    
-    console.log('');
-    console.log('=' .repeat(60));
-    console.log('💾 SAVING TO JAZZ DATABASE');
-    console.log('=' .repeat(60));
-    console.log(`Contacts to save: ${newContactsList.length}`);
-    console.log('Sample contacts:');
-    newContactsList.slice(0, 5).forEach((c, i) => {
-      console.log(`  ${i + 1}. ${c.name} - Layer ${c.dunbarLayer} (score: ${c.interactionScore})`);
-    });
-    console.log('=' .repeat(60));
-    console.log('');
+    console.log(`✅ Pushed ${addedCount} contacts to Jazz list`);
     
     // Wait a moment for Jazz to process the save
     await new Promise(resolve => setTimeout(resolve, 500));
@@ -452,8 +484,8 @@ export default function Dashboard() {
     console.log('=' .repeat(60));
     console.log(`Contacts in Jazz after save: ${savedContacts.length}`);
     
-    if (savedContacts.length !== newContactsList.length) {
-      console.error(`❌ MISMATCH: Tried to save ${newContactsList.length} but only ${savedContacts.length} found in Jazz!`);
+    if (savedContacts.length !== addedCount) {
+      console.error(`❌ MISMATCH: Tried to save ${addedCount} but only ${savedContacts.length} found in Jazz!`);
     } else {
       console.log('✅ All contacts successfully saved to Jazz');
     }
@@ -473,6 +505,49 @@ export default function Dashboard() {
     console.log(`  Layer 5: ${savedLayerCounts[5]}`);
     console.log('=' .repeat(60));
     console.log('');
+    
+    // Compute and save dashboard summary for performance
+    console.log('');
+    console.log('=' .repeat(60));
+    console.log('📊 COMPUTING DASHBOARD SUMMARY');
+    console.log('=' .repeat(60));
+    
+    const hiddenCount = Array.from(savedContacts).filter((c: any) => c?.quickSortStatus === "hidden").length;
+    const unsortedCount = Array.from(savedContacts).filter((c: any) => 
+      c?.quickSortStatus === "not_sorted" || !c?.quickSortStatus
+    ).length;
+    
+    const summary = DashboardSummary.create({
+      totalContacts: savedContacts.length,
+      layer0Count: savedLayerCounts[0],
+      layer1Count: savedLayerCounts[1],
+      layer2Count: savedLayerCounts[2],
+      layer3Count: savedLayerCounts[3],
+      layer4Count: savedLayerCounts[4],
+      layer5Count: savedLayerCounts[5],
+      hiddenCount,
+      unsortedCount,
+      lastUpdated: new Date().toISOString(),
+    }, me);
+    
+    root.$jazz.set('dashboardSummary', summary);
+    
+    console.log('Dashboard Summary:');
+    console.log(`  Total: ${savedContacts.length}`);
+    console.log(`  Hidden: ${hiddenCount}`);
+    console.log(`  Unsorted: ${unsortedCount}`);
+    console.log('✅ Dashboard summary saved');
+    console.log('=' .repeat(60));
+    console.log('');
+    
+    // Mark contact analysis as completed
+    console.log('📝 Setting hasCompletedContactAnalysis flag to true...');
+    root.$jazz.set('hasCompletedContactAnalysis', true);
+    
+    // Wait for flag to persist
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    console.log('✅ Contact analysis marked as completed');
     
     // Hide data mining screen and refresh dashboard
     setShowDataMining(false);
@@ -505,11 +580,48 @@ export default function Dashboard() {
       console.log('');
     }
     
+    // 🔧 DIAGNOSTIC: Show bypass option if flags indicate data should exist
+    const hasCompletedAnalysis = root?.hasCompletedContactAnalysis;
+    const showDiagnosticBypass = hasCompletedAnalysis && (!root?.contacts || root.contacts.length === 0);
+    
     return (
-      <DataMiningScreen 
-        onComplete={handleDataMiningComplete}
-        savedFamilyNames={savedFamilyNames}
-      />
+      <View className="flex-1 bg-black">
+        {showDiagnosticBypass && (
+          <View className="absolute top-16 left-0 right-0 z-50 px-6">
+            <View className="bg-yellow-950 border-2 border-yellow-600 p-4">
+              <Text className="text-yellow-400 text-xs font-bold mb-2">
+                🔧 DIAGNOSTIC MODE
+              </Text>
+              <Text className="text-yellow-200 text-xs mb-3">
+                Flag shows analysis completed but no contacts found. This might be a Jazz lazy-loading issue.
+              </Text>
+              <Pressable
+                onPress={() => {
+                  console.log('🔧 DIAGNOSTIC BYPASS: Skipping data mining, going to dashboard');
+                  console.log('This will show if contacts load after a delay');
+                  setNeedsDataMining(false);
+                  setShowDataMining(false);
+                  hasAnalyzed.current = false;
+                  // Wait a bit longer for Jazz to load
+                  setTimeout(() => analyzeRelationships(), 1000);
+                }}
+                className="bg-yellow-600 py-3 px-4"
+                accessibilityRole="button"
+                accessibilityLabel="Skip to dashboard for diagnosis"
+              >
+                <Text className="text-black text-center text-sm font-bold">
+                  SKIP TO DASHBOARD (Diagnostic)
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
+        
+        <DataMiningScreen 
+          onComplete={handleDataMiningComplete}
+          savedFamilyNames={savedFamilyNames}
+        />
+      </View>
     );
   }
 
@@ -535,51 +647,25 @@ export default function Dashboard() {
     if (contactIndex !== -1) {
       const existingContact = contacts[contactIndex];
       
-      // Create a new Contact CoMap with updated properties
-      const updatedContactData = Contact.create({
-        sourceId: existingContact.sourceId,
-        name: existingContact.name,
-        phoneNumber: existingContact.phoneNumber,
-        email: existingContact.email,
-        dunbarLayer: updatedContact.dunbarLayer ?? existingContact.dunbarLayer,
-        interactionScore: existingContact.interactionScore,
-        lastInteraction: existingContact.lastInteraction,
-        interactionFrequency: existingContact.interactionFrequency,
-        reciprocityScore: existingContact.reciprocityScore,
-        contactInitiationRatio: existingContact.contactInitiationRatio,
-        averageResponseTime: existingContact.averageResponseTime,
-        // Preserve raw interaction counts
-        callCount: existingContact.callCount,
-        smsCount: existingContact.smsCount,
-        totalDuration: existingContact.totalDuration,
-        isFamily: existingContact.isFamily,
-        familyTier: existingContact.familyTier,
-        familyRole: existingContact.familyRole,
-        // Updated fields
-        notes: updatedContact.notes,
-        cultivationGoal: updatedContact.cultivationGoal,
-        // Preserve quick sort status
-        quickSortStatus: existingContact.quickSortStatus,
-        quickSortedAt: existingContact.quickSortedAt,
-        createdAt: existingContact.createdAt,
-      }, me);
+      // Update contact fields directly in the existing Jazz CoMap
+      // Jazz CoMaps track changes automatically
+      const contactToUpdate = contacts[contactIndex];
       
-      // Create new contacts list with the updated contact
-      const newContactsList = contacts.map((c: any, i: number) => 
-        i === contactIndex ? updatedContactData : c
-      );
-      
-      // Replace the entire contacts list
-      const newContacts = ContactList.create(newContactsList, me);
-      root.$jazz.set('contacts', newContacts);
+      // Update only the fields that changed
+      if (updatedContact.dunbarLayer !== undefined && updatedContact.dunbarLayer !== contactToUpdate.dunbarLayer) {
+        contactToUpdate.$jazz.set('dunbarLayer', updatedContact.dunbarLayer);
+      }
+      if (updatedContact.notes !== undefined && updatedContact.notes !== contactToUpdate.notes) {
+        contactToUpdate.$jazz.set('notes', updatedContact.notes);
+      }
+      if (updatedContact.cultivationGoal !== undefined && updatedContact.cultivationGoal !== contactToUpdate.cultivationGoal) {
+        contactToUpdate.$jazz.set('cultivationGoal', updatedContact.cultivationGoal);
+      }
       
       console.log('Contact updated:', updatedContact.name);
       
-      // Reset the analyzed flag so we can re-analyze
-      hasAnalyzed.current = false;
-      
-      // Refresh the dashboard
-      analyzeRelationships();
+      // Refresh summary cache and dashboard
+      await refreshSummary();
     }
   };
 
@@ -608,9 +694,38 @@ export default function Dashboard() {
   }
 
   // Show layer detail screen if a layer is selected
+  // Lazy load contacts only when layer is opened
   if (selectedLayerId !== null) {
     const selectedLayer = LAYERS.find(l => l.id === selectedLayerId);
-    const layerContacts = layerStats[selectedLayerId]?.contacts || [];
+    const root = me?.root as any;
+    const contacts = root?.contacts || [];
+    const layerContacts = Array.from(contacts)
+      .filter((c: any) => c?.dunbarLayer === selectedLayerId && c?.quickSortStatus !== "hidden")
+      .map((c: any) => ({
+        id: c?.id || c?.sourceId,
+        sourceId: c?.sourceId,
+        name: c?.name || 'Unknown',
+        phoneNumber: c?.phoneNumber,
+        email: c?.email,
+        dunbarLayer: c?.dunbarLayer,
+        interactionScore: c?.interactionScore,
+        lastInteraction: c?.lastInteraction,
+        interactionFrequency: c?.interactionFrequency,
+        reciprocityScore: c?.reciprocityScore,
+        contactInitiationRatio: c?.contactInitiationRatio,
+        callCount: c?.callCount,
+        smsCount: c?.smsCount,
+        totalDuration: c?.totalDuration,
+        isFamily: c?.isFamily,
+        familyTier: c?.familyTier,
+        familyRole: c?.familyRole,
+        notes: c?.notes,
+        cultivationGoal: c?.cultivationGoal,
+        quickSortStatus: c?.quickSortStatus,
+        relationshipType: c?.relationshipType,
+        connectionOrigin: c?.connectionOrigin,
+        businessTier: c?.businessTier,
+      }));
     
     if (selectedLayer) {
       return (
@@ -632,6 +747,7 @@ export default function Dashboard() {
   }
 
   // Show graveyard screen if opened
+  // Lazy load hidden contacts only when graveyard is opened
   if (showGraveyard) {
     const root = me?.root as any;
     const contacts = root?.contacts || [];
@@ -642,10 +758,9 @@ export default function Dashboard() {
         onBack={() => setShowGraveyard(false)}
         hiddenContacts={hiddenContacts}
         onContactUpdate={() => {
-          // Reset analyzed flag to refresh dashboard
-          hasAnalyzed.current = false;
+          // Refresh summary cache and dashboard
           setShowGraveyard(false);
-          analyzeRelationships();
+          refreshSummary();
         }}
       />
     );
@@ -662,19 +777,11 @@ export default function Dashboard() {
     }
   };
 
-  // Get hidden contacts count for graveyard card
+  // Get hidden contacts count from summary (FAST - no contact loading!)
   const root = me?.root as any;
-  const allContactsForGraveyard = root?.contacts || [];
-  const hiddenContactsCount = Array.from(allContactsForGraveyard).filter((c: any) => c?.quickSortStatus === "hidden").length;
-  
-  // Debug logging
-  console.log('🪦 Graveyard Debug:', {
-    totalContacts: Array.from(allContactsForGraveyard).length,
-    hiddenCount: hiddenContactsCount,
-    hiddenContacts: Array.from(allContactsForGraveyard)
-      .filter((c: any) => c?.quickSortStatus === "hidden")
-      .map((c: any) => ({ name: c?.name, status: c?.quickSortStatus }))
-  });
+  const summary = root?.dashboardSummary;
+  const hiddenContactsCount = summary?.hiddenCount || 0;
+  const unsortedCountFromSummary = summary?.unsortedCount || 0;
 
   const withinDunbar = layerStats.slice(0, 4).reduce((sum, layer) => sum + layer.count, 0);
   const dunbarHealth = withinDunbar <= 150 ? "healthy" : "overextended";
@@ -762,43 +869,73 @@ export default function Dashboard() {
             )}
           </View>
 
-        {/* Hero Cards & Tend Garden - Calculate violations once */}
+        {/* Hero Cards & Tend Garden - Use summary for violations */}
         {(() => {
-          const root = me?.root as any;
-          const contacts = root?.contacts || [];
-          const allContacts = Array.from(contacts);
+          // Detect violations from summary counts (FAST - no contact loading!)
+          const LAYER_CAPACITIES = [5, 10, 35, 100]; // Layers 0-3
+          const layerCountsFromSummary = [
+            summary?.layer0Count || 0,
+            summary?.layer1Count || 0,
+            summary?.layer2Count || 0,
+            summary?.layer3Count || 0,
+          ];
           
-          // Detect violations ONCE for both hero cards and tend garden
-          const violations = detectDunbarViolations(allContacts);
+          const violations = [];
+          for (let i = 0; i < LAYER_CAPACITIES.length; i++) {
+            if (layerCountsFromSummary[i] > LAYER_CAPACITIES[i]) {
+              const LAYER_NAMES = ["Loved Ones", "Inner Circle", "Clan", "Tribe"];
+              violations.push({
+                layer: i,
+                layerName: LAYER_NAMES[i],
+                current: layerCountsFromSummary[i],
+                max: LAYER_CAPACITIES[i],
+                overage: layerCountsFromSummary[i] - LAYER_CAPACITIES[i],
+              });
+            }
+          }
           
           // Show Hero Cards if violations exist
           if (violations.length > 0) {
             // Use currentHeroIndex to show the active violation
             const activeIndex = Math.min(currentHeroIndex, violations.length - 1);
             const violation = violations[activeIndex];
-            const layerContacts = allContacts.filter(
-              (c: any) => c?.dunbarLayer === violation.layer
-            );
+            
+            // Load layer contacts lazily only when opening modal
+            const handleStartRanking = () => {
+              const root = me?.root as any;
+              const contacts = root?.contacts || [];
+              const layerContacts = Array.from(contacts).filter(
+                (c: any) => c?.dunbarLayer === violation.layer
+              );
+              
+              setDunbarViolation({
+                ...violation,
+                contacts: layerContacts,
+              });
+              setShowWouldYouRather(true);
+            };
+            
+            const handleStartQuickSelect = () => {
+              const root = me?.root as any;
+              const contacts = root?.contacts || [];
+              const layerContacts = Array.from(contacts).filter(
+                (c: any) => c?.dunbarLayer === violation.layer
+              );
+              
+              setDunbarViolation({
+                ...violation,
+                contacts: layerContacts,
+              });
+              setShowOverflowSelection(true);
+            };
             
             return (
               <View className="mb-8">
                 {/* Hero Card */}
                 <DunbarViolationHeroCard
                   violation={violation}
-                  onStart={() => {
-                    setDunbarViolation({
-                      ...violation,
-                      contacts: layerContacts,
-                    });
-                    setShowWouldYouRather(true);
-                  }}
-                  onStartQuickSelect={() => {
-                    setDunbarViolation({
-                      ...violation,
-                      contacts: layerContacts,
-                    });
-                    setShowOverflowSelection(true);
-                  }}
+                  onStart={handleStartRanking}
+                  onStartQuickSelect={handleStartQuickSelect}
                 />
                 
                 {/* Pagination Dots - Only show if multiple violations */}
@@ -825,9 +962,8 @@ export default function Dashboard() {
           }
           
           // Show Tend Garden if NO violations
-          const unsortedCount = allContacts.filter(
-            (c: any) => c?.quickSortStatus === "not_sorted" || !c?.quickSortStatus
-          ).length;
+          // Use unsorted count from summary (FAST!)
+          const unsortedCount = unsortedCountFromSummary;
           
           // Only show if no violations (violations have priority)
           if (unsortedCount === 0) return null;
@@ -876,24 +1012,7 @@ export default function Dashboard() {
             </View>
           );
         })()}
-        
-        {/* Family Members Indicator */}
-        {(() => {
-          const root = me?.root as any;
-          const contacts = root?.contacts || [];
-          const familyCount = Array.from(contacts).filter((c: any) => c?.isFamily).length;
-          
-          if (familyCount > 0) {
-            return (
-              <View className="flex-row items-center mb-6">
-                <Text className="text-zinc-400 text-sm">
-                  👨‍👩‍👧‍👦 {familyCount} family member{familyCount !== 1 ? 's' : ''} detected
-                </Text>
-              </View>
-            );
-          }
-          return null;
-        })()}
+
 
         {/* Dunbar Health */}
         <View className={`p-4 border-2 mb-8 ${
@@ -981,14 +1100,6 @@ export default function Dashboard() {
                     }}
                   />
                 </View>
-
-                {/* Sample Names */}
-                {!isEmpty && layerStat.contacts && layerStat.contacts.length > 0 ? (
-                  <Text className="text-zinc-400 text-xs mt-3" numberOfLines={1}>
-                    {layerStat.contacts.slice(0, 3).map(c => c?.name || 'Unknown').join(", ")}
-                    {layerStat.contacts.length > 3 && ` +${layerStat.contacts.length - 3} more`}
-                  </Text>
-                ) : null}
               </View>
             </Pressable>
           );
@@ -1007,10 +1118,32 @@ export default function Dashboard() {
         </View>
       </View>
 
-      {/* Contact Search Modal */}
+      {/* Contact Search Modal - Lazy load contacts when opened */}
       <ContactSearch
         visible={showSearch}
-        contacts={layerStats.flatMap(layer => layer.contacts)}
+        contacts={(() => {
+          if (!showSearch) return [];
+          const root = me?.root as any;
+          const contacts = root?.contacts || [];
+          return Array.from(contacts)
+            .filter((c: any) => c?.quickSortStatus !== "hidden")
+            .map((c: any) => ({
+              id: c?.id || c?.sourceId,
+              sourceId: c?.sourceId,
+              name: c?.name || 'Unknown',
+              phoneNumber: c?.phoneNumber,
+              email: c?.email,
+              dunbarLayer: c?.dunbarLayer,
+              interactionScore: c?.interactionScore,
+              lastInteraction: c?.lastInteraction,
+              callCount: c?.callCount,
+              smsCount: c?.smsCount,
+              totalDuration: c?.totalDuration,
+              isFamily: c?.isFamily,
+              quickSortStatus: c?.quickSortStatus,
+              relationshipType: c?.relationshipType,
+            }));
+        })()}
         onSelectContact={(contact) => {
           setSearchSelectedContact(contact);
           setShowSearch(false);
@@ -1018,16 +1151,37 @@ export default function Dashboard() {
         onClose={() => setShowSearch(false)}
       />
 
-      {/* Tend Garden Modal */}
+      {/* Tend Garden Modal - Lazy load contacts when opened */}
       <QuickSortModal
         visible={showQuickSort}
         onClose={() => {
           setShowQuickSort(false);
-          // Refresh dashboard after Tend Garden completes
-          hasAnalyzed.current = false;
-          analyzeRelationships();
+          // Refresh summary cache and dashboard after Tend Garden completes
+          refreshSummary();
         }}
-        contacts={layerStats.flatMap(layer => layer.contacts)}
+        contacts={(() => {
+          if (!showQuickSort) return [];
+          const root = me?.root as any;
+          const contacts = root?.contacts || [];
+          return Array.from(contacts)
+            .filter((c: any) => c?.quickSortStatus !== "hidden")
+            .map((c: any) => ({
+              id: c?.id || c?.sourceId,
+              sourceId: c?.sourceId,
+              name: c?.name || 'Unknown',
+              phoneNumber: c?.phoneNumber,
+              email: c?.email,
+              dunbarLayer: c?.dunbarLayer,
+              interactionScore: c?.interactionScore,
+              lastInteraction: c?.lastInteraction,
+              callCount: c?.callCount,
+              smsCount: c?.smsCount,
+              totalDuration: c?.totalDuration,
+              isFamily: c?.isFamily,
+              quickSortStatus: c?.quickSortStatus,
+              relationshipType: c?.relationshipType,
+            }));
+        })()}
       />
       
       {/* Would You Rather Modal - Dunbar Violation Resolution */}
@@ -1039,9 +1193,8 @@ export default function Dashboard() {
             setDunbarViolation(null);
           }}
           onRefresh={() => {
-            // Reset analyzed flag and refresh dashboard after ranking completes
-            hasAnalyzed.current = false;
-            analyzeRelationships();
+            // Refresh summary cache and dashboard after ranking completes
+            refreshSummary();
           }}
           contacts={dunbarViolation.contacts || []}
           violatedLayer={dunbarViolation.layer}
@@ -1059,9 +1212,8 @@ export default function Dashboard() {
             setDunbarViolation(null);
           }}
           onRefresh={() => {
-            // Reset analyzed flag and refresh dashboard after selection
-            hasAnalyzed.current = false;
-            analyzeRelationships();
+            // Refresh summary cache and dashboard after selection
+            refreshSummary();
           }}
           contacts={dunbarViolation.contacts || []}
           violatedLayer={dunbarViolation.layer}
