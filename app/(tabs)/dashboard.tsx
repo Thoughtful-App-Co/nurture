@@ -12,11 +12,114 @@ import { useNavigation } from "expo-router";
 import { calculateDunbarLayers } from "@/services/dunbarCalculator";
 import { DataMiningScreen } from "@/components/onboarding/DataMiningScreen";
 import { LayerDetailScreen } from "@/components/relationships/LayerDetailScreen";
-import { Contact, ContactList, FamilyNames, DashboardSummary } from "@/jazz/schema";
+import { Contact, ContactList, ContactSummary, ContactSummaryList, FamilyNames, DashboardSummary } from "@/jazz/schema";
 import type { ContactWithMetrics } from "@/services/dataMining";
 import { LoadingAnimation } from "@/components/LoadingAnimation";
 import { ContactSearch } from "@/components/relationships/ContactSearch";
 import { SearchBar } from "@/components/relationships/SearchBar";
+
+// ============================================================================
+// Lazy Layer Detail Screen - Loads only specific layer on-demand
+// ============================================================================
+interface LazyLayerDetailScreenProps {
+  layerId: number;
+  layer: {
+    id: number;
+    name: string;
+    range: string;
+    color: string;
+    description: string;
+  };
+  onBack: () => void;
+  onContactUpdate: (contact: any) => void;
+  onStartTendGarden?: () => void;
+}
+
+function LazyLayerDetailScreen({ layerId, layer, onBack, onContactUpdate, onStartTendGarden }: LazyLayerDetailScreenProps) {
+  // Load ONLY this layer's contacts (lazy loading!)
+  const me = useAccount(undefined, {
+    resolve: {
+      root: {
+        [`layer${layerId}Contacts`]: { $each: true }, // Load just this layer
+        contacts: { $each: true }, // FALLBACK: Load legacy list if new structure doesn't exist
+      }
+    }
+  });
+  
+  const root = me?.$isLoaded ? me.root as any : null;
+  
+  // Try new optimized structure first
+  const layerContactSummaries = root?.[`layer${layerId}Contacts`];
+  
+  // Fallback to legacy structure if new one doesn't exist yet
+  const legacyContacts = root?.contacts || [];
+  
+  // Determine which data source to use
+  const contacts = layerContactSummaries && layerContactSummaries.length > 0
+    ? Array.from(layerContactSummaries).map((summary: any) => ({
+        id: summary?.fullContactId || summary?.sourceId,
+        sourceId: summary?.sourceId,
+        name: summary?.name || 'Unknown',
+        dunbarLayer: summary?.dunbarLayer,
+        interactionScore: summary?.interactionScore,
+        lastInteraction: summary?.lastInteraction,
+        isFamily: summary?.isFamily,
+        familyTier: summary?.familyTier,
+        familyRole: summary?.familyRole,
+        quickSortStatus: summary?.quickSortStatus,
+        relationshipType: summary?.relationshipType,
+      }))
+    : Array.from(legacyContacts)
+        .filter((c: any) => c?.dunbarLayer === layerId && c?.quickSortStatus !== "hidden")
+        .map((c: any) => ({
+          id: c?.id || c?.sourceId,
+          sourceId: c?.sourceId,
+          name: c?.name || 'Unknown',
+          phoneNumber: c?.phoneNumber,
+          email: c?.email,
+          dunbarLayer: c?.dunbarLayer,
+          interactionScore: c?.interactionScore,
+          lastInteraction: c?.lastInteraction,
+          interactionFrequency: c?.interactionFrequency,
+          reciprocityScore: c?.reciprocityScore,
+          contactInitiationRatio: c?.contactInitiationRatio,
+          callCount: c?.callCount,
+          smsCount: c?.smsCount,
+          totalDuration: c?.totalDuration,
+          isFamily: c?.isFamily,
+          familyTier: c?.familyTier,
+          familyRole: c?.familyRole,
+          notes: c?.notes,
+          cultivationGoal: c?.cultivationGoal,
+          quickSortStatus: c?.quickSortStatus,
+          relationshipType: c?.relationshipType,
+          connectionOrigin: c?.connectionOrigin,
+          businessTier: c?.businessTier,
+        }));
+  
+  // Show loading while fetching layer data
+  if (!me?.$isLoaded) {
+    return (
+      <View className="flex-1 bg-black justify-center items-center">
+        <ActivityIndicator size="large" color="#22c55e" />
+        <Text className="text-secondary mt-4">Loading {layer.name}...</Text>
+      </View>
+    );
+  }
+  
+  console.log(`📊 Lazy loaded layer ${layerId}: ${contacts.length} contacts`);
+  console.log(`   Using ${layerContactSummaries && layerContactSummaries.length > 0 ? 'OPTIMIZED' : 'LEGACY'} structure`);
+  
+  return (
+    <LayerDetailScreen
+      layer={layer}
+      contacts={contacts}
+      onBack={onBack}
+      onContactUpdate={onContactUpdate}
+      onStartTendGarden={onStartTendGarden}
+    />
+  );
+}
 import { QuickSortModal } from "@/components/relationships/QuickSortModal";
 import { WouldYouRatherModal } from "@/components/relationships/WouldYouRatherModal";
 import { OverflowSelectionModal } from "@/components/relationships/OverflowSelectionModal";
@@ -55,15 +158,16 @@ interface LayerStats {
 }
 
 export default function Dashboard() {
-  // Performance optimization: Use $each to batch-load all contacts in one operation
-  // This prevents N+1 queries where each contact is loaded sequentially
+  // Performance optimization: Load ONLY dashboard summary (no contacts!)
+  // Contacts are loaded lazily when user opens specific layers
+  // This prevents loading 500+ contacts on dashboard load
   // Jazz 0.19.x: useAccount now returns MaybeLoaded<Account> directly
   const me = useAccount(undefined, {
     resolve: {
       root: {
-        contacts: { $each: true },  // Batch load all contacts
-        dashboardSummary: true,      // Load summary cache
-        familyNames: true,           // Load family names
+        // contacts: { $each: true },  // ❌ REMOVED - don't load all contacts upfront!
+        dashboardSummary: true,         // ✅ Load summary only (~500 bytes)
+        familyNames: true,              // Load family names
       }
     }
   });
@@ -423,35 +527,52 @@ export default function Dashboard() {
     console.log('=' .repeat(60));
     console.log('');
     
-    // Save contacts to Jazz
-    // 🔧 FIX: Use existing contacts list, don't replace
+    // ============================================================================
+    // DUAL-WRITE: Save contacts to BOTH old and new structures
+    // ============================================================================
+    
+    console.log('');
+    console.log('=' .repeat(60));
+    console.log('💾 SAVING CONTACTS TO JAZZ (DUAL-WRITE)');
+    console.log('=' .repeat(60));
+    
+    // LEGACY: Save to old contacts list (for backward compatibility)
     let existingContacts = root.contacts;
     
-    // If contacts list doesn't exist yet (first time), create it
     if (!existingContacts) {
-      console.log("No contacts list exists - creating new one");
+      console.log("Creating legacy contacts list...");
       existingContacts = ContactList.create([], me);
       root.$jazz.set('contacts', existingContacts);
     }
     
-    // Clear existing contacts if user is intentionally re-analyzing
-    // This only happens when clicking "Re-analyze" button, not on app load
+    // Clear existing contacts if re-analyzing
     if (existingContacts.length > 0) {
-      console.log(`🔄 Re-analyzing: Clearing ${existingContacts.length} existing contacts...`);
+      console.log(`🔄 Clearing ${existingContacts.length} existing contacts...`);
       while (existingContacts.length > 0) {
         existingContacts.$jazz.splice(0, 1);
       }
     }
     
-    // Add contacts to existing list
-    console.log(`Adding ${contactsWithLayers.length} contacts to existing Jazz list...`);
+    // NEW: Initialize layer-specific lists (performance optimization)
+    console.log('Creating optimized layer-specific lists...');
+    const layerLists = [
+      ContactSummaryList.create([], me), // Layer 0
+      ContactSummaryList.create([], me), // Layer 1
+      ContactSummaryList.create([], me), // Layer 2
+      ContactSummaryList.create([], me), // Layer 3
+      ContactSummaryList.create([], me), // Layer 4
+      ContactSummaryList.create([], me), // Layer 5
+    ];
+    
+    // Add contacts to BOTH structures
+    console.log(`Adding ${contactsWithLayers.length} contacts...`);
     let addedCount = 0;
     
     for (const contact of contactsWithLayers) {
-      // Find the original contact to get family role
       const originalContact = contacts.find(c => c.id === contact.id);
       
-      const contactData = Contact.create({
+      // Create FULL contact for legacy list
+      const fullContact = Contact.create({
         sourceId: contact.id,
         name: contact.name,
         phoneNumber: contact.phoneNumber,
@@ -463,23 +584,60 @@ export default function Dashboard() {
         reciprocityScore: contact.reciprocityScore,
         contactInitiationRatio: contact.contactInitiationRatio,
         averageResponseTime: contact.averageResponseTime,
-        // Raw interaction counts for transparency
         callCount: contact.callCount,
         smsCount: contact.smsCount,
         totalDuration: contact.totalDuration,
         isFamily: contact.isFamily,
         familyTier: contact.familyTier,
         familyRole: originalContact?.potentialFamily?.role,
-        quickSortStatus: "not_sorted", // Initialize as not sorted
+        quickSortStatus: "not_sorted",
         createdAt: new Date().toISOString(),
       }, me);
       
-      // Push to existing list
-      existingContacts.$jazz.push(contactData);
+      // Push to legacy list
+      existingContacts.$jazz.push(fullContact);
+      
+      // Create LIGHTWEIGHT summary for layer list
+      const summary = ContactSummary.create({
+        sourceId: contact.id,
+        name: contact.name,
+        dunbarLayer: contact.dunbarLayer,
+        lastInteraction: contact.lastInteraction,
+        interactionScore: contact.interactionScore,
+        isFamily: contact.isFamily,
+        familyTier: contact.familyTier,
+        familyRole: originalContact?.potentialFamily?.role,
+        quickSortStatus: "not_sorted",
+        fullContactId: contact.id || `contact-${Date.now()}-${addedCount}`, // Reference by sourceId
+        createdAt: new Date().toISOString(),
+        lastUpdated: new Date().toISOString(),
+      }, me);
+      
+      // Push to appropriate layer list
+      const layer = contact.dunbarLayer || 5;
+      layerLists[layer].$jazz.push(summary);
+      
       addedCount++;
     }
     
-    console.log(`✅ Pushed ${addedCount} contacts to Jazz list`);
+    // Save layer lists to profile
+    root.$jazz.set('layer0Contacts', layerLists[0]);
+    root.$jazz.set('layer1Contacts', layerLists[1]);
+    root.$jazz.set('layer2Contacts', layerLists[2]);
+    root.$jazz.set('layer3Contacts', layerLists[3]);
+    root.$jazz.set('layer4Contacts', layerLists[4]);
+    root.$jazz.set('layer5Contacts', layerLists[5]);
+    
+    console.log(`✅ Saved ${addedCount} contacts to legacy list`);
+    console.log(`✅ Saved summaries to layer lists:`);
+    console.log(`   Layer 0: ${layerLists[0].length} contacts`);
+    console.log(`   Layer 1: ${layerLists[1].length} contacts`);
+    console.log(`   Layer 2: ${layerLists[2].length} contacts`);
+    console.log(`   Layer 3: ${layerLists[3].length} contacts`);
+    console.log(`   Layer 4: ${layerLists[4].length} contacts`);
+    console.log(`   Layer 5: ${layerLists[5].length} contacts`);
+    console.log('=' .repeat(60));
+    console.log('');
     
     // Wait a moment for Jazz to process the save
     await new Promise(resolve => setTimeout(resolve, 500));
@@ -702,47 +860,18 @@ export default function Dashboard() {
   }
 
   // Show layer detail screen if a layer is selected
-  // Lazy load contacts only when layer is opened
+  // NEW: Lazy load contacts from layer-specific list (optimized!)
   if (selectedLayerId !== null) {
     const selectedLayer = LAYERS.find(l => l.id === selectedLayerId);
-    const root = me?.$isLoaded ? me.root as any : null;
-    const contacts = root?.contacts || [];
-    const layerContacts = Array.from(contacts)
-      .filter((c: any) => c?.dunbarLayer === selectedLayerId && c?.quickSortStatus !== "hidden")
-      .map((c: any) => ({
-        id: c?.id || c?.sourceId,
-        sourceId: c?.sourceId,
-        name: c?.name || 'Unknown',
-        phoneNumber: c?.phoneNumber,
-        email: c?.email,
-        dunbarLayer: c?.dunbarLayer,
-        interactionScore: c?.interactionScore,
-        lastInteraction: c?.lastInteraction,
-        interactionFrequency: c?.interactionFrequency,
-        reciprocityScore: c?.reciprocityScore,
-        contactInitiationRatio: c?.contactInitiationRatio,
-        callCount: c?.callCount,
-        smsCount: c?.smsCount,
-        totalDuration: c?.totalDuration,
-        isFamily: c?.isFamily,
-        familyTier: c?.familyTier,
-        familyRole: c?.familyRole,
-        notes: c?.notes,
-        cultivationGoal: c?.cultivationGoal,
-        quickSortStatus: c?.quickSortStatus,
-        relationshipType: c?.relationshipType,
-        connectionOrigin: c?.connectionOrigin,
-        businessTier: c?.businessTier,
-      }));
     
     if (selectedLayer) {
       return (
-        <LayerDetailScreen
+        <LazyLayerDetailScreen
+          layerId={selectedLayerId}
           layer={{
             ...selectedLayer,
             description: getLayerDescription(selectedLayerId),
           }}
-          contacts={layerContacts}
           onBack={() => setSelectedLayerId(null)}
           onContactUpdate={handleContactUpdate}
           onStartTendGarden={() => {
