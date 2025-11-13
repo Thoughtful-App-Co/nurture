@@ -34,7 +34,6 @@ import {
   Comparison,
   ComparisonList,
   Contact,
-  ContactList,
 } from "@/jazz/schema";
 import { 
   initializeRanking,

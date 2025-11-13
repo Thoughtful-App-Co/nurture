@@ -1,248 +1,200 @@
-# Lazy Loading Optimization
+# Lazy Loading Optimization - Clean Architecture
 
 ## Overview
 
-This optimization decomposes the monolithic Contact map into reference-based, layer-specific datasets that load on-demand, reducing initial dashboard load by **~300x**.
+The app uses **reference-based lazy loading** to minimize initial load time and memory usage. Instead of loading all contacts upfront, we load only what's needed when it's needed.
 
-## Problem
+## Architecture
 
-### Before Optimization:
+### Data Structure
+
 ```typescript
-// Dashboard loads ALL contacts upfront
-const me = useAccount({ 
-  root: { 
-    contacts: { $each: true } // Loads 500+ contacts × 25+ fields = 150KB+
+UserProfile {
+  // Dashboard summary (always loaded) - ~500 bytes
+  dashboardSummary: DashboardSummary {
+    totalContacts: number
+    layer0Count: number
+    layer1Count: number
+    // ... layer counts only
   }
-});
-```
-
-**Pain Points:**
-- Dashboard loads ~150KB of contact data just to show counts
-- All 25+ fields per contact loaded (most unused on dashboard)
-- Layer detail screens must filter already-loaded array
-- No lazy loading - everything upfront
-
-## Solution
-
-### After Optimization:
-```typescript
-// Dashboard loads ONLY summary
-const me = useAccount({ 
-  root: { 
-    dashboardSummary: true // ~500 bytes - just counts!
-  }
-});
-
-// Layer screen loads ONLY that layer
-const me = useAccount({ 
-  root: { 
-    layer2Contacts: { $each: true } // ~6 fields × 30 contacts = ~3KB
-  }
-});
-```
-
-## Architecture Changes
-
-### 1. New Schema (jazz/schema.ts)
-
-#### ContactSummary (Lightweight)
-```typescript
-export const ContactSummary = co.map({
-  sourceId: z.string().optional(),
-  name: z.string(),
-  dunbarLayer: z.number().optional(),
-  lastInteraction: z.string().optional(),
-  interactionScore: z.number().optional(),
-  relationshipType: z.enum(["FAMILY", "FRIEND", "BUSINESS"]).optional(),
-  isFamily: z.boolean().optional(),
-  familyTier: z.enum(["NUCLEAR", "SECONDARY", "TERTIARY"]).optional(),
-  familyRole: z.string().optional(),
-  quickSortStatus: z.enum(["not_sorted", "sorted", "hidden"]).optional(),
-  fullContactId: z.string(), // Reference to full Contact
-  createdAt: z.string(),
-  lastUpdated: z.string().optional(),
-});
-```
-
-**Size:** ~200 bytes vs ~2KB for full Contact (10x reduction)
-
-#### Layer-Specific Lists
-```typescript
-export const ContactSummaryList = co.list(ContactSummary);
-
-// In UserProfile:
-UserProfile = co.map({
-  dashboardSummary: DashboardSummary.optional(), // For dashboard
-  layer0Contacts: ContactSummaryList.optional(), // Lazy load per layer
-  layer1Contacts: ContactSummaryList.optional(),
-  layer2Contacts: ContactSummaryList.optional(),
-  layer3Contacts: ContactSummaryList.optional(),
-  layer4Contacts: ContactSummaryList.optional(),
-  layer5Contacts: ContactSummaryList.optional(),
-  hiddenContacts: ContactSummaryList.optional(),
-  // ...
-})
-```
-
-### 2. Dual-Write Strategy (dashboard.tsx)
-
-During data mining, we write to **BOTH** structures for backward compatibility:
-
-```typescript
-// Legacy: Full contacts list (deprecated)
-const fullContact = Contact.create({...}, me);
-existingContacts.$jazz.push(fullContact);
-
-// NEW: Lightweight summaries in layer lists
-const summary = ContactSummary.create({
-  sourceId: contact.id,
-  name: contact.name,
-  dunbarLayer: contact.dunbarLayer,
-  lastInteraction: contact.lastInteraction,
-  interactionScore: contact.interactionScore,
-  // ... minimal fields
-  fullContactId: contact.id, // Reference
-}, me);
-
-layerLists[layer].$jazz.push(summary);
-```
-
-### 3. Lazy Layer Loading (LazyLayerDetailScreen)
-
-```typescript
-function LazyLayerDetailScreen({ layerId, layer, ... }: Props) {
-  // Load ONLY this layer's summaries
-  const me = useAccount({
-    resolve: {
-      root: {
-        [`layer${layerId}Contacts`]: { $each: true }, // Just this layer!
-        contacts: { $each: true }, // Fallback for legacy
-      }
-    }
-  });
   
-  // Try optimized structure first, fall back to legacy
-  const layerContactSummaries = root?.[`layer${layerId}Contacts`];
-  const contacts = layerContactSummaries?.length > 0
-    ? Array.from(layerContactSummaries).map(summary => ({ /* minimal data */ }))
-    : Array.from(legacyContacts).filter(c => c.dunbarLayer === layerId);
-  
-  return <LayerDetailScreen contacts={contacts} ... />;
+  // Layer-specific contact lists (loaded on-demand)
+  layer0Contacts: ContactSummaryList  // Loved Ones
+  layer1Contacts: ContactSummaryList  // Inner Circle
+  layer2Contacts: ContactSummaryList  // Clan
+  layer3Contacts: ContactSummaryList  // Tribe
+  layer4Contacts: ContactSummaryList  // Acquaintances
+  layer5Contacts: ContactSummaryList  // Social Nebula
+  hiddenContacts: ContactSummaryList  // Graveyard
+}
+
+ContactSummary {
+  // Lightweight summary (~200 bytes vs ~2KB for full Contact)
+  name: string
+  dunbarLayer: number
+  lastInteraction: string
+  interactionScore: number
+  relationshipType: "FAMILY" | "FRIEND" | "BUSINESS"
+  isFamily: boolean
+  familyTier: "NUCLEAR" | "SECONDARY" | "TERTIARY"
+  quickSortStatus: "not_sorted" | "sorted" | "hidden"
+  fullContactId: string  // Reference to full contact data
 }
 ```
 
-## Performance Improvements
+### Loading Strategy
 
-| Operation | Before | After | Improvement |
-|-----------|--------|-------|-------------|
-| Dashboard load | ~150KB (500 contacts) | ~500 bytes (summary only) | **300x faster** |
-| Layer open | 0ms (in-memory filter) | ~3KB load (one layer) | ~2KB vs 150KB upfront |
-| Contact detail | 0ms (pre-loaded) | ~1-2KB (on-demand) | Still instant |
-| **Initial app load** | **~150KB** | **~500 bytes** | **300x reduction** |
-
-### Real-World Impact
-
-#### Before:
-```
-User opens app → Loads 500 contacts → 2-3 second delay → Shows dashboard
-```
-
-#### After:
-```
-User opens app → Loads summary → Instant dashboard
-User opens Layer 2 → Loads 30 contacts → Instant layer view
-User opens contact → Loads 1 contact → Instant details
-```
-
-## Migration Path
-
-### Phase 1: ✅ Add New Schema (Non-Breaking)
-- Added ContactSummary and ContactSummaryList
-- Added layer-specific lists to UserProfile
-- Legacy `contacts` list remains intact
-
-### Phase 2: ✅ Dual-Write on Data Mining  
-- Write to both old and new structures
-- Enables gradual migration
-- Users can re-analyze to get new structure
-
-### Phase 3: ✅ Update Dashboard
-- Load only dashboardSummary (not contacts)
-- Use lazy loading for layer screens
-- Fallback to legacy if new structure doesn't exist
-
-### Phase 4: Future
-- Deprecate legacy `contacts` list
-- All operations use layer-based structure
-- Clean up fallback code
-
-## Testing Strategy
-
-### 1. Verify Dual-Write
-```bash
-# After data mining, check:
-- Legacy contacts list populated
-- Layer lists populated
-- Counts match between structures
-```
-
-### 2. Test Dashboard Performance
-```bash
-# Compare load times:
-- Before: Dashboard loads all contacts
-- After: Dashboard loads summary only
-- Expected: 100-300x faster initial load
-```
-
-### 3. Test Layer Loading
-```bash
-# Open different layers:
-- Verify only that layer's contacts load
-- Check for fallback to legacy structure
-- Confirm contact counts are correct
-```
-
-### 4. Test Backward Compatibility
-```bash
-# For users with old data:
-- Legacy structure still works
-- Re-analyze migrates to new structure
-- No data loss during migration
-```
-
-## Usage
-
-### For Users
-1. **New users**: Automatically use optimized structure
-2. **Existing users**: Re-run "Re-analyze Relationship Data" to migrate
-
-### For Developers
+**Dashboard Load:**
 ```typescript
-// OLD (deprecated):
-const me = useAccount({ root: { contacts: { $each: true } } });
-const contacts = root.contacts;
-
-// NEW (optimized):
-const me = useAccount({ root: { dashboardSummary: true } });
-const summary = root.dashboardSummary; // Just counts!
-
-// When user opens a layer:
-const me = useAccount({ root: { layer2Contacts: { $each: true } } });
-const contacts = root.layer2Contacts; // Just that layer!
+useAccount({ root: { dashboardSummary: true } })
+// Loads ~500 bytes - INSTANT
 ```
+
+**Layer Open:**
+```typescript
+useAccount({ root: { layer2Contacts: { $each: true } } })
+// Loads only Layer 2 summaries (~3KB for 30 contacts)
+```
+
+**Contact Details:**
+```typescript
+// Future: Load full Contact by fullContactId reference
+// Currently: All data in ContactSummary for MVP
+```
+
+## Performance Benefits
+
+| Operation | Data Loaded | Size |
+|-----------|-------------|------|
+| **Dashboard** | Summary only | ~500 bytes |
+| **Layer View** | One layer's summaries | ~2-5KB |
+| **Search** | All summaries | ~10-30KB |
+| **Total Initial Load** | Summary only | **~500 bytes** |
+
+### Before vs After
+
+**Before (monolithic):**
+- Dashboard loads ALL contacts: ~150KB
+- 500 contacts × 25 fields = massive
+- 2-3 second load time
+
+**After (optimized):**
+- Dashboard loads summary: ~500 bytes
+- **300x faster initial load**
+- Instant UX
+
+## Data Flow
+
+### Import (Data Mining)
+```
+1. Fetch device contacts, calls, SMS
+2. Calculate Dunbar layers
+3. Create ContactSummary for each contact
+4. Sort into layer-specific lists
+5. Create dashboard summary
+6. Save to Jazz
+```
+
+### Display
+```
+1. Dashboard opens → Load summary → Show counts
+2. User taps layer → Load that layer's summaries → Show list
+3. User taps contact → Show contact details (from summary)
+```
+
+### Update
+```
+1. User updates contact
+2. Find in appropriate layer list
+3. Update ContactSummary fields
+4. Refresh dashboard summary
+```
+
+## Code Examples
+
+### Data Mining (handleDataMiningComplete)
+```typescript
+// Create layer lists
+const layerLists = [
+  ContactSummaryList.create([], me), // Layer 0
+  // ... layers 1-5
+];
+
+// Add lightweight summaries
+for (const contact of contacts) {
+  const summary = ContactSummary.create({
+    name: contact.name,
+    dunbarLayer: contact.dunbarLayer,
+    // ... essential fields only
+    fullContactId: contact.id,
+  }, me);
+  
+  layerLists[contact.dunbarLayer].push(summary);
+}
+
+// Save to profile
+root.$jazz.set('layer0Contacts', layerLists[0]);
+// ... save all layers
+```
+
+### Dashboard
+```typescript
+// Load ONLY summary
+const me = useAccount({ 
+  root: { dashboardSummary: true } 
+});
+
+// Show counts immediately
+<Text>{summary.layer0Count} in Loved Ones</Text>
+```
+
+### Layer Detail
+```typescript
+// Lazy load specific layer
+const me = useAccount({ 
+  root: { [`layer${layerId}Contacts`]: { $each: true } } 
+});
+
+// Show summaries
+contacts.map(summary => (
+  <ContactCard 
+    name={summary.name}
+    score={summary.interactionScore}
+    lastSeen={summary.lastInteraction}
+  />
+))
+```
+
+## Maintenance
+
+### Adding a Contact
+1. Create ContactSummary
+2. Add to appropriate layer list
+3. Update dashboard summary
+
+### Moving Between Layers
+1. Remove from old layer list
+2. Update dunbarLayer field
+3. Add to new layer list
+4. Update dashboard summary
+
+### Hiding a Contact
+1. Remove from layer list
+2. Set quickSortStatus = "hidden"
+3. Add to hiddenContacts list
+4. Update dashboard summary
 
 ## Benefits
 
-1. **Faster Initial Load**: 300x reduction in dashboard load time
-2. **Better UX**: Instant dashboard, smooth layer transitions
-3. **Scalable**: Handles 1000+ contacts without slowdown
-4. **Backward Compatible**: Works with existing data
-5. **Future-Proof**: Easy to add more optimizations
+1. **Fast Initial Load**: 300x faster dashboard
+2. **Low Memory**: Only load what's viewed
+3. **Scalable**: Handles 1000+ contacts easily
+4. **Simple**: No complex caching or migration
+5. **Clean**: Single source of truth per layer
 
-## Next Steps
+## Future Enhancements
 
-- [ ] Monitor performance metrics in production
-- [ ] Add analytics for load times (before/after)
-- [ ] Consider caching frequently-accessed layers
-- [ ] Explore further decomposition (contacts by initial, etc.)
-- [ ] Add migration progress indicator
+- Add full Contact details loading on-demand (if needed for edit screen)
+- Cache frequently-accessed layers
+- Add search index for faster contact lookup
+- Implement virtual scrolling for large layers

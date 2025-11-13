@@ -20,7 +20,7 @@ import {
   Alert,
 } from "react-native";
 import { useAccount } from "jazz-tools/expo";
-import { Contact, ContactList } from "@/jazz/schema";
+import { Contact } from "@/jazz/schema";
 import { Card, Button } from "@/components/ui";
 import Animated, { FadeIn } from 'react-native-reanimated';
 

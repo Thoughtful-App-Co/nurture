@@ -28,7 +28,7 @@ import {
 } from "react-native";
 import { useAccount } from "jazz-tools/expo";
 import { Button } from "@/components/ui";
-import { Contact, ContactList } from "@/jazz/schema";
+import { Contact } from "@/jazz/schema";
 
 interface OverflowSelectionModalProps {
   visible: boolean;

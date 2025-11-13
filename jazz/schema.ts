@@ -114,12 +114,6 @@ export const Interaction = co.map({
  */
 export const InteractionList = co.list(Interaction);
 
-/**
- * List of all contacts for the user
- * @deprecated Use layer-specific ContactSummaryList for better performance
- */
-export const ContactList = co.list(Contact);
-
 // ============================================================================
 // Performance-Optimized Contact Structure (Reference-Based Lazy Loading)
 // ============================================================================
@@ -333,7 +327,6 @@ export const UserProfile = co.map({
   hasCompletedOnboarding: z.boolean().optional(), // Track if user has completed initial onboarding
   hasCompletedContactAnalysis: z.boolean().optional(), // Track if one-time contact analysis is complete
   dataSharing: DataSharingConsent.optional(), // Opt-in data sharing for rebates
-  contacts: ContactList, // @deprecated Use layer-specific lists for better performance
   interactions: InteractionList,
   goals: GoalList,
   settings: UserSettings,
@@ -343,7 +336,7 @@ export const UserProfile = co.map({
   dashboardSummary: DashboardSummary.optional(), // Pre-computed dashboard metrics for performance
   
   // ============================================================================
-  // Performance-Optimized: Layer-specific contact lists (lazy loading)
+  // Layer-specific contact lists (lazy loading)
   // Load only the layer you need instead of all contacts upfront
   // ============================================================================
   layer0Contacts: ContactSummaryList.optional(), // Loved Ones (0-5)
@@ -353,10 +346,6 @@ export const UserProfile = co.map({
   layer4Contacts: ContactSummaryList.optional(), // Acquaintances (150-500)
   layer5Contacts: ContactSummaryList.optional(), // Social Nebula (500-1500)
   hiddenContacts: ContactSummaryList.optional(), // Graveyard (hidden contacts)
-  
-  // Full contact details map (loaded on-demand by ID)
-  // This is a map of contactId -> Contact for quick lookup
-  fullContacts: ContactList.optional(), // Map of full Contact objects, accessed by ID
   
   createdAt: z.string(), // ISO date
   lastActive: z.string(), // ISO date

@@ -27,7 +27,7 @@ import {
 import Slider from "@react-native-community/slider";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useAccount } from "jazz-tools/expo";
-import { Contact, ContactList } from "@/jazz/schema";
+import { Contact } from "@/jazz/schema";
 import { Card, Button } from "@/components/ui";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
