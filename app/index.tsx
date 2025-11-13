@@ -317,82 +317,92 @@ export default function Index() {
           
           console.log('Dunbar layers calculated');
           
-          // Save contacts to Jazz
-          // 🔧 FIX: Use the existing contacts list from migration
-          // Don't create a new list - modify the existing one
-          console.log('');
           console.log('=' .repeat(60));
-          console.log('📝 SAVING CONTACTS TO JAZZ');
+          console.log('💾 SAVING CONTACTS (OPTIMIZED)');
           console.log('=' .repeat(60));
           
-          const existingContacts = root.contacts;
+          // Initialize layer lists
+          const { ContactSummary, ContactSummaryList, DashboardSummary } = await import('@/jazz/schema');
           
-          // Pre-save diagnostic
-          console.log('🔍 PRE-SAVE DIAGNOSTIC:');
-          console.log(`  Existing list length: ${existingContacts?.length || 0}`);
-          console.log(`  Contacts to add: ${contactsWithLayers.length}`);
-          console.log(`  List has $jazz: ${!!(existingContacts as any)?.$jazz}`);
+          console.log('Creating layer-specific lists...');
+          const layerLists = [
+            ContactSummaryList.create([], me), // Layer 0
+            ContactSummaryList.create([], me), // Layer 1
+            ContactSummaryList.create([], me), // Layer 2
+            ContactSummaryList.create([], me), // Layer 3
+            ContactSummaryList.create([], me), // Layer 4
+            ContactSummaryList.create([], me), // Layer 5
+          ];
           
-          // Clear existing contacts (if any from previous runs)
-          if (existingContacts && existingContacts.length > 0) {
-            console.log('  ⚠️  Clearing existing contacts...');
-            while (existingContacts.length > 0) {
-              existingContacts.$jazz.splice(0, 1);
-            }
-          }
+          // CONCURRENT: Create all contact summaries in parallel
+          console.log(`Creating ${contactsWithLayers.length} contact summaries concurrently...`);
           
-          // Add each contact to the EXISTING list
-          console.log('  ➕ Adding contacts one by one...');
-          let addedCount = 0;
-          
-          for (const contact of contactsWithLayers) {
-            // Find the original contact to get family role
+          const summaryPromises = contactsWithLayers.map(async (contact, index) => {
             const originalContact = contacts.find(c => c.id === contact.id);
             
-            const contactData = Contact.create({
-              sourceId: contact.id,
-              name: contact.name,
-              phoneNumber: contact.phoneNumber,
-              email: contact.email,
-              dunbarLayer: contact.dunbarLayer,
-              interactionScore: contact.interactionScore,
-              lastInteraction: contact.lastInteraction,
-              interactionFrequency: (contact.callCount || 0) + (contact.smsCount || 0),
-              reciprocityScore: contact.reciprocityScore,
-              contactInitiationRatio: contact.contactInitiationRatio,
-              averageResponseTime: contact.averageResponseTime,
-              isFamily: contact.isFamily,
-              familyTier: contact.familyTier,
-              familyRole: originalContact?.potentialFamily?.role,
-              createdAt: new Date().toISOString(),
-            }, me);
-            
-            // Push to existing list (not creating new list!)
-            existingContacts.$jazz.push(contactData);
-            addedCount++;
-            
-            // Log progress every 50 contacts
-            if (addedCount % 50 === 0) {
-              console.log(`    Progress: ${addedCount}/${contactsWithLayers.length}`);
-            }
-          }
+            return {
+              summary: ContactSummary.create({
+                sourceId: contact.id,
+                name: contact.name,
+                dunbarLayer: contact.dunbarLayer,
+                lastInteraction: contact.lastInteraction,
+                interactionScore: contact.interactionScore,
+                isFamily: contact.isFamily,
+                familyTier: contact.familyTier,
+                familyRole: originalContact?.potentialFamily?.role,
+                relationshipType: contact.isFamily ? 'FAMILY' : undefined,
+                quickSortStatus: "not_sorted",
+                fullContactId: contact.id || `contact-${Date.now()}-${index}`,
+                createdAt: new Date().toISOString(),
+                lastUpdated: new Date().toISOString(),
+              }, me),
+              layer: contact.dunbarLayer || 5
+            };
+          });
           
-          // Post-save diagnostic
-          console.log('');
-          console.log('🔍 POST-SAVE DIAGNOSTIC:');
-          console.log(`  ✅ Added ${addedCount} contacts to Jazz`);
-          console.log(`  Final list length: ${existingContacts.length}`);
-          console.log(`  First contact: ${existingContacts[0]?.name || 'NONE'}`);
-          console.log(`  Last contact: ${existingContacts[existingContacts.length - 1]?.name || 'NONE'}`);
+          // Wait for all summaries to be created
+          const createdSummaries = await Promise.all(summaryPromises);
           
-          // Sample verification
-          if (existingContacts.length >= 3) {
-            console.log('  Sample contacts (first 3):');
-            existingContacts.slice(0, 3).forEach((c: any, i: number) => {
-              console.log(`    ${i + 1}. ${c?.name} - Layer ${c?.dunbarLayer} (score: ${c?.interactionScore})`);
-            });
-          }
+          console.log(`✅ Created ${createdSummaries.length} summaries concurrently`);
           
+          // Add summaries to appropriate layer lists
+          console.log('Organizing into layers...');
+          createdSummaries.forEach(({ summary, layer }) => {
+            layerLists[layer].$jazz.push(summary);
+          });
+          
+          // Save layer lists to profile
+          root.$jazz.set('layer0Contacts', layerLists[0]);
+          root.$jazz.set('layer1Contacts', layerLists[1]);
+          root.$jazz.set('layer2Contacts', layerLists[2]);
+          root.$jazz.set('layer3Contacts', layerLists[3]);
+          root.$jazz.set('layer4Contacts', layerLists[4]);
+          root.$jazz.set('layer5Contacts', layerLists[5]);
+          
+          console.log('✅ Saved to layer lists:');
+          layerLists.forEach((list, i) => {
+            console.log(`   Layer ${i}: ${list.length} contacts`);
+          });
+          
+          // Create and save dashboard summary
+          const layerCounts = layerLists.map(list => list.length);
+          const totalContacts = layerCounts.reduce((sum, count) => sum + count, 0);
+          
+          const summary = DashboardSummary.create({
+            totalContacts,
+            layer0Count: layerCounts[0],
+            layer1Count: layerCounts[1],
+            layer2Count: layerCounts[2],
+            layer3Count: layerCounts[3],
+            layer4Count: layerCounts[4],
+            layer5Count: layerCounts[5],
+            hiddenCount: 0,
+            unsortedCount: totalContacts,
+            lastUpdated: new Date().toISOString(),
+          }, me);
+          
+          root.$jazz.set('dashboardSummary', summary);
+          console.log('✅ Dashboard summary saved');
           console.log('=' .repeat(60));
           console.log('');
            
