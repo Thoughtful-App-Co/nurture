@@ -56,16 +56,51 @@ interface QuickSortModalProps {
   contacts: any[];
 }
 
+// Helper: Find contact summary across all layers
+function findContactInLayers(root: any, contactId: string) {
+  for (let layerId = 0; layerId <= 5; layerId++) {
+    const layerList = root?.[`layer${layerId}Contacts`];
+    if (!layerList) continue;
+    
+    const index = Array.from(layerList).findIndex((c: any) => 
+      c?.fullContactId === contactId || c?.sourceId === contactId
+    );
+    
+    if (index !== -1) {
+      return { contact: layerList[index], layerId, index, list: layerList };
+    }
+  }
+  
+  // Check hidden contacts
+  const hiddenList = root?.hiddenContacts;
+  if (hiddenList) {
+    const index = Array.from(hiddenList).findIndex((c: any) => 
+      c?.fullContactId === contactId || c?.sourceId === contactId
+    );
+    if (index !== -1) {
+      return { contact: hiddenList[index], layerId: 'hidden', index, list: hiddenList };
+    }
+  }
+  
+  return null;
+}
+
 export function QuickSortModal({
   visible,
   onClose,
   contacts,
 }: QuickSortModalProps) {
-  // Performance optimization: Use $each to batch-load all contacts in one operation
+  // Load all layer lists for updating
   const me = useAccount(undefined, {
     resolve: {
       root: {
-        contacts: { $each: true },
+        layer0Contacts: { $each: true },
+        layer1Contacts: { $each: true },
+        layer2Contacts: { $each: true },
+        layer3Contacts: { $each: true },
+        layer4Contacts: { $each: true },
+        layer5Contacts: { $each: true },
+        hiddenContacts: { $each: true },
       }
     }
   });
@@ -204,22 +239,26 @@ export function QuickSortModal({
     console.log(`Quick Hide: ${currentContact.name} → Unknown/Hidden`);
 
     const root = me.root as any;
-    const allContacts = root?.contacts || [];
+    
+    // Find contact across all layers
+    const found = findContactInLayers(root, currentContact.id || currentContact.sourceId);
 
-    // Find the contact to update
-    const contactIndex = Array.from(allContacts).findIndex(
-      (c: any) => c.id === currentContact.id || c.sourceId === currentContact.sourceId
-    );
+    if (found) {
+      const { contact, layerId, index, list } = found;
 
-    if (contactIndex !== -1) {
-      const existingContact = allContacts[contactIndex];
-
-      // Mark as hidden with no relationship type (unknown)
-      existingContact.$jazz.set('dunbarLayer', 5);
-      existingContact.$jazz.set('quickSortStatus', 'hidden');
-      existingContact.$jazz.set('quickSortedAt', new Date().toISOString());
-      existingContact.$jazz.set('relationshipType', undefined);
-      existingContact.$jazz.set('isFamily', false);
+      // Remove from current layer and add to hidden
+      list.$jazz.splice(index, 1);
+      
+      // Update the contact summary and add to hidden list
+      contact.$jazz.set('dunbarLayer', 5);
+      contact.$jazz.set('quickSortStatus', 'hidden');
+      contact.$jazz.set('relationshipType', undefined);
+      contact.$jazz.set('lastUpdated', new Date().toISOString());
+      
+      const hiddenList = root?.hiddenContacts;
+      if (hiddenList) {
+        hiddenList.$jazz.push(contact);
+      }
       
       console.log(`✅ Contact quick-hidden: ${currentContact.name} → Unknown`);
       
@@ -243,51 +282,42 @@ export function QuickSortModal({
     }
 
     const root = me.root as any;
-    const allContacts = root?.contacts || [];
+    
+    // Find contact across all layers
+    const found = findContactInLayers(root, currentContact.id || currentContact.sourceId);
 
-    // Find the contact to update
-    const contactIndex = Array.from(allContacts).findIndex(
-      (c: any) => c.id === currentContact.id || c.sourceId === currentContact.sourceId
-    );
+    if (found) {
+      const { contact: existingContact, layerId: currentLayerId, index, list } = found;
 
-    if (contactIndex !== -1) {
-      const existingContact = allContacts[contactIndex];
-
-      // Update contact fields directly in the existing Jazz CoMap
+      // Remove from current layer
+      list.$jazz.splice(index, 1);
+      
+      // Update contact fields
       existingContact.$jazz.set('dunbarLayer', layerId === "hidden" ? 5 : layerId);
       existingContact.$jazz.set('quickSortStatus', layerId === "hidden" ? "hidden" : "sorted");
-      existingContact.$jazz.set('quickSortedAt', new Date().toISOString());
+      existingContact.$jazz.set('lastUpdated', new Date().toISOString());
       
       // Update relationship type if selected
       if (selectedRelationshipType) {
         existingContact.$jazz.set('relationshipType', selectedRelationshipType);
-        existingContact.$jazz.set('isFamily', selectedRelationshipType === "FAMILY");
       }
       
       // Update subcategories based on type
       if (selectedRelationshipType === "FAMILY" && selectedFamilyTier) {
         existingContact.$jazz.set('familyTier', selectedFamilyTier);
-      } else if (selectedRelationshipType === "FRIEND" && selectedConnectionOrigin) {
-        existingContact.$jazz.set('connectionOrigin', selectedConnectionOrigin);
-      } else if (selectedRelationshipType === "BUSINESS" && selectedBusinessTier) {
-        existingContact.$jazz.set('businessTier', selectedBusinessTier);
       }
       
-      // Update additional context fields
-      if (knownSinceYear && knownSinceYear.length === 4) {
-        existingContact.$jazz.set('knownSinceYear', parseInt(knownSinceYear));
-      }
-      if (closeEnoughToVisit) {
-        existingContact.$jazz.set('closeEnoughToVisit', closeEnoughToVisit);
-      }
-      if (schoolName && selectedConnectionOrigin === "SCHOOL") {
-        existingContact.$jazz.set('schoolName', schoolName);
-      }
-      if (hobbyName && selectedConnectionOrigin === "HOBBY_SPORTS") {
-        existingContact.$jazz.set('hobbyName', hobbyName);
-      }
-      if (workCompany && selectedConnectionOrigin === "WORK") {
-        existingContact.$jazz.set('workCompany', workCompany);
+      // Add to new layer or hidden list
+      if (layerId === "hidden") {
+        const hiddenList = root?.hiddenContacts;
+        if (hiddenList) {
+          hiddenList.$jazz.push(existingContact);
+        }
+      } else {
+        const targetLayer = root?.[`layer${layerId}Contacts`];
+        if (targetLayer) {
+          targetLayer.$jazz.push(existingContact);
+        }
       }
 
       console.log(`✅ Contact sorted: ${currentContact.name} → ${layerId === "hidden" ? "Hidden" : `Layer ${layerId}`}`);
@@ -340,13 +370,26 @@ export function QuickSortModal({
     console.log("🔄 Resetting Tend Garden statuses...");
 
     const root = me.root as any;
-    const allContacts = root?.contacts || [];
 
-    // Reset all contacts by updating them in-place
-    Array.from(allContacts).forEach((c: any) => {
-      c.$jazz.set('quickSortStatus', 'not_sorted');
-      c.$jazz.set('quickSortedAt', undefined);
-    });
+    // Reset all contacts in all layers
+    for (let layerId = 0; layerId <= 5; layerId++) {
+      const layerList = root?.[`layer${layerId}Contacts`];
+      if (layerList) {
+        Array.from(layerList).forEach((c: any) => {
+          c.$jazz.set('quickSortStatus', 'not_sorted');
+          c.$jazz.set('lastUpdated', new Date().toISOString());
+        });
+      }
+    }
+    
+    // Reset hidden contacts too
+    const hiddenList = root?.hiddenContacts;
+    if (hiddenList) {
+      Array.from(hiddenList).forEach((c: any) => {
+        c.$jazz.set('quickSortStatus', 'not_sorted');
+        c.$jazz.set('lastUpdated', new Date().toISOString());
+      });
+    }
 
     // Reset state
     setCurrentIndex(0);

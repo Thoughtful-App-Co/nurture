@@ -69,15 +69,19 @@ export function GraveyardScreen({
     
     try {
       const root = me.root as any;
-      const contacts = root?.contacts || [];
-      const contactIndex = Array.from(contacts).findIndex((c: any) => c?.id === contact.id);
+      
+      // Find contact in hiddenContacts list
+      const hiddenList = root?.hiddenContacts || [];
+      const contactIndex = Array.from(hiddenList).findIndex((c: any) => 
+        c?.fullContactId === contact.id || c?.sourceId === contact.id
+      );
       
       if (contactIndex === -1) {
-        Alert.alert("Error", "Contact not found");
+        Alert.alert("Error", "Contact not found in graveyard");
         return;
       }
 
-      const existingContact = contacts[contactIndex];
+      const existingContact = hiddenList[contactIndex];
 
       // Update contact fields directly in the existing Jazz CoMap
       existingContact.$jazz.set('quickSortStatus', 'not_sorted');
@@ -114,14 +118,16 @@ export function GraveyardScreen({
             
             try {
               const root = me.root as any;
-              const contacts = root?.contacts || [];
+              const hiddenList = root?.hiddenContacts || [];
               
-              // Find the contact index and remove it using splice
-              const contactIndex = Array.from(contacts).findIndex((c: any) => c?.id === contact.id);
+              // Find the contact index in hidden list and remove it
+              const contactIndex = Array.from(hiddenList).findIndex((c: any) => 
+                c?.fullContactId === contact.id || c?.sourceId === contact.id
+              );
               
               if (contactIndex !== -1) {
-                contacts.$jazz.splice(contactIndex, 1);
-                console.log('🗑️ Contact deleted:', contact.name);
+                hiddenList.$jazz.splice(contactIndex, 1);
+                console.log('🗑️ Contact permanently deleted:', contact.name);
               }
               
               // Notify parent to refresh
