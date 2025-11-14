@@ -81,6 +81,14 @@ function LazyLayerDetailScreen({ layerId, layer, onBack, onContactUpdate, onStar
     }
   })();
   
+  // Log once using useEffect to avoid spam
+  // MUST be before conditional returns to follow React hooks rules
+  React.useEffect(() => {
+    if (contacts.length > 0 && me?.$isLoaded) {
+      console.log(`📊 Lazy loaded layer ${layerId}: ${contacts.length} contacts`);
+    }
+  }, [layerId, contacts.length, me?.$isLoaded]);
+  
   // Show loading while fetching layer data
   if (!me?.$isLoaded) {
     return (
@@ -90,13 +98,6 @@ function LazyLayerDetailScreen({ layerId, layer, onBack, onContactUpdate, onStar
       </View>
     );
   }
-  
-  // Log once using useEffect to avoid spam
-  React.useEffect(() => {
-    if (contacts.length > 0) {
-      console.log(`📊 Lazy loaded layer ${layerId}: ${contacts.length} contacts`);
-    }
-  }, [layerId]); // Only log when layer changes
   
   return (
     <LayerDetailScreen
