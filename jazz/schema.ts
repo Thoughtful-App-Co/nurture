@@ -191,6 +191,7 @@ export const UserSettings = co.map({
   checkInReminders: z.boolean(), // Default true will be set in code
   weeklyReviewDay: z.enum(["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]), // Default "sunday" will be set in code
   privacyLevel: z.enum(["full", "partial", "minimal"]), // Default "full" will be set in code
+  contactsPerPage: z.number().min(10).max(50).optional(), // Default 25 - configurable pagination size
 });
 
 /**

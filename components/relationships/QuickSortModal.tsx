@@ -90,8 +90,8 @@ export function QuickSortModal({
   onClose,
   contacts,
 }: QuickSortModalProps) {
-  // Load all layer lists for updating
-  const me = useAccount(undefined, {
+  // Load all layer lists for updating (only when modal is visible)
+  const me = useAccount(undefined, visible ? {
     resolve: {
       root: {
         layer0Contacts: { $each: true },
@@ -103,7 +103,8 @@ export function QuickSortModal({
         hiddenContacts: { $each: true },
       }
     }
-  });
+  } : undefined);
+  
   const [currentIndex, setCurrentIndex] = useState(0);
   const [sortedCount, setSortedCount] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
@@ -126,8 +127,46 @@ export function QuickSortModal({
   const position = useRef(new Animated.ValueXY()).current;
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
+  // Collect contacts from loaded layer lists (replaces contacts prop)
+  const allContacts = (() => {
+    if (!visible || !me?.$isLoaded) return [];
+    
+    const root = me.root as any;
+    const collected: any[] = [];
+    
+    // Collect from all layer lists
+    for (let layerId = 0; layerId <= 5; layerId++) {
+      const layerList = root?.[`layer${layerId}Contacts`];
+      if (layerList) {
+        try {
+          Array.from(layerList)
+            .filter((c: any) => c?.quickSortStatus !== "hidden")
+            .forEach((c: any) => {
+              if (c) {
+                collected.push({
+                  id: c?.fullContactId || c?.sourceId,
+                  sourceId: c?.sourceId,
+                  name: c?.name || 'Unknown',
+                  dunbarLayer: c?.dunbarLayer,
+                  interactionScore: c?.interactionScore,
+                  lastInteraction: c?.lastInteraction,
+                  isFamily: c?.isFamily,
+                  quickSortStatus: c?.quickSortStatus,
+                  relationshipType: c?.relationshipType,
+                });
+              }
+            });
+        } catch (error) {
+          console.warn(`Error loading contacts from layer ${layerId}:`, error);
+        }
+      }
+    }
+    
+    return collected;
+  })();
+
   // Filter to only unsorted contacts (not already sorted in this session)
-  const unsortedContacts = contacts.filter(
+  const unsortedContacts = allContacts.filter(
     (c) => c.quickSortStatus === "not_sorted" || !c.quickSortStatus
   );
 

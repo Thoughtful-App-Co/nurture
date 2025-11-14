@@ -14,9 +14,11 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { View, Text, TextInput, Pressable, Modal, ActivityIndicator } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
+import { useAccount } from 'jazz-tools/expo';
 
 interface Contact {
   id?: string;
+  sourceId?: string;
   name: string;
   dunbarLayer?: number;
   interactionScore?: number;
@@ -26,6 +28,7 @@ interface Contact {
   familyTier?: 'NUCLEAR' | 'SECONDARY' | 'TERTIARY';
   connectionOrigin?: 'FAMILY_FRIEND' | 'NEIGHBOR' | 'SCHOOL' | 'HOBBY_SPORTS' | 'WORK' | 'OTHER';
   businessTier?: 'CLOSE_COLLEAGUE' | 'ACQUAINTANCE';
+  quickSortStatus?: 'not_sorted' | 'sorted' | 'hidden';
   phoneNumber?: string;
   email?: string;
 }
@@ -171,8 +174,68 @@ const ContactCard = React.memo(({
 
 ContactCard.displayName = 'ContactCard';
 
-export function ContactSearch({ visible, contacts, onSelectContact, onClose }: Props) {
+export function ContactSearch({ visible, contacts: contactsProp, onSelectContact, onClose }: Props) {
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Load contacts internally when modal is visible (optimized)
+  const me = useAccount(undefined, visible ? {
+    resolve: {
+      root: {
+        layer0Contacts: { $each: true },
+        layer1Contacts: { $each: true },
+        layer2Contacts: { $each: true },
+        layer3Contacts: { $each: true },
+        layer4Contacts: { $each: true },
+        layer5Contacts: { $each: true },
+      }
+    }
+  } : undefined);
+  
+  // Collect contacts from loaded layer lists
+  const loadedContacts = useMemo(() => {
+    if (!visible || !me?.$isLoaded) return [];
+    
+    const root = me.root as any;
+    const collected: Contact[] = [];
+    
+    // Collect from all layer lists
+    for (let layerId = 0; layerId <= 5; layerId++) {
+      const layerList = root?.[`layer${layerId}Contacts`];
+      if (layerList) {
+        try {
+          Array.from(layerList)
+            .filter((c: any) => c?.quickSortStatus !== "hidden")
+            .forEach((c: any) => {
+              if (c) {
+                collected.push({
+                  id: c?.fullContactId || c?.sourceId,
+                  sourceId: c?.sourceId,
+                  name: c?.name || 'Unknown',
+                  dunbarLayer: c?.dunbarLayer,
+                  interactionScore: c?.interactionScore,
+                  lastInteraction: c?.lastInteraction,
+                  isFamily: c?.isFamily,
+                  quickSortStatus: c?.quickSortStatus,
+                  relationshipType: c?.relationshipType,
+                  familyTier: c?.familyTier,
+                  connectionOrigin: c?.connectionOrigin,
+                  businessTier: c?.businessTier,
+                  phoneNumber: c?.phoneNumber,
+                  email: c?.email,
+                });
+              }
+            });
+        } catch (error) {
+          console.warn(`Error loading contacts from layer ${layerId}:`, error);
+        }
+      }
+    }
+    
+    return collected;
+  }, [visible, me?.$isLoaded]);
+  
+  // Use loaded contacts if available, fallback to prop (for backwards compatibility)
+  const contacts = loadedContacts.length > 0 ? loadedContacts : contactsProp;
   
   // Debounce search query to reduce filtering operations
   const debouncedQuery = useDebouncedValue(searchQuery, 300);

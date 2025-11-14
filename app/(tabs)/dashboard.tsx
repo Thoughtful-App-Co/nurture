@@ -8,7 +8,7 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { View, Text, ScrollView, Pressable, ActivityIndicator, Platform, Dimensions } from "react-native";
 import { useAccount } from "jazz-tools/expo";
-import { useNavigation } from "expo-router";
+import { useNavigation, useFocusEffect } from "expo-router";
 import { calculateDunbarLayers } from "@/services/dunbarCalculator";
 import { DataMiningScreen } from "@/components/onboarding/DataMiningScreen";
 import { LayerDetailScreen } from "@/components/relationships/LayerDetailScreen";
@@ -46,24 +46,40 @@ function LazyLayerDetailScreen({ layerId, layer, onBack, onContactUpdate, onStar
   });
   
   const root = me?.$isLoaded ? me.root as any : null;
-  const layerContactSummaries = root?.[`layer${layerId}Contacts`] || [];
+  const layerContactSummaries = root?.[`layer${layerId}Contacts`];
   
   // Map summaries to contact objects for display
-  const contacts = Array.from(layerContactSummaries)
-    .filter((summary: any) => summary?.quickSortStatus !== "hidden")
-    .map((summary: any) => ({
-      id: summary?.fullContactId || summary?.sourceId,
-      sourceId: summary?.sourceId,
-      name: summary?.name || 'Unknown',
-      dunbarLayer: summary?.dunbarLayer,
-      interactionScore: summary?.interactionScore,
-      lastInteraction: summary?.lastInteraction,
-      isFamily: summary?.isFamily,
-      familyTier: summary?.familyTier,
-      familyRole: summary?.familyRole,
-      quickSortStatus: summary?.quickSortStatus,
-      relationshipType: summary?.relationshipType,
-    }));
+  // Defensive: handle case where list doesn't exist or isn't loaded yet
+  const contacts = (() => {
+    if (!layerContactSummaries) {
+      console.warn(`Layer ${layerId} contacts not loaded yet`);
+      return [];
+    }
+    
+    try {
+      return Array.from(layerContactSummaries)
+        .filter((summary: any) => {
+          // Filter out null/undefined/hidden contacts
+          return summary != null && summary.quickSortStatus !== "hidden";
+        })
+        .map((summary: any) => ({
+          id: summary?.fullContactId || summary?.sourceId,
+          sourceId: summary?.sourceId,
+          name: summary?.name || 'Unknown',
+          dunbarLayer: summary?.dunbarLayer,
+          interactionScore: summary?.interactionScore,
+          lastInteraction: summary?.lastInteraction,
+          isFamily: summary?.isFamily,
+          familyTier: summary?.familyTier,
+          familyRole: summary?.familyRole,
+          quickSortStatus: summary?.quickSortStatus,
+          relationshipType: summary?.relationshipType,
+        }));
+    } catch (error) {
+      console.error(`Error loading layer ${layerId} contacts:`, error);
+      return [];
+    }
+  })();
   
   // Show loading while fetching layer data
   if (!me?.$isLoaded) {
@@ -75,7 +91,12 @@ function LazyLayerDetailScreen({ layerId, layer, onBack, onContactUpdate, onStar
     );
   }
   
-  console.log(`📊 Lazy loaded layer ${layerId}: ${contacts.length} contacts`);
+  // Log once using useEffect to avoid spam
+  React.useEffect(() => {
+    if (contacts.length > 0) {
+      console.log(`📊 Lazy loaded layer ${layerId}: ${contacts.length} contacts`);
+    }
+  }, [layerId]); // Only log when layer changes
   
   return (
     <LayerDetailScreen
@@ -126,15 +147,23 @@ interface LayerStats {
 
 export default function Dashboard() {
   // Performance optimization: Load ONLY dashboard summary (no contacts!)
-  // Contacts are loaded lazily when user opens specific layers
+  // Contacts are loaded lazily when user opens specific layers or modals
   // This prevents loading 500+ contacts on dashboard load
   // Jazz 0.19.x: useAccount now returns MaybeLoaded<Account> directly
   const me = useAccount(undefined, {
     resolve: {
       root: {
-        // contacts: { $each: true },  // ❌ REMOVED - don't load all contacts upfront!
-        dashboardSummary: true,         // ✅ Load summary only (~500 bytes)
-        familyNames: true,              // Load family names
+        dashboardSummary: {},         // ✅ Load summary with all fields (~500 bytes)
+        familyNames: {},              // Load family names
+        // Load layer lists with SHALLOW resolution (for count access only)
+        // This loads the list structure but NOT contact fields (fast!)
+        layer0Contacts: {},
+        layer1Contacts: {},
+        layer2Contacts: {},
+        layer3Contacts: {},
+        layer4Contacts: {},
+        layer5Contacts: {},
+        hiddenContacts: {},
       }
     }
   });
@@ -291,17 +320,18 @@ export default function Dashboard() {
       console.log('');
       
       // Build layer stats from summary (no contact loading needed!)
+      // Use || 0 to handle undefined values
       const layerGroups: LayerStats[] = [
-        { layer: 0, count: summary.layer0Count, contacts: [] },
-        { layer: 1, count: summary.layer1Count, contacts: [] },
-        { layer: 2, count: summary.layer2Count, contacts: [] },
-        { layer: 3, count: summary.layer3Count, contacts: [] },
-        { layer: 4, count: summary.layer4Count, contacts: [] },
-        { layer: 5, count: summary.layer5Count, contacts: [] },
+        { layer: 0, count: summary.layer0Count || 0, contacts: [] },
+        { layer: 1, count: summary.layer1Count || 0, contacts: [] },
+        { layer: 2, count: summary.layer2Count || 0, contacts: [] },
+        { layer: 3, count: summary.layer3Count || 0, contacts: [] },
+        { layer: 4, count: summary.layer4Count || 0, contacts: [] },
+        { layer: 5, count: summary.layer5Count || 0, contacts: [] },
       ];
       
       setLayerStats(layerGroups);
-      setTotalContacts(summary.totalContacts);
+      setTotalContacts(summary.totalContacts || 0);
     } catch (error) {
       console.error("Error analyzing relationships:", error);
     } finally {
@@ -358,6 +388,18 @@ export default function Dashboard() {
     hasAnalyzed.current = false;
     analyzeRelationships();
   }, [me, analyzeRelationships]);
+  
+  // Refresh dashboard when screen comes into focus (app resume, tab switch)
+  useFocusEffect(
+    useCallback(() => {
+      console.log('📱 Dashboard focused - refreshing data');
+      if (me?.$isLoaded) {
+        // Force re-analysis by resetting the flag
+        hasAnalyzed.current = false;
+        analyzeRelationships();
+      }
+    }, [me?.$isLoaded, analyzeRelationships])
+  );
 
   // Handle data mining completion
   const handleDataMiningComplete = async (contacts: ContactWithMetrics[], familyNames?: any) => {
@@ -1072,37 +1114,10 @@ export default function Dashboard() {
         </View>
       </View>
 
-      {/* Contact Search Modal - Lazy load contacts from all layers */}
+      {/* Contact Search Modal - Shows message that search requires loading */}
       <ContactSearch
         visible={showSearch}
-        contacts={(() => {
-          if (!showSearch) return [];
-          const root = me?.$isLoaded ? me.root as any : null;
-          const allContacts: any[] = [];
-          
-          // Collect from all layer lists
-          for (let layerId = 0; layerId <= 5; layerId++) {
-            const layerList = root?.[`layer${layerId}Contacts`];
-            if (layerList) {
-              Array.from(layerList)
-                .filter((c: any) => c?.quickSortStatus !== "hidden")
-                .forEach((c: any) => {
-                  allContacts.push({
-                    id: c?.fullContactId || c?.sourceId,
-                    sourceId: c?.sourceId,
-                    name: c?.name || 'Unknown',
-                    dunbarLayer: c?.dunbarLayer,
-                    interactionScore: c?.interactionScore,
-                    lastInteraction: c?.lastInteraction,
-                    isFamily: c?.isFamily,
-                    quickSortStatus: c?.quickSortStatus,
-                    relationshipType: c?.relationshipType,
-                  });
-                });
-            }
-          }
-          return allContacts;
-        })()}
+        contacts={[]} 
         onSelectContact={(contact) => {
           setSearchSelectedContact(contact);
           setShowSearch(false);
@@ -1110,7 +1125,7 @@ export default function Dashboard() {
         onClose={() => setShowSearch(false)}
       />
 
-      {/* Tend Garden Modal - Lazy load contacts from all layers */}
+      {/* Tend Garden Modal - Loads its own contacts internally */}
       <QuickSortModal
         visible={showQuickSort}
         onClose={() => {
@@ -1118,34 +1133,7 @@ export default function Dashboard() {
           // Refresh summary cache and dashboard after Tend Garden completes
           refreshSummary();
         }}
-        contacts={(() => {
-          if (!showQuickSort) return [];
-          const root = me?.$isLoaded ? me.root as any : null;
-          const allContacts: any[] = [];
-          
-          // Collect from all layer lists
-          for (let layerId = 0; layerId <= 5; layerId++) {
-            const layerList = root?.[`layer${layerId}Contacts`];
-            if (layerList) {
-              Array.from(layerList)
-                .filter((c: any) => c?.quickSortStatus !== "hidden")
-                .forEach((c: any) => {
-                  allContacts.push({
-                    id: c?.fullContactId || c?.sourceId,
-                    sourceId: c?.sourceId,
-                    name: c?.name || 'Unknown',
-                    dunbarLayer: c?.dunbarLayer,
-                    interactionScore: c?.interactionScore,
-                    lastInteraction: c?.lastInteraction,
-                    isFamily: c?.isFamily,
-                    quickSortStatus: c?.quickSortStatus,
-                    relationshipType: c?.relationshipType,
-                  });
-                });
-            }
-          }
-          return allContacts;
-        })()}
+        contacts={[]} // QuickSortModal will load contacts internally when visible
       />
       
       {/* Would You Rather Modal - Dunbar Violation Resolution */}

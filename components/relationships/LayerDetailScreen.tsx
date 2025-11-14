@@ -52,7 +52,18 @@ export function LayerDetailScreen({ layer, contacts, onBack, onContactUpdate, on
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLongPress = useRef<boolean>(false);
 
-  // Calculate unsorted contacts in this layer
+  // ============================================================================
+  // PAGINATION: Show 25 contacts per page (user-configurable in future)
+  // ============================================================================
+  const CONTACTS_PER_PAGE = 25; // TODO: Load from UserSettings
+  const [currentPage, setCurrentPage] = useState(0);
+  
+  const totalPages = Math.ceil(contacts.length / CONTACTS_PER_PAGE);
+  const startIndex = currentPage * CONTACTS_PER_PAGE;
+  const endIndex = Math.min(startIndex + CONTACTS_PER_PAGE, contacts.length);
+  const paginatedContacts = contacts.slice(startIndex, endIndex);
+
+  // Calculate unsorted contacts in this layer (check ALL contacts, not just current page)
   const unsortedInLayer = contacts.filter(
     c => c.quickSortStatus === "not_sorted" || !c.quickSortStatus
   ).length;
@@ -220,7 +231,7 @@ export function LayerDetailScreen({ layer, contacts, onBack, onContactUpdate, on
               </Text>
             </View>
           ) : (
-            contacts.filter(c => c != null).map((contact, index) => {
+            paginatedContacts.filter(c => c != null).map((contact, index) => {
               const relationshipBadge = getRelationshipBadge(contact);
               
               return (
@@ -299,6 +310,45 @@ export function LayerDetailScreen({ layer, contacts, onBack, onContactUpdate, on
               </Pressable>
               );
             })
+          )}
+          
+          {/* Bottom Pagination Controls */}
+          {totalPages > 1 && (
+            <View className="mt-6 pt-4 border-t border-zinc-800">
+              <View className="flex-row justify-between items-center">
+                <Pressable
+                  onPress={() => setCurrentPage(Math.max(0, currentPage - 1))}
+                  disabled={currentPage === 0}
+                  className={`px-4 py-2 border ${
+                    currentPage === 0
+                      ? 'border-zinc-800 bg-zinc-900 opacity-50'
+                      : 'border-primary bg-primary/10'
+                  }`}
+                >
+                  <Text className={currentPage === 0 ? 'text-zinc-600' : 'text-primary'}>
+                    ← Previous
+                  </Text>
+                </Pressable>
+                
+                <Text className="text-zinc-400 text-sm">
+                  Page {currentPage + 1} of {totalPages}
+                </Text>
+                
+                <Pressable
+                  onPress={() => setCurrentPage(Math.min(totalPages - 1, currentPage + 1))}
+                  disabled={currentPage === totalPages - 1}
+                  className={`px-4 py-2 border ${
+                    currentPage === totalPages - 1
+                      ? 'border-zinc-800 bg-zinc-900 opacity-50'
+                      : 'border-primary bg-primary/10'
+                  }`}
+                >
+                  <Text className={currentPage === totalPages - 1 ? 'text-zinc-600' : 'text-primary'}>
+                    Next →
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
           )}
         </View>
       </ScrollView>
