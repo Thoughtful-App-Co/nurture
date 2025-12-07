@@ -41,6 +41,33 @@ module.exports = {
         // surface-1: zinc-900 (#18181b)
         // surface-2: zinc-800 (#27272a)
         // surface-3: zinc-700 (#3f3f46)
+        
+        // Aurora Gradient Colors (for reference in JS)
+        aurora: {
+          green: {
+            start: '#16a34a',
+            mid: '#22c55e',
+            end: '#4ade80',
+          },
+          glow: 'rgba(34, 197, 94, 0.15)',
+        },
+      },
+      
+      // Organic Border Radius Scale (Biomorphic Design)
+      borderRadius: {
+        'none': '0px',
+        'sm': '4px',
+        'DEFAULT': '8px',
+        'md': '12px',
+        'lg': '16px',
+        'xl': '24px',
+        '2xl': '32px',
+        'full': '9999px',
+        // Organic variants
+        'organic-sm': '12px',    // Subtle organic (cards)
+        'organic': '16px',       // Standard organic (buttons, inputs)
+        'organic-lg': '24px',    // Large organic (modals, hero cards)
+        'organic-xl': '32px',    // Extra large (feature cards)
       },
       
       fontFamily: {
@@ -68,6 +95,10 @@ module.exports = {
         'DEFAULT': '0 4px 8px rgba(0, 0, 0, 0.2)',
         'md': '0 4px 8px rgba(0, 0, 0, 0.2)',
         'lg': '0 8px 16px rgba(0, 0, 0, 0.3)',
+        // Glow shadows
+        'glow-sm': '0 0 8px rgba(34, 197, 94, 0.3)',
+        'glow': '0 0 16px rgba(34, 197, 94, 0.4)',
+        'glow-lg': '0 0 24px rgba(34, 197, 94, 0.5)',
       },
       
       // Animation durations

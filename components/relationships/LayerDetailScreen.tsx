@@ -2,12 +2,21 @@
  * Layer Detail Screen
  * Shows all contacts within a specific Dunbar layer
  * Allows quick viewing and editing of contact information
+ * 
+ * @design Aurora + Biomorphic Design System
+ * - Organic border radius on cards
+ * - Aurora glow header with layer color
+ * - Subtle blob backgrounds on cards
+ * - Haptic feedback on interactions
  */
 
 import React, { useState, useRef } from 'react';
-import { View, Text, ScrollView, Pressable } from 'react-native';
+import { View, Text, Pressable, Platform } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { ContactDetailModal } from './ContactDetailModal';
 import { RelationshipTypeSelector, type RelationshipTypeData } from './RelationshipTypeSelector';
+import { BlobBackground, LayerGlowIndicator } from '@/components/ui';
+import { triggerHaptic } from '@/hooks/useHaptics';
 
 interface Contact {
   id?: string;
@@ -52,18 +61,7 @@ export function LayerDetailScreen({ layer, contacts, onBack, onContactUpdate, on
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLongPress = useRef<boolean>(false);
 
-  // ============================================================================
-  // PAGINATION: Show 25 contacts per page (user-configurable in future)
-  // ============================================================================
-  const CONTACTS_PER_PAGE = 25; // TODO: Load from UserSettings
-  const [currentPage, setCurrentPage] = useState(0);
-  
-  const totalPages = Math.ceil(contacts.length / CONTACTS_PER_PAGE);
-  const startIndex = currentPage * CONTACTS_PER_PAGE;
-  const endIndex = Math.min(startIndex + CONTACTS_PER_PAGE, contacts.length);
-  const paginatedContacts = contacts.slice(startIndex, endIndex);
-
-  // Calculate unsorted contacts in this layer (check ALL contacts, not just current page)
+  // Calculate unsorted contacts in this layer
   const unsortedInLayer = contacts.filter(
     c => c.quickSortStatus === "not_sorted" || !c.quickSortStatus
   ).length;
@@ -168,23 +166,39 @@ export function LayerDetailScreen({ layer, contacts, onBack, onContactUpdate, on
 
   return (
     <View className="flex-1 bg-black">
-      {/* Header */}
-      <View className="px-6 pt-12 pb-6 border-b border-zinc-800">
-        <Pressable onPress={onBack} className="mb-4">
-          <Text className="text-primary text-base">← Back to Garden</Text>
+      {/* Header with Aurora glow */}
+      <View className="px-6 pt-12 pb-6 border-b border-zinc-800/50 overflow-hidden">
+        {/* Aurora blob background */}
+        <BlobBackground 
+          color={layer.color} 
+          opacity={0.12} 
+          size={300} 
+          top={-100} 
+          right={-80}
+          rotation={-15}
+        />
+        
+        <Pressable 
+          onPress={() => {
+            triggerHaptic('light');
+            onBack();
+          }} 
+          className="mb-4 self-start"
+        >
+          <Text className="text-primary text-base font-medium">← Back to Garden</Text>
         </Pressable>
         
-        <View className="flex-row items-center mb-2">
-          <View 
-            className="w-4 h-4 rounded-full mr-3"
-            style={{ backgroundColor: layer.color }}
-          />
-          <Text className="text-3xl text-white font-semibold">
-            {layer.name}
-          </Text>
+        <View className="flex-row items-center mb-3">
+          {/* Glowing layer indicator */}
+          <LayerGlowIndicator color={layer.color} size={16} active />
+          <View className="ml-3">
+            <Text className="text-3xl text-white font-semibold">
+              {layer.name}
+            </Text>
+          </View>
         </View>
         
-        <Text className="text-secondary text-base mb-2">
+        <Text className="text-zinc-300 text-base mb-2">
           {contacts.length} {contacts.length === 1 ? 'person' : 'people'} • Expected: {layer.range}
         </Text>
         
@@ -193,165 +207,169 @@ export function LayerDetailScreen({ layer, contacts, onBack, onContactUpdate, on
         </Text>
       </View>
 
-      {/* Contact List */}
-      <ScrollView className="flex-1">
-        <View className="px-6 py-4">
-          {/* Tend Garden CTA - Only show if there are unsorted contacts */}
-          {unsortedInLayer > 0 && onStartTendGarden && (
-            <View className="mb-6 bg-primary/10 border-2 border-primary p-4">
-              <View className="flex-row items-center mb-2">
-                <Text className="text-primary text-xs font-bold uppercase tracking-wider">
-                  🌱 SORT NEEDED
+      {/* Contact List - Using FlashList for virtualization (fast with 500+ contacts) */}
+      <FlashList
+        data={contacts.filter(c => c != null)}
+        ListHeaderComponent={
+          unsortedInLayer > 0 && onStartTendGarden ? (
+            <View className="px-4 pt-4 pb-2">
+              {/* Organic CTA card with glow */}
+              <View 
+                className="mb-6 bg-primary/10 border border-primary/30 p-5 rounded-2xl overflow-hidden"
+                style={Platform.select({
+                  ios: {
+                    shadowColor: '#22c55e',
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.2,
+                    shadowRadius: 12,
+                  },
+                  android: { elevation: 4 },
+                })}
+              >
+                <BlobBackground color="#22c55e" opacity={0.08} size={200} top={-60} right={-40} />
+                <View className="flex-row items-center mb-2">
+                  <Text className="text-primary text-xs font-bold uppercase tracking-wider">
+                    SORT NEEDED
+                  </Text>
+                </View>
+                <Text className="text-white text-base font-medium mb-2">
+                  {unsortedInLayer} contact{unsortedInLayer !== 1 ? 's' : ''} in this layer {unsortedInLayer !== 1 ? 'need' : 'needs'} classification
                 </Text>
+                <Text className="text-zinc-400 text-sm mb-4">
+                  Use Tend Garden to quickly sort contacts into Family, Friends, or Business for better insights.
+                </Text>
+                <Pressable
+                  onPress={() => {
+                    triggerHaptic('medium');
+                    onStartTendGarden();
+                  }}
+                  className="bg-primary py-3.5 px-5 rounded-xl"
+                  accessibilityLabel="Open Tend Garden"
+                  accessibilityRole="button"
+                  style={({ pressed }) => ({ 
+                    opacity: pressed ? 0.9 : 1,
+                    transform: [{ scale: pressed ? 0.98 : 1 }],
+                  })}
+                >
+                  <Text className="text-center text-sm font-bold text-black">
+                    OPEN TEND GARDEN
+                  </Text>
+                </Pressable>
               </View>
-              <Text className="text-white text-base font-medium mb-2">
-                {unsortedInLayer} contact{unsortedInLayer !== 1 ? 's' : ''} in this layer {unsortedInLayer !== 1 ? 'need' : 'needs'} classification
-              </Text>
-              <Text className="text-zinc-400 text-sm mb-3">
-                Use Tend Garden to quickly sort contacts into Family, Friends, or Business for better insights.
-              </Text>
-              <Pressable
-                onPress={onStartTendGarden}
-                className="bg-primary py-3 px-4 border border-primary"
-                accessibilityLabel="Open Tend Garden"
-                accessibilityRole="button"
-                style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1 })}
-              >
-                <Text className="text-center text-sm font-bold text-black">
-                  OPEN TEND GARDEN
-                </Text>
-              </Pressable>
             </View>
-          )}
-
-          {contacts.length === 0 ? (
-            <View className="py-12">
-              <Text className="text-center text-secondary text-base">
-                No contacts in this layer yet
-              </Text>
-            </View>
-          ) : (
-            paginatedContacts.filter(c => c != null).map((contact, index) => {
-              const relationshipBadge = getRelationshipBadge(contact);
-              
-              return (
-              <Pressable
-                key={contact.id || `contact-${index}`}
-                onPress={() => handlePress(contact)}
-                onPressIn={() => handleLongPressStart(contact)}
-                onPressOut={handlePressEnd}
-                className="mb-3 bg-zinc-900 border border-zinc-800 p-4 active:bg-zinc-800"
-              >
-                {/* Contact Header */}
-                <View className="flex-row justify-between items-start mb-2">
-                  <View className="flex-1">
-                    <Text className="text-white text-lg font-medium mb-1">
-                      {contact.name || 'Unknown'}
-                    </Text>
-                    
-                    {relationshipBadge ? (
-                      <View className="flex-row items-center mb-1 self-start">
-                        <Text className={`text-xs font-medium ${relationshipBadge.color}`}>
-                          {relationshipBadge.emoji} {relationshipBadge.label.toUpperCase()}
-                        </Text>
-                      </View>
-                    ) : null}
-                    
-                    <Text className="text-secondary text-sm">
-                      Last contact: {formatLastInteraction(contact.lastInteraction)}
-                    </Text>
-                  </View>
+          ) : <View className="h-4" />
+        }
+        ListEmptyComponent={
+          <View className="py-12 px-6">
+            <Text className="text-center text-secondary text-base">
+              No contacts in this layer yet
+            </Text>
+          </View>
+        }
+        renderItem={({ item: contact }) => {
+          const relationshipBadge = getRelationshipBadge(contact);
+          
+          return (
+            <Pressable
+              onPress={() => {
+                triggerHaptic('light');
+                handlePress(contact);
+              }}
+              onPressIn={() => handleLongPressStart(contact)}
+              onPressOut={handlePressEnd}
+              className="mx-4 mb-3 bg-zinc-900 border border-zinc-800/70 p-4 rounded-xl overflow-hidden active:bg-zinc-800/80"
+              style={({ pressed }) => [
+                {
+                  transform: [{ scale: pressed ? 0.98 : 1 }],
+                },
+                Platform.select({
+                  ios: {
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 6,
+                  },
+                  android: { elevation: 2 },
+                }),
+              ]}
+            >
+              {/* Contact Header */}
+              <View className="flex-row justify-between items-start mb-2">
+                <View className="flex-1">
+                  <Text className="text-white text-lg font-medium mb-1">
+                    {contact.name || 'Unknown'}
+                  </Text>
                   
-                  {contact.interactionScore !== undefined ? (
-                    <View className="bg-zinc-800 px-3 py-1 rounded-full">
-                      <Text className="text-primary text-xs font-medium">
-                        {Math.round(contact.interactionScore)}
+                  {relationshipBadge ? (
+                    <View className="flex-row items-center mb-1 self-start bg-zinc-800/50 px-2 py-1 rounded-lg">
+                      <Text className={`text-xs font-medium ${relationshipBadge.color}`}>
+                        {relationshipBadge.emoji} {relationshipBadge.label.toUpperCase()}
                       </Text>
                     </View>
                   ) : null}
-                </View>
-
-                {/* Quick Stats */}
-                {contact.interactionFrequency !== undefined && contact.interactionFrequency > 0 && (
-                  <View className="flex-row items-center mb-2">
-                    <Text className="text-zinc-500 text-xs">
-                      {contact.interactionFrequency} interactions • 
-                    </Text>
-                    <Text className="text-zinc-500 text-xs ml-1">
-                      Score: {Math.round(contact.interactionScore || 0)}
-                    </Text>
-                  </View>
-                )}
-
-                {/* Cultivation Goal */}
-                {contact.cultivationGoal && (
-                  <View className="mt-2 pt-2 border-t border-zinc-800">
-                    <Text className={`text-xs font-medium ${getCultivationGoalColor(contact.cultivationGoal)}`}>
-                      Goal: {contact.cultivationGoal}
-                    </Text>
-                  </View>
-                )}
-
-                {/* Notes Preview */}
-                {contact.notes && (
-                  <View className="mt-2 pt-2 border-t border-zinc-800">
-                    <Text className="text-zinc-400 text-xs" numberOfLines={2}>
-                      {contact.notes}
-                    </Text>
-                  </View>
-                )}
-
-                {/* Tap to edit indicator */}
-                <View className="mt-2">
-                  <Text className="text-zinc-600 text-xs text-right">
-                    Tap to view/edit • Hold to set relationship type →
+                  
+                  <Text className="text-zinc-400 text-sm">
+                    Last contact: {formatLastInteraction(contact.lastInteraction)}
                   </Text>
                 </View>
-              </Pressable>
-              );
-            })
-          )}
-          
-          {/* Bottom Pagination Controls */}
-          {totalPages > 1 && (
-            <View className="mt-6 pt-4 border-t border-zinc-800">
-              <View className="flex-row justify-between items-center">
-                <Pressable
-                  onPress={() => setCurrentPage(Math.max(0, currentPage - 1))}
-                  disabled={currentPage === 0}
-                  className={`px-4 py-2 border ${
-                    currentPage === 0
-                      ? 'border-zinc-800 bg-zinc-900 opacity-50'
-                      : 'border-primary bg-primary/10'
-                  }`}
-                >
-                  <Text className={currentPage === 0 ? 'text-zinc-600' : 'text-primary'}>
-                    ← Previous
-                  </Text>
-                </Pressable>
                 
-                <Text className="text-zinc-400 text-sm">
-                  Page {currentPage + 1} of {totalPages}
-                </Text>
-                
-                <Pressable
-                  onPress={() => setCurrentPage(Math.min(totalPages - 1, currentPage + 1))}
-                  disabled={currentPage === totalPages - 1}
-                  className={`px-4 py-2 border ${
-                    currentPage === totalPages - 1
-                      ? 'border-zinc-800 bg-zinc-900 opacity-50'
-                      : 'border-primary bg-primary/10'
-                  }`}
-                >
-                  <Text className={currentPage === totalPages - 1 ? 'text-zinc-600' : 'text-primary'}>
-                    Next →
-                  </Text>
-                </Pressable>
+                {contact.interactionScore !== undefined ? (
+                  <View 
+                    className="bg-zinc-800/80 px-3 py-1.5 rounded-full"
+                    style={Platform.select({
+                      ios: {
+                        shadowColor: layer.color,
+                        shadowOffset: { width: 0, height: 0 },
+                        shadowOpacity: 0.3,
+                        shadowRadius: 4,
+                      },
+                      android: {},
+                    })}
+                  >
+                    <Text className="text-primary text-xs font-semibold">
+                      {Math.round(contact.interactionScore)}
+                    </Text>
+                  </View>
+                ) : null}
               </View>
-            </View>
-          )}
-        </View>
-      </ScrollView>
+
+              {/* Quick Stats */}
+              {contact.interactionFrequency !== undefined && contact.interactionFrequency > 0 && (
+                <View className="flex-row items-center mb-2">
+                  <Text className="text-zinc-500 text-xs">
+                    {contact.interactionFrequency} interactions • Score: {Math.round(contact.interactionScore || 0)}
+                  </Text>
+                </View>
+              )}
+
+              {/* Cultivation Goal */}
+              {contact.cultivationGoal && (
+                <View className="mt-2 pt-2 border-t border-zinc-800/50">
+                  <Text className={`text-xs font-medium ${getCultivationGoalColor(contact.cultivationGoal)}`}>
+                    Goal: {contact.cultivationGoal}
+                  </Text>
+                </View>
+              )}
+
+              {/* Notes Preview */}
+              {contact.notes && (
+                <View className="mt-2 pt-2 border-t border-zinc-800/50">
+                  <Text className="text-zinc-400 text-xs" numberOfLines={2}>
+                    {contact.notes}
+                  </Text>
+                </View>
+              )}
+
+              {/* Tap to edit indicator */}
+              <View className="mt-3">
+                <Text className="text-zinc-600 text-xs text-right">
+                  Tap to view • Hold for quick actions
+                </Text>
+              </View>
+            </Pressable>
+          );
+        }}
+      />
 
       {/* Contact Detail Modal */}
       {selectedContact && (

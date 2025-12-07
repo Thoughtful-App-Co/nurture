@@ -30,12 +30,15 @@ interface OnboardingData {
 }
 
 export default function Index() {
-  // Performance optimization: Use $each to batch-load all contacts in one operation
+  // Performance optimization: Only load lightweight flags needed for routing decisions
+  // Contact lists are lazy-loaded per-layer by the dashboard when needed
   const me = useAccount(undefined, {
     resolve: {
       root: {
-        contacts: { $each: true },
-        dashboardSummary: true,
+        dashboardSummary: {},
+        familyNames: {},
+        // Note: hasCompletedOnboarding and hasCompletedContactAnalysis are primitive fields
+        // so they load automatically with root - no need to specify them
       }
     }
   });
@@ -61,77 +64,42 @@ export default function Index() {
   }
 
   // Check if user needs onboarding (hasCompletedOnboarding flag) or contact analysis
+  // No artificial delays - Jazz primitives on root are available immediately once loaded
   useEffect(() => {
     if (!me?.$isLoaded) return;
     
     const root = me.$isLoaded ? (me.root as any) : null;
     
-    // Wait for root to fully load before checking flags
-    // Jazz CoValues load lazily, so we need to ensure root is actually loaded
+    // Wait for root to be available
     if (!root) {
       console.log('⏳ Waiting for root to load...');
       return;
     }
     
-    // 🔧 FIX: Add a delay to allow Jazz CoValues to lazy-load
-    // Jazz loads account first, then lazy-loads nested CoValues like contacts and familyNames
-    // Without this delay, contacts.length will be 0 even if contacts exist in storage
-    console.log('⏳ Waiting 500ms for Jazz CoValues to load...');
-    const checkFlowTimer = setTimeout(() => {
-      const needsOnboarding = !root?.hasCompletedOnboarding;
-      const needsContactAnalysis = root?.hasCompletedOnboarding && !root?.hasCompletedContactAnalysis;
-      
-      // 🔍 DEBUG: Enhanced account and flag logging
-      console.log('=== ACCOUNT DEBUG (after delay) ===');
-      console.log('Account ID:', (me as any).id || 'unknown');
-      console.log('Account exists:', !!me);
-      console.log('Root exists:', !!root);
-      console.log('displayName:', root?.displayName);
-      console.log('hasCompletedOnboarding:', root?.hasCompletedOnboarding);
-      console.log('hasCompletedContactAnalysis:', root?.hasCompletedContactAnalysis);
-      console.log('Contacts reference exists:', !!root?.contacts);
-      console.log('Contacts type:', typeof root?.contacts);
-      console.log('Contacts length:', root?.contacts?.length || 0);
-      
-      // Try to inspect first contact
-      if (root?.contacts && root.contacts.length > 0) {
-        const firstContact = root.contacts[0];
-        console.log('First contact exists:', !!firstContact);
-        console.log('First contact name:', firstContact?.name);
-      }
-      
-      console.log('Family names exist:', !!root?.familyNames);
-      if (root?.familyNames) {
-        console.log('  Birth last name:', root.familyNames.birthLastName);
-        console.log('  Current last name:', root.familyNames.currentLastName);
-      }
-      
-      console.log('needsOnboarding:', needsOnboarding);
-      console.log('needsContactAnalysis:', needsContactAnalysis);
-      console.log('====================');
-      
-      console.log('Flow check:', {
+    // Determine flow based on boolean flags (primitives load immediately with root)
+    const needsOnboarding = !root?.hasCompletedOnboarding;
+    const needsContactAnalysis = root?.hasCompletedOnboarding && !root?.hasCompletedContactAnalysis;
+    
+    // Debug logging (development only)
+    if (__DEV__) {
+      console.log('🚀 Flow check (no delay):', {
         displayName: root?.displayName,
         hasCompletedOnboarding: root?.hasCompletedOnboarding,
         hasCompletedContactAnalysis: root?.hasCompletedContactAnalysis,
-        contactCount: root?.contacts?.length || 0,
         needsOnboarding,
         needsContactAnalysis,
       });
-      
-      if (needsOnboarding) {
-        setFlow('onboarding');
-      } else if (needsContactAnalysis) {
-        setFlow('data-mining');
-      } else {
-        // User has completed both onboarding AND contact analysis - go to dashboard
-        // TODO: Re-enable biometric lock after MVP
-        setFlow('ready');
-      }
-    }, 500); // Wait 500ms for Jazz to load CoValues
+    }
     
-    // Cleanup timeout on unmount
-    return () => clearTimeout(checkFlowTimer);
+    if (needsOnboarding) {
+      setFlow('onboarding');
+    } else if (needsContactAnalysis) {
+      setFlow('data-mining');
+    } else {
+      // User has completed both onboarding AND contact analysis - go to dashboard
+      // TODO: Re-enable biometric lock after MVP
+      setFlow('ready');
+    }
   }, [me]);
 
   // Handle app state changes for biometric lock
@@ -210,23 +178,14 @@ export default function Index() {
           }
           
           // CRITICAL: Mark onboarding as completed
+          // Jazz writes synchronously to local state, persistence happens async in background
           root.$jazz.set('hasCompletedOnboarding', true);
           
-          // 🔧 FIX: Give Jazz time to persist the onboarding flag
-          console.log('⏳ Waiting for Jazz to persist onboarding data...');
-          await new Promise(resolve => setTimeout(resolve, 500));
-          
-          // 🔍 DEBUG: Verify the flag was saved
-          console.log("User data saved:", {
-            displayName: root.displayName,
-            email: root.email,
-            phone: root.phone,
-            hasCompletedOnboarding: root.hasCompletedOnboarding,
-            dataSharingLevel: data.dataSharingLevel,
-          });
-          
-          if (!root.hasCompletedOnboarding) {
-            console.error('⚠️ WARNING: Onboarding flag did not persist!');
+          if (__DEV__) {
+            console.log("User data saved:", {
+              displayName: root.displayName,
+              hasCompletedOnboarding: root.hasCompletedOnboarding,
+            });
           }
           
            // Save onboarding data for data mining screen
@@ -257,11 +216,6 @@ export default function Index() {
       );
     }
     const root = me.root as any;
-    
-    // Debug logging
-    console.log('📊 Entering data-mining flow');
-    console.log('Has completed analysis?', root?.hasCompletedContactAnalysis);
-    console.log('Existing contacts count:', root?.contacts?.length || 0);
     
     const savedFamilyNames = root?.familyNames ? {
       birthLastName: root.familyNames.birthLastName,
@@ -402,32 +356,21 @@ export default function Index() {
           }, me);
           
           root.$jazz.set('dashboardSummary', summary);
-          console.log('✅ Dashboard summary saved');
-          console.log('=' .repeat(60));
-          console.log('');
-           
-            // Mark contact analysis as completed - prevents re-running on app restart
-            root.$jazz.set('hasCompletedContactAnalysis', true);
-            console.log('✅ Contact analysis marked as completed');
-            
-            // 🔧 FIX: Give Jazz time to persist the flag to local storage
-            // Jazz uses eventual consistency, so we add a small delay
-            console.log('⏳ Waiting for Jazz to persist data...');
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            // 🔍 DEBUG: Verify the flag was actually saved
-            console.log('🔍 Verification after delay:');
-            console.log('hasCompletedContactAnalysis:', root.hasCompletedContactAnalysis);
-            console.log('Contacts count:', root.contacts?.length || 0);
-            
-            if (!root.hasCompletedContactAnalysis) {
-              console.error('⚠️ WARNING: Flag did not persist! This is a Jazz storage issue.');
-            } else {
-              console.log('✅ Flag successfully verified in Jazz state');
-            }
-            
-            // Show biometric lock setup before going to dashboard
-            setFlow('locked');
+          
+          // Mark contact analysis as completed - prevents re-running on app restart
+          // Jazz writes synchronously to local state, persistence happens async in background
+          root.$jazz.set('hasCompletedContactAnalysis', true);
+          
+          if (__DEV__) {
+            console.log('✅ Contact analysis completed:', {
+              totalContacts,
+              layerCounts,
+              hasCompletedContactAnalysis: root.hasCompletedContactAnalysis,
+            });
+          }
+          
+          // Show biometric lock setup before going to dashboard
+          setFlow('locked');
         }}
       />
     );
@@ -490,8 +433,9 @@ function DiagnosticPanel({ me }: { me: any }) {
   }, []);
   
   const root = me?.$isLoaded ? me.root as any : null;
-  const contactsCount = root?.contacts?.length || 0;
   const hasCompletedAnalysis = root?.hasCompletedContactAnalysis;
+  const dashboardSummary = root?.dashboardSummary;
+  const totalContacts = dashboardSummary?.totalContacts || 0;
   
   return (
     <View className="absolute bottom-0 left-0 right-0 z-50">
@@ -500,7 +444,7 @@ function DiagnosticPanel({ me }: { me: any }) {
         className="bg-purple-900 border-t-2 border-purple-500 p-2"
       >
         <Text className="text-purple-200 text-xs font-mono text-center">
-          🔧 {expanded ? 'Hide' : 'Show'} Diagnostics | Contacts: {contactsCount} | Flag: {hasCompletedAnalysis ? '✅' : '❌'}
+          🔧 {expanded ? 'Hide' : 'Show'} Diagnostics | Contacts: {totalContacts} | Flag: {hasCompletedAnalysis ? '✅' : '❌'}
         </Text>
       </Pressable>
       
@@ -525,10 +469,10 @@ function DiagnosticPanel({ me }: { me: any }) {
             hasCompletedContactAnalysis: {hasCompletedAnalysis ? '✅' : '❌'}
           </Text>
           <Text className="text-purple-200 text-xs font-mono">
-            Contacts ref exists: {root?.contacts ? '✅' : '❌'}
+            Dashboard summary exists: {dashboardSummary ? '✅' : '❌'}
           </Text>
           <Text className="text-purple-200 text-xs font-mono">
-            Contacts length: {contactsCount}
+            Total contacts: {totalContacts}
           </Text>
           <Text className="text-purple-200 text-xs font-mono">
             Family names exist: {root?.familyNames ? '✅' : '❌'}

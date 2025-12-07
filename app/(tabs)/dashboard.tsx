@@ -114,8 +114,9 @@ import { WouldYouRatherModal } from "@/components/relationships/WouldYouRatherMo
 import { OverflowSelectionModal } from "@/components/relationships/OverflowSelectionModal";
 import { DunbarViolationHeroCard, detectDunbarViolations } from "@/components/relationships/DunbarViolationHeroCard";
 import { GraveyardScreen } from "@/components/relationships/GraveyardScreen";
-import { Card, Button } from "@/components/ui";
+import { Card, Button, AuroraGlow, BlobBackground, LayerGlowIndicator, SkeletonDashboard } from "@/components/ui";
 import Animated, { useSharedValue, useAnimatedStyle, interpolate, Extrapolate } from 'react-native-reanimated';
+import { triggerHaptic } from "@/hooks/useHaptics";
 
 // Layer definitions based on Dunbar's research
 const LAYERS = [
@@ -646,9 +647,10 @@ export default function Dashboard() {
 
   if (isAnalyzing) {
     return (
-      <View className="flex-1 bg-black justify-center items-center">
-        <ActivityIndicator size="large" color="#22c55e" />
-        <Text className="text-secondary mt-4">Analyzing your relationships...</Text>
+      <View className="flex-1 bg-black">
+        {/* Aurora glow while loading */}
+        <AuroraGlow color="#22c55e" height={250} intensity={0.1} />
+        <SkeletonDashboard />
       </View>
     );
   }
@@ -785,6 +787,9 @@ export default function Dashboard() {
 
   return (
     <View className="flex-1 bg-black">
+      {/* Aurora Glow Background */}
+      <AuroraGlow color="#22c55e" height={280} intensity={0.12} />
+      
       {/* Graveyard Reveal Card - Shows on overscroll */}
       {hiddenContactsCount > 0 && (
         <Animated.View
@@ -802,14 +807,20 @@ export default function Dashboard() {
           ]}
         >
           <Pressable
-            onPress={() => setShowGraveyard(true)}
-            className="bg-zinc-950 border-2 border-zinc-700 p-4"
-            style={{
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.5,
-              shadowRadius: 12,
+            onPress={() => {
+              triggerHaptic('medium');
+              setShowGraveyard(true);
             }}
+            className="bg-zinc-900/95 border border-zinc-700/50 p-4 rounded-2xl"
+            style={Platform.select({
+              ios: {
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 8 },
+                shadowOpacity: 0.4,
+                shadowRadius: 16,
+              },
+              android: { elevation: 8 },
+            })}
             accessibilityLabel="Open graveyard"
             accessibilityRole="button"
           >
@@ -817,15 +828,15 @@ export default function Dashboard() {
               <View className="flex-row items-center">
                 <Text className="text-4xl mr-3">🪦</Text>
                 <View>
-                  <Text className="text-zinc-400 text-lg font-bold">
+                  <Text className="text-zinc-300 text-lg font-bold">
                     Graveyard
                   </Text>
-                  <Text className="text-zinc-600 text-xs">
+                  <Text className="text-zinc-500 text-xs">
                     {hiddenContactsCount} hidden {hiddenContactsCount === 1 ? 'contact' : 'contacts'}
                   </Text>
                 </View>
               </View>
-              <Text className="text-zinc-600 text-sm">Tap to dig up →</Text>
+              <Text className="text-zinc-500 text-sm">Tap to dig up →</Text>
             </View>
           </Pressable>
         </Animated.View>
@@ -967,12 +978,27 @@ export default function Dashboard() {
           
           return (
             <View className="mb-8">
-              <View className="bg-gradient-to-br from-primary/20 to-primary/5 border-3 border-primary p-6 shadow-lg">
+              {/* Organic CTA card with aurora glow */}
+              <View 
+                className="bg-primary/10 border border-primary/30 p-6 rounded-2xl overflow-hidden"
+                style={Platform.select({
+                  ios: {
+                    shadowColor: '#22c55e',
+                    shadowOffset: { width: 0, height: 6 },
+                    shadowOpacity: 0.25,
+                    shadowRadius: 16,
+                  },
+                  android: { elevation: 6 },
+                })}
+              >
+                {/* Decorative blob */}
+                <BlobBackground color="#22c55e" opacity={0.1} size={250} top={-80} right={-60} />
+                
                 {/* Attention-grabbing header */}
                 <View className="flex-row items-center mb-3">
-                  <View className="bg-primary w-2 h-2 rounded-full mr-2 animate-pulse" />
-                  <Text className="text-primary text-xs font-bold uppercase tracking-widest">
-                    🌱 ACTION NEEDED
+                  <LayerGlowIndicator color="#22c55e" size={8} active />
+                  <Text className="text-primary text-xs font-bold uppercase tracking-widest ml-2">
+                    ACTION NEEDED
                   </Text>
                 </View>
                 
@@ -980,19 +1006,33 @@ export default function Dashboard() {
                   Tend Your Garden
                 </Text>
                 
-                <Text className="text-zinc-300 text-base leading-relaxed mb-4">
+                <Text className="text-zinc-300 text-base leading-relaxed mb-5">
                   You have <Text className="text-primary font-bold">{unsortedCount}</Text> relationship{unsortedCount !== 1 ? 's' : ''} waiting to be classified. Quick sort them into Family, Friends, or Business to unlock deeper insights.
                 </Text>
                 
                 <Pressable
-                  onPress={() => setShowQuickSort(true)}
-                  className="bg-primary py-4 px-6 border-2 border-primary shadow-xl"
+                  onPress={() => {
+                    triggerHaptic('medium');
+                    setShowQuickSort(true);
+                  }}
+                  className="bg-primary py-4 px-6 rounded-xl"
                   accessibilityLabel="Start tending garden"
                   accessibilityRole="button"
-                  style={({ pressed }) => ({ 
-                    opacity: pressed ? 0.9 : 1,
-                    transform: [{ scale: pressed ? 0.98 : 1 }],
-                  })}
+                  style={({ pressed }) => [
+                    { 
+                      opacity: pressed ? 0.9 : 1,
+                      transform: [{ scale: pressed ? 0.96 : 1 }],
+                    },
+                    Platform.select({
+                      ios: {
+                        shadowColor: '#22c55e',
+                        shadowOffset: { width: 0, height: 4 },
+                        shadowOpacity: 0.4,
+                        shadowRadius: 12,
+                      },
+                      android: { elevation: 6 },
+                    }),
+                  ]}
                 >
                   <Text className="text-center text-lg font-bold text-black tracking-wide">
                     START SORTING ({unsortedCount})
@@ -1000,9 +1040,9 @@ export default function Dashboard() {
                 </Pressable>
                 
                 {/* Visual separator line */}
-                <View className="mt-4 pt-4 border-t border-primary/30">
-                  <Text className="text-primary/70 text-xs text-center">
-                    ⚡ Takes 2-3 minutes • Unlock relationship insights
+                <View className="mt-5 pt-4 border-t border-primary/20">
+                  <Text className="text-primary/60 text-xs text-center">
+                    Takes 2-3 minutes • Unlock relationship insights
                   </Text>
                 </View>
               </View>
@@ -1011,10 +1051,30 @@ export default function Dashboard() {
         })()}
 
 
-        {/* Dunbar Health */}
-        <View className={`p-4 border-2 mb-8 ${
-          dunbarHealth === "healthy" ? "border-green-900 bg-green-950/30" : "border-orange-900 bg-orange-950/30"
-        }`}>
+        {/* Dunbar Health - Organic Card */}
+        <View 
+          className={`p-5 mb-8 rounded-2xl border overflow-hidden ${
+            dunbarHealth === "healthy" 
+              ? "border-green-800/50 bg-green-950/20" 
+              : "border-orange-800/50 bg-orange-950/20"
+          }`}
+          style={Platform.select({
+            ios: {
+              shadowColor: dunbarHealth === "healthy" ? "#22c55e" : "#f97316",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.15,
+              shadowRadius: 12,
+            },
+            android: { elevation: 3 },
+          })}
+        >
+          <BlobBackground 
+            color={dunbarHealth === "healthy" ? "#22c55e" : "#f97316"} 
+            opacity={0.06} 
+            size={200} 
+            top={-60} 
+            right={-40} 
+          />
           <Text className={`text-xs font-semibold mb-3 uppercase tracking-wider ${
             dunbarHealth === "healthy" ? "text-green-400" : "text-orange-400"
           }`}>
@@ -1029,6 +1089,17 @@ export default function Dashboard() {
               : "Consider pruning to maintain quality connections"
             }
           </Text>
+          
+          {/* Progress indicator */}
+          <View className="mt-4 h-2 bg-zinc-800/50 rounded-full overflow-hidden">
+            <View 
+              className="h-full rounded-full"
+              style={{ 
+                width: `${Math.min((withinDunbar / 150) * 100, 100)}%`,
+                backgroundColor: dunbarHealth === "healthy" ? "#22c55e" : "#f97316",
+              }}
+            />
+          </View>
         </View>
 
         {/* Layers */}
@@ -1054,41 +1125,68 @@ export default function Dashboard() {
           
           // Calculate percentage based on layer capacity
           const percentage = (layerStat.count / layerCapacity) * 100;
-          
-          const isEmpty = layerStat.count === 0;
-          const isNotFull = layerStat.count < layerCapacity && layer.id < 4; // Only prompt for layers 0-3
+          const isOverCapacity = percentage > 100;
 
           return (
             <Pressable
               key={layer.id}
-              onPress={() => setSelectedLayerId(layer.id)}
+              onPress={() => {
+                triggerHaptic('light');
+                setSelectedLayerId(layer.id);
+              }}
               className="mb-4"
               accessibilityLabel={`${layer.name} layer, ${layerStat.count} contacts`}
               accessibilityRole="button"
-              style={({ pressed }) => ({ 
-                opacity: pressed ? 0.9 : 1,
-                transform: [{ scale: pressed ? 0.99 : 1 }],
-              })}
+              style={({ pressed }) => [
+                { 
+                  opacity: pressed ? 0.95 : 1,
+                  transform: [{ scale: pressed ? 0.98 : 1 }],
+                },
+              ]}
             >
-              <View className="bg-zinc-900 border-2 border-zinc-800 p-4">
+              {/* Organic Card with subtle glow */}
+              <View 
+                className="bg-zinc-900 border border-zinc-800/70 p-4 rounded-xl overflow-hidden"
+                style={Platform.select({
+                  ios: {
+                    shadowColor: layer.color,
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: isOverCapacity ? 0.25 : 0.1,
+                    shadowRadius: 8,
+                  },
+                  android: { elevation: 2 },
+                })}
+              >
+                {/* Subtle blob background */}
+                <BlobBackground 
+                  color={layer.color} 
+                  opacity={0.05} 
+                  size={150} 
+                  top={-40} 
+                  right={-30}
+                  variant="small"
+                />
+                
                 {/* Layer Header */}
-                  <View className="flex-row justify-between items-center mb-3">
+                <View className="flex-row justify-between items-center mb-3">
                   <View className="flex-row items-center">
-                    <View 
-                      className="w-3 h-3 rounded-full mr-3"
-                      style={{ backgroundColor: layer.color }}
-                    />
-                    <Text className="text-white text-base font-medium">
+                    {/* Glowing layer indicator */}
+                    <LayerGlowIndicator color={layer.color} size={12} active={layerStat.count > 0} />
+                    <Text className="text-white text-base font-medium ml-3">
                       {layer.name}
                     </Text>
+                    {/* Layer descriptor badge */}
+                    <View className="ml-2 px-2 py-0.5 bg-zinc-800/60 rounded-full">
+                      <Text className="text-zinc-500 text-xs">{layer.descriptor}</Text>
+                    </View>
                   </View>
-                  <Text className="text-secondary text-sm">
-                    {layerStat.count}/{layerCapacity} ({Math.round(percentage)}%)
+                  <Text className={`text-sm font-medium ${isOverCapacity ? 'text-orange-400' : 'text-zinc-400'}`}>
+                    {layerStat.count}/{layerCapacity}
                   </Text>
                 </View>
 
-                {/* Progress Bar - Increased height for better visibility */}
-                <View className="h-3 bg-zinc-800 rounded-full overflow-hidden">
+                {/* Progress Bar - Organic with glow */}
+                <View className="h-2.5 bg-zinc-800/60 rounded-full overflow-hidden">
                   <View 
                     className="h-full rounded-full"
                     style={{ 
@@ -1096,6 +1194,13 @@ export default function Dashboard() {
                       backgroundColor: layer.color,
                     }}
                   />
+                </View>
+                
+                {/* Percentage indicator */}
+                <View className="flex-row justify-end mt-2">
+                  <Text className={`text-xs ${isOverCapacity ? 'text-orange-400' : 'text-zinc-500'}`}>
+                    {Math.round(percentage)}%{isOverCapacity ? ' - over capacity' : ''}
+                  </Text>
                 </View>
               </View>
             </Pressable>

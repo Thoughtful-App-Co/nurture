@@ -3,10 +3,15 @@
  * 
  * Standardized button styles used throughout the app.
  * Follows design system specifications in /docs/design-specs.md
+ * 
+ * @design Aurora + Biomorphic Design System
+ * - Organic border radius (rounded-2xl = 16px)
+ * - Subtle glow effect on primary buttons
+ * - Smooth spring-like press animations
  */
 
 import React from 'react';
-import { Pressable, Text, ActivityIndicator, View, PressableProps } from 'react-native';
+import { Pressable, Text, ActivityIndicator, View, PressableProps, Platform } from 'react-native';
 
 interface ButtonProps extends PressableProps {
   variant?: 'primary' | 'secondary' | 'ghost';
@@ -15,6 +20,8 @@ interface ButtonProps extends PressableProps {
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
   children: React.ReactNode;
+  /** Use organic border radius (default: true for new design) */
+  organic?: boolean;
 }
 
 export function Button({ 
@@ -27,44 +34,47 @@ export function Button({
   className = '',
   disabled,
   accessibilityLabel,
+  organic = true,
   ...props 
 }: ButtonProps) {
   const isDisabled = disabled || isLoading;
   
-  // Base styles - minimum 44pt touch target
-  const baseClass = "items-center justify-center flex-row";
+  // Base styles - minimum 44pt touch target, organic border radius
+  const baseClass = organic
+    ? "items-center justify-center flex-row rounded-2xl"
+    : "items-center justify-center flex-row";
   
   // Variant styles (consistent 2px borders)
   const variantClasses = {
     primary: "bg-primary border-2 border-primary",
-    secondary: "border-2 border-zinc-700 bg-transparent",
+    secondary: "border-2 border-zinc-700 bg-zinc-900/50",
     ghost: "bg-transparent",
   };
   
   // Disabled styles
   const disabledClasses = {
-    primary: "bg-zinc-900 border-2 border-zinc-800",
+    primary: "bg-zinc-800 border-2 border-zinc-700",
     secondary: "border-2 border-zinc-800 bg-transparent",
     ghost: "bg-transparent",
   };
   
-  // Size styles
+  // Size styles - slightly more padding for organic feel
   const sizeClasses = {
-    sm: "py-2 px-4 min-h-[36px]",
-    md: "py-3 px-4 min-h-[44px]",
-    lg: "py-4 px-6 min-h-[52px]",
+    sm: "py-2.5 px-5 min-h-[36px]",
+    md: "py-3.5 px-5 min-h-[44px]",
+    lg: "py-4 px-7 min-h-[52px]",
   };
   
   // Text color based on variant
   const textColorClasses = {
     primary: "text-black font-bold",
-    secondary: "text-zinc-400",
+    secondary: "text-zinc-300",
     ghost: "text-zinc-400",
   };
   
   // Disabled text colors
   const disabledTextClasses = {
-    primary: "text-zinc-600 font-bold",
+    primary: "text-zinc-500 font-bold",
     secondary: "text-zinc-600",
     ghost: "text-zinc-600",
   };
@@ -79,8 +89,43 @@ export function Button({
   // Loading indicator colors
   const loadingColors = {
     primary: '#000000',  // Black spinner on green button
-    secondary: '#a1a1aa', // Zinc-400 spinner
+    secondary: '#d4d4d8', // Zinc-300 spinner
     ghost: '#a1a1aa',
+  };
+  
+  // Glow shadow for primary buttons
+  const getGlowStyle = () => {
+    if (!organic || isDisabled) return {};
+    
+    if (variant === 'primary') {
+      return Platform.select({
+        ios: {
+          shadowColor: '#22c55e',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.3,
+          shadowRadius: 12,
+        },
+        android: {
+          elevation: 6,
+        },
+      });
+    }
+    
+    if (variant === 'secondary') {
+      return Platform.select({
+        ios: {
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.2,
+          shadowRadius: 8,
+        },
+        android: {
+          elevation: 3,
+        },
+      });
+    }
+    
+    return {};
   };
   
   const buttonClass = `${baseClass} ${
@@ -105,10 +150,12 @@ export function Button({
       accessibilityLabel={isLoading ? `Loading, ${autoAccessibilityLabel}` : autoAccessibilityLabel}
       accessibilityState={{ disabled: isDisabled }}
       style={({ pressed }) => [
-        // Scale down slightly on press for tactile feedback
+        // Glow effect
+        getGlowStyle(),
+        // Organic press animation - slightly more dramatic
         { 
-          transform: [{ scale: pressed && !isDisabled ? 0.98 : 1 }],
-          opacity: isDisabled ? 0.5 : 1,
+          transform: [{ scale: pressed && !isDisabled ? 0.96 : 1 }],
+          opacity: isDisabled ? 0.5 : (pressed ? 0.9 : 1),
         },
       ]}
       {...props}

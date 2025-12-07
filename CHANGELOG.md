@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.5.0] - 2025-12-07 - Performance: Fast Initial Load
+
+### Performance Improvements
+- **Fixed slow initial load times** - Removed 1-2.5 seconds of unnecessary delays
+  - Removed non-existent `contacts: { $each: true }` from useAccount resolve (field doesn't exist on schema)
+  - Removed 500ms artificial delay in flow checking - primitives load immediately with root
+  - Removed 500ms delay after onboarding completion
+  - Removed 1000ms delay after data mining completion
+  - Jazz writes synchronously to local state; async persistence happens in background
+
+### Code Quality
+- **Cleaned up debug logging** - Wrapped verbose console.logs in `__DEV__` checks
+- **Fixed DiagnosticPanel** - Now uses `dashboardSummary.totalContacts` instead of non-existent `contacts.length`
+- **Schema alignment** - Removed references to non-existent `root.contacts` field throughout
+
+### Technical Details
+- **Root cause**: `app/index.tsx` was attempting to eagerly load `contacts: { $each: true }` but this field doesn't exist on the `UserProfile` schema. The schema uses `layer0Contacts` through `layer5Contacts` for lazy loading.
+- **Impact**: Near-instant routing based on primitive boolean flags instead of waiting for non-existent data
+- **Files Modified**: `app/index.tsx`
+
+---
+
 ## [0.4.0] - 2025-11-12 - Jazz 0.19 Upgrade
 
 ### Breaking Changes

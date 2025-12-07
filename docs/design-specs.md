@@ -1,7 +1,7 @@
 # Nurture Design System Specification
 
-> **Version:** 1.0.0  
-> **Last Updated:** November 1, 2025  
+> **Version:** 1.2.0  
+> **Last Updated:** December 1, 2025  
 > **Status:** Living Document
 
 This document defines the design tokens, components, and patterns for the Nurture app. All components MUST use these specifications to ensure visual consistency and maintainability.
@@ -15,6 +15,25 @@ This document defines the design tokens, components, and patterns for the Nurtur
 2. **Garden metaphor** - Growth, cultivation, natural rhythms
 3. **Behavioral transparency** - Clear data representation
 4. **Mindful interactions** - Deliberate, not addictive
+
+**Design Paradigms (v1.2):**
+- **Aurora** - Flowing gradients, atmospheric depth, colored glows
+- **Biomorphic** - Organic shapes, natural curves, living system aesthetics
+
+### Aurora + Biomorphic Principles
+
+The design system combines two complementary paradigms:
+
+1. **Aurora Effects**
+   - Subtle gradient glows in headers and hero sections
+   - Colored shadows that match layer/brand colors
+   - Atmospheric depth through layered transparency
+
+2. **Biomorphic Elements**
+   - Organic border radius (12-24px instead of sharp corners)
+   - Blob-shaped decorative backgrounds
+   - Natural, flowing animations
+   - Glowing indicators that mimic bioluminescence
 
 ---
 
@@ -304,7 +323,7 @@ className="text-xs text-zinc-400 font-semibold mb-3 uppercase tracking-wider"
 
 ---
 
-## 🎭 Shadows & Elevation
+## 🎭 Shadows & Elevation (Aurora Update v1.2)
 
 ### Shadow Scale
 ```typescript
@@ -317,14 +336,14 @@ elevation: 2
 shadowColor: '#000'
 shadowOffset: { width: 0, height: 2 }
 shadowOpacity: 0.1
-shadowRadius: 4
+shadowRadius: 8  // Increased for softer feel
 
 // Level 2 - Raised (modals)
 elevation: 4
 shadowColor: '#000'
 shadowOffset: { width: 0, height: 4 }
 shadowOpacity: 0.2
-shadowRadius: 8
+shadowRadius: 12  // Increased for softer feel
 
 // Level 3 - Floating (dropdowns)
 elevation: 8
@@ -334,23 +353,58 @@ shadowOpacity: 0.3
 shadowRadius: 16
 ```
 
----
-
-## 🔲 Border Radius
-
+### Colored Glow Shadows (Aurora v1.2)
 ```typescript
-rounded-none    // 0px    - Brutalist aesthetic (default)
-rounded-sm      // 2px    - Subtle softening
-rounded         // 4px    - Buttons, inputs (use sparingly)
-rounded-md      // 6px    - Cards (use sparingly)
-rounded-lg      // 8px    - Modals (use sparingly)
-rounded-full    // 9999px - Pills, badges, progress bars
+// Primary glow (buttons, CTAs)
+shadowColor: '#22c55e'  // Primary green
+shadowOffset: { width: 0, height: 4 }
+shadowOpacity: 0.3
+shadowRadius: 12
+elevation: 6
+
+// Layer-specific glows
+shadowColor: layerColor  // Use layer's color
+shadowOffset: { width: 0, height: 2 }
+shadowOpacity: 0.15
+shadowRadius: 8
+elevation: 3
+
+// Indicator glow (LayerGlowIndicator)
+shadowColor: indicatorColor
+shadowOffset: { width: 0, height: 0 }
+shadowOpacity: 0.5-0.8  // 0.5 inactive, 0.8 active
+shadowRadius: 8-12
 ```
 
-**Design Decision:** Nurture uses primarily **squared corners** (`rounded-none`) for a brutalist, privacy-focused aesthetic. Use rounded corners only for:
-- Progress bars (rounded-full)
-- Badges and pills (rounded-full)
-- Status indicators (rounded-full)
+---
+
+## 🔲 Border Radius (Biomorphic Update v1.2)
+
+```typescript
+// Standard Tailwind
+rounded-none    // 0px    - Legacy/specific cases only
+rounded-sm      // 4px    - Subtle softening
+rounded         // 8px    - Default
+rounded-md      // 12px   - Standard cards
+rounded-lg      // 16px   - Buttons, inputs
+rounded-xl      // 24px   - Large cards, modals
+rounded-2xl     // 32px   - Hero cards
+rounded-full    // 9999px - Pills, badges, progress bars
+
+// Organic Variants (preferred)
+rounded-organic-sm  // 12px - Cards, list items
+rounded-organic     // 16px - Buttons, inputs (DEFAULT)
+rounded-organic-lg  // 24px - Modals, hero sections
+rounded-organic-xl  // 32px - Feature cards
+```
+
+**Design Decision (v1.2):** Nurture now uses **organic border radius** for a modern, biomorphic aesthetic that feels natural and approachable:
+- Cards: `rounded-xl` (12px)
+- Buttons: `rounded-2xl` (16px)
+- Modals: `rounded-organic-lg` (24px)
+- Progress bars: `rounded-full`
+- Badges and pills: `rounded-full`
+- Layer indicators: `rounded-full` with glow
 
 ---
 
@@ -487,6 +541,109 @@ duration: 1500ms
 
 ---
 
+## 🌌 Aurora + Biomorphic Components (v1.2)
+
+### BlobBackground
+Decorative organic gradient blobs for atmospheric depth.
+
+```tsx
+import { BlobBackground } from '@/components/ui';
+
+// Basic usage
+<BlobBackground color="#22c55e" opacity={0.1} />
+
+// With positioning
+<BlobBackground 
+  color={layer.color}
+  opacity={0.08}
+  size={200}
+  top={-60}
+  right={-40}
+  variant="small"
+/>
+```
+
+**Props:**
+- `color` - Gradient color (default: primary green)
+- `opacity` - 0-1 (default: 0.1)
+- `size` - Size in pixels (default: 400)
+- `top/right/left/bottom` - Position offsets
+- `rotation` - Angle in degrees (default: 25)
+- `variant` - 'default' | 'wide' | 'tall' | 'small'
+
+### AuroraGlow
+Subtle aurora-like glow effect for headers and hero sections.
+
+```tsx
+import { AuroraGlow } from '@/components/ui';
+
+<AuroraGlow color="#22c55e" height={280} intensity={0.12} />
+```
+
+**Props:**
+- `color` - Glow color (default: primary green)
+- `height` - Height of glow area (default: 300)
+- `intensity` - 0-1 (default: 0.15)
+
+### LayerGlowIndicator
+Glowing dot indicator with layer-specific colors.
+
+```tsx
+import { LayerGlowIndicator } from '@/components/ui';
+
+<LayerGlowIndicator color={layer.color} size={12} active />
+```
+
+**Props:**
+- `color` - Indicator color
+- `size` - Diameter in pixels (default: 12)
+- `active` - Whether to show stronger glow (default: false)
+
+### Skeleton Loaders
+Organic skeleton loading states for smooth UX.
+
+```tsx
+import { Skeleton, SkeletonCard, SkeletonLayerCard, SkeletonDashboard } from '@/components/ui';
+
+// Basic skeleton element
+<Skeleton width="60%" height={16} radius="md" />
+
+// Pre-built skeleton variants
+<SkeletonCard />
+<SkeletonLayerCard />
+<SkeletonDashboard />
+```
+
+---
+
+## 🎯 Haptic Feedback (v1.2)
+
+Use haptics to enhance the organic, tactile feel.
+
+```tsx
+import { useHaptics, triggerHaptic } from '@/hooks/useHaptics';
+
+// In component
+const { light, medium, success } = useHaptics();
+
+// Button press
+<Pressable onPress={() => { light(); doAction(); }}>
+
+// Or standalone
+triggerHaptic('medium');
+```
+
+**Haptic Types:**
+- `light` - Selections, toggles
+- `medium` - Button presses (default)
+- `heavy` - Confirmations, important actions
+- `success` - Completed actions
+- `warning` - Attention needed
+- `error` - Something went wrong
+- `selection` - Scrolling through options
+
+---
+
 ## 📏 Responsive Breakpoints
 
 ```typescript
@@ -521,6 +678,7 @@ When building a new component or screen:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.2.0 | Dec 1, 2025 | Aurora + Biomorphic design upgrade: organic border radius, blob backgrounds, glow effects, skeleton loaders, haptic feedback |
 | 1.0.0 | Nov 1, 2025 | Initial design system specification |
 
 ---
